@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Card, CardContent } from '@/components/ui/card';
-import { AboutMediaAndStats } from '@/components/about/AboutMediaAndStats';
+import { AboutMediaVisual } from '@/components/about/AboutMediaVisual';
+import { AboutStatCards } from '@/components/about/AboutStatCards';
 import { CmsStoreProvider, useCms } from '@/store/cmsStore';
 import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
@@ -43,30 +44,28 @@ function AboutBody({ loadError }: { loadError: boolean }) {
       <main className="pt-32 pb-16">
         <section className="px-4 mb-16 sm:mb-20 bg-muted/45 py-14 sm:py-16">
           <div className="container mx-auto max-w-6xl">
-            <div className="min-w-0 max-w-3xl">
-              {about.eyebrow ? (
-                <span className="block text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
-              ) : null}
-              <h1 className="mt-3 text-4xl sm:text-5xl font-bold text-primary-onBg leading-[1.1] tracking-tight [overflow-wrap:anywhere]">
-                {about.title || 'About'}
-              </h1>
-              <HtmlPreview
-                content={about.body || ''}
-                containWideBlocks
-                className="mt-6 text-muted-foreground prose-neutral dark:prose-invert prose-base sm:prose-lg prose-p:text-muted-foreground prose-p:leading-relaxed prose-headings:text-primary-onBg"
-              />
-              {loadError ? (
-                <p className="text-sm text-muted-foreground mt-4">
-                  Live content could not be loaded; showing saved or default information.
-                </p>
-              ) : null}
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-14 xl:gap-x-16 gap-10 lg:gap-y-0 lg:items-start">
+              <AboutMediaVisual imageSrc={about.image || ''} alt={about.title || 'About'} className="order-1 w-full" />
+              <div className="order-2 min-w-0 flex flex-col">
+                {about.eyebrow ? (
+                  <span className="block text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
+                ) : null}
+                <h1 className="mt-3 text-4xl sm:text-5xl font-bold text-primary-onBg leading-[1.1] tracking-tight [overflow-wrap:anywhere]">
+                  {about.title || 'About'}
+                </h1>
+                <HtmlPreview
+                  content={about.body || ''}
+                  containWideBlocks
+                  className="mt-6 max-w-xl text-muted-foreground prose-neutral dark:prose-invert prose-base sm:prose-lg prose-p:text-muted-foreground prose-p:leading-relaxed prose-headings:text-primary-onBg"
+                />
+                {loadError ? (
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Live content could not be loaded; showing saved or default information.
+                  </p>
+                ) : null}
+                <AboutStatCards stats={stats} className="mt-8 sm:mt-10 w-full" />
+              </div>
             </div>
-            <AboutMediaAndStats
-              imageSrc={about.image || ''}
-              alt={about.title || 'About'}
-              stats={stats}
-              className="mt-10 sm:mt-12"
-            />
           </div>
         </section>
 

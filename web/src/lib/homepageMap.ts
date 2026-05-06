@@ -251,8 +251,8 @@ export function mapHomepageApiToSnapshot(api: HomepageApiResponse): Snapshot {
         image: (typeof api.about.image === 'string' ? api.about.image : '').trim() || hero3,
         stats: (api.about.stats || []).map((s) => ({
           id: s.id ? String(s.id) : undefined,
-          label: s.label,
-          value: s.value,
+          label: String(s.label ?? '').trim(),
+          value: String(s.value ?? '').trim(),
         })),
       }
     : defaultCmsSnapshot.about;
