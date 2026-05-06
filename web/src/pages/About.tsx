@@ -52,40 +52,42 @@ function AboutBody({ loadError }: { loadError: boolean }) {
       <Header />
       <main className="pt-32 pb-16">
         <section className="px-4 mb-16 sm:mb-20">
-          <div className="container mx-auto max-w-6xl grid lg:grid-cols-2 gap-12 lg:gap-16 lg:items-center">
-            <AboutMediaVisual imageSrc={about.image || ''} alt={about.title || 'About'} className="order-1" />
-            <div className="min-w-0 order-2">
-              {about.eyebrow ? (
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
-              ) : null}
-              <h1 className="mt-3 text-4xl sm:text-5xl font-bold text-primary-onBg leading-[1.1] tracking-tight [overflow-wrap:anywhere]">
-                {about.title || 'About'}
-              </h1>
-              <HtmlPreview
-                content={about.body || ''}
-                containWideBlocks
-                className="mt-6 max-w-xl text-muted-foreground prose-neutral dark:prose-invert prose-base sm:prose-lg prose-p:text-muted-foreground prose-p:leading-relaxed prose-headings:text-primary-onBg"
-              />
-              {loadError ? (
-                <p className="text-sm text-muted-foreground mt-4">
-                  Live content could not be loaded; showing saved or default information.
-                </p>
-              ) : null}
-              {statCount > 0 ? (
-                <div className={cn('mt-10 grid min-w-0', statGridClass)}>
-                  {stats.map((s, i) => (
-                    <div
-                      key={s.id ?? `${s.label}-${i}`}
-                      className="bg-secondary/50 rounded-xl border border-border px-5 py-5 min-w-0 flex flex-col justify-center"
-                    >
-                      <div className="text-lg sm:text-xl font-bold text-primary-onBg tabular-nums tracking-tight leading-tight [overflow-wrap:anywhere]">
-                        {s.value}
+          <div className="container mx-auto max-w-6xl">
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-14 xl:gap-x-16 gap-10 lg:gap-y-0 lg:items-start">
+              <AboutMediaVisual imageSrc={about.image || ''} alt={about.title || 'About'} className="order-1 w-full" />
+              <div className="order-2 min-w-0 flex flex-col">
+                {about.eyebrow ? (
+                  <span className="block text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
+                ) : null}
+                <h1 className="mt-3 text-4xl sm:text-5xl font-bold text-primary-onBg leading-[1.1] tracking-tight [overflow-wrap:anywhere]">
+                  {about.title || 'About'}
+                </h1>
+                <HtmlPreview
+                  content={about.body || ''}
+                  containWideBlocks
+                  className="mt-6 max-w-xl text-muted-foreground prose-neutral dark:prose-invert prose-base sm:prose-lg prose-p:text-muted-foreground prose-p:leading-relaxed prose-headings:text-primary-onBg"
+                />
+                {loadError ? (
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Live content could not be loaded; showing saved or default information.
+                  </p>
+                ) : null}
+                {statCount > 0 ? (
+                  <div className={cn('mt-10 grid min-w-0 w-full', statGridClass)}>
+                    {stats.map((s, i) => (
+                      <div
+                        key={s.id ?? `${s.label}-${i}`}
+                        className="bg-secondary/50 rounded-xl border border-border px-5 py-5 min-w-0 flex flex-col justify-center"
+                      >
+                        <div className="text-lg sm:text-xl font-bold text-primary-onBg tabular-nums tracking-tight leading-tight [overflow-wrap:anywhere]">
+                          {s.value}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-2 leading-snug line-clamp-2">{s.label}</div>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-2 leading-snug line-clamp-2">{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </section>

@@ -104,8 +104,13 @@ const NewsEventDetail = () => {
               </Link>
             </Button>
 
-            <div className="mb-8 rounded-2xl overflow-hidden border border-border bg-muted aspect-[16/9] max-h-[420px]">
-              <CmsImage src={item.image} alt={item.title} className="w-full h-full object-cover" fallbackKind="card" />
+            <div className="relative mb-8 aspect-[16/9] max-h-[420px] overflow-hidden rounded-2xl border border-border bg-muted">
+              <CmsImage
+                src={item.image}
+                alt={item.title}
+                className="absolute inset-0 h-full w-full object-cover"
+                fallbackKind="card"
+              />
             </div>
 
             <header className="mb-10">

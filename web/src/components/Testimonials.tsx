@@ -1,6 +1,7 @@
 import { Star, Quote } from 'lucide-react';
 import { useCms } from '@/store/cmsStore';
 import { CmsImage } from '@/components/CmsImage';
+import { testimonialPortraitSrc } from '@/lib/cmsImageFallbacks';
 
 const Testimonials = () => {
   const { testimonials } = useCms();
@@ -24,7 +25,7 @@ const Testimonials = () => {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {items.map((testimonial) => (
+          {items.map((testimonial, idx) => (
             <div
               key={testimonial.id}
               className="bg-card rounded-xl p-6 shadow-md hover:shadow-lg border border-border/50 card-hover"
@@ -43,19 +44,13 @@ const Testimonials = () => {
               </p>
 
               <div className="flex items-center gap-3">
-                {testimonial.image?.trim() ? (
-                  <CmsImage
-                    src={testimonial.image}
-                    alt={testimonial.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                    fallbackKind="card"
-                    fillEmpty
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-primary/10 text-primary-onBg flex items-center justify-center text-sm font-bold">
-                    {testimonial.name.slice(0, 1)}
-                  </div>
-                )}
+                <CmsImage
+                  src={testimonialPortraitSrc(testimonial.image, idx)}
+                  alt={testimonial.name}
+                  className="w-12 h-12 rounded-full object-cover"
+                  fallbackKind="card"
+                  fillEmpty
+                />
                 <div>
                   <h4 className="font-semibold text-card-foreground text-sm">
                     {testimonial.name}

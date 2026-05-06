@@ -14,7 +14,7 @@ import { defaultCmsSnapshot } from '@/store/cmsStore';
 import hero1 from '@/assets/hero-1.jpg';
 import hero2 from '@/assets/hero-2.jpg';
 import hero3 from '@/assets/hero-3.jpg';
-import { TESTIMONIAL_FACE_FALLBACKS } from '@/lib/cmsImageFallbacks';
+import { testimonialPortraitSrc } from '@/lib/cmsImageFallbacks';
 
 /** Response shape from GET /api/site/homepage/ (snake_case from Django). */
 export type HomepageApiResponse = {
@@ -189,19 +189,16 @@ function mapSlides(apiSlides: HomepageApiResponse['slides']): HeroSlide[] {
 function mapTestimonials(raw: HomepageApiResponse['testimonials']): TestimonialsBlock {
   const fallback = defaultCmsSnapshot.testimonials;
   if (!raw) return fallback;
-  const items: TestimonialItem[] = (raw.items || []).map((t, i) => {
-    const face = (t.image || '').trim();
-    return {
-      id: t.id,
-      order: t.order,
-      enabled: t.enabled,
-      name: t.name,
-      roleTitle: t.role_title || '',
-      content: t.content || '',
-      rating: typeof t.rating === 'number' && t.rating > 0 ? t.rating : 5,
-      image: face || TESTIMONIAL_FACE_FALLBACKS[i % TESTIMONIAL_FACE_FALLBACKS.length],
-    };
-  });
+  const items: TestimonialItem[] = (raw.items || []).map((t, i) => ({
+    id: t.id,
+    order: t.order,
+    enabled: t.enabled,
+    name: t.name,
+    roleTitle: t.role_title || '',
+    content: t.content || '',
+    rating: typeof t.rating === 'number' && t.rating > 0 ? t.rating : 5,
+    image: testimonialPortraitSrc(t.image, i),
+  }));
   return {
     title: raw.title?.trim() || fallback.title,
     intro: raw.intro?.trim() || fallback.intro,

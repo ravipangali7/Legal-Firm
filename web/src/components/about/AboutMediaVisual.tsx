@@ -1,3 +1,4 @@
+import { Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CmsImage } from '@/components/CmsImage';
 
@@ -31,9 +32,11 @@ export function AboutMediaVisual({ imageSrc, alt, className }: AboutMediaVisualP
         />
       </div>
       <div
-        className="pointer-events-none absolute -bottom-2 -right-2 sm:-bottom-3 sm:-right-3 h-11 w-11 sm:h-14 sm:w-14 rounded-xl bg-accent shadow-md ring-4 ring-background"
+        className="pointer-events-none absolute -bottom-2 -right-2 sm:-bottom-3 sm:-right-3 h-11 w-11 sm:h-14 sm:w-14 rounded-xl bg-accent shadow-md ring-4 ring-background flex items-center justify-center"
         aria-hidden
-      />
+      >
+        <Scale className="h-5 w-5 sm:h-6 sm:w-6 text-white opacity-95" strokeWidth={2} />
+      </div>
     </div>
   );
 }

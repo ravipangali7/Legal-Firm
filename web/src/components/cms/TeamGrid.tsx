@@ -22,12 +22,12 @@ const TeamGrid = () => {
               to={`/professionals/${encodeURIComponent(m.id)}`}
               className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-elegant transition-all block text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <div className="aspect-square bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground">
+              <div className="relative aspect-square bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground">
                 {m.avatar?.trim() ? (
                   <CmsImage
                     src={m.avatar}
                     alt={m.name}
-                    className="w-full h-full object-cover"
+                    className="absolute inset-0 h-full w-full object-cover"
                     loading="lazy"
                     fallbackKind="card"
                     fillEmpty

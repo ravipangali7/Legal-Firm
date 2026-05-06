@@ -5,11 +5,8 @@ function stripTagsApprox(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function countBlockParagraphs(html: string): number {
-  const lower = html.toLowerCase();
-  const p = (lower.match(/<\/p>/g) || []).length;
-  const brBlocks = (lower.match(/<br\s*\/?>/gi) || []).length;
-  return Math.max(p, brBlocks > 3 ? Math.ceil(brBlocks / 2) : p);
+function countClosingPTags(html: string): number {
+  return (html.toLowerCase().match(/<\/p>/g) || []).length;
 }
 
 /**
@@ -20,7 +17,7 @@ export function isAboutBodyLongForHomePreview(body: string): boolean {
   if (!raw) return false;
   const text = stripTagsApprox(raw);
   if (text.length > 360) return true;
-  if (looksLikeHtml(raw) && countBlockParagraphs(raw) >= 4) return true;
+  if (looksLikeHtml(raw) && countClosingPTags(raw) >= 4) return true;
   if (!looksLikeHtml(raw) && raw.split(/\n\s*\n/).filter(Boolean).length >= 4) return true;
   return false;
 }

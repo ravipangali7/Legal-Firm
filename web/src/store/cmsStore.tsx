@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { mapHomepageApiToSnapshot, mapSnapshotToHomepagePayload } from '@/lib/homepageMap';
+import { testimonialPortraitSrc } from '@/lib/cmsImageFallbacks';
 import { patchAdminCmsHomepage } from '@/lib/api';
 import hero1 from '@/assets/hero-1.jpg';
 import hero2 from '@/assets/hero-2.jpg';
@@ -251,7 +252,12 @@ const load = (): Snapshot => {
             ...defaultCmsSnapshot.testimonials,
             ...parsed.testimonials,
             title: parsed.testimonials.title ?? defaultCmsSnapshot.testimonials.title,
-            items: Array.isArray(parsed.testimonials.items) ? parsed.testimonials.items : defaultCmsSnapshot.testimonials.items,
+            items: Array.isArray(parsed.testimonials.items)
+              ? parsed.testimonials.items.map((row, i) => {
+                  const t = row as TestimonialItem;
+                  return { ...t, image: testimonialPortraitSrc(t.image, i) };
+                })
+              : defaultCmsSnapshot.testimonials.items,
             metrics: Array.isArray(parsed.testimonials.metrics) ? parsed.testimonials.metrics : defaultCmsSnapshot.testimonials.metrics,
           }
         : defaultCmsSnapshot.testimonials;
