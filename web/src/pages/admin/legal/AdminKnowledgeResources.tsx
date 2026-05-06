@@ -42,6 +42,7 @@ import { Plus, Trash2, Edit, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import {
+  adminKnowledgeResourcePdfPreviewPath,
   deleteAdminKnowledgeResource,
   fetchAdminKnowledgeResourceCategories,
   fetchAdminKnowledgeResources,
@@ -49,7 +50,6 @@ import {
   postAdminKnowledgeResource,
   type KnowledgeResourceAdminApi,
 } from '@/lib/api';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
 import { KnowledgeResourcePdfFlipbook } from '@/components/KnowledgeResourcePdfFlipbook';
 
 const emptyForm = (categoryDefault: string) => ({
@@ -184,8 +184,6 @@ const AdminKnowledgeResources = () => {
   const busy = createMut.isPending || patchMut.isPending;
 
   const errMsg = useMemo(() => (isError && error instanceof Error ? error.message : ''), [isError, error]);
-
-  const previewUrl = viewRow?.download_href ? cmsMediaSrc(viewRow.download_href) : '';
 
   if (!isSuper) {
     return (
@@ -414,10 +412,12 @@ const AdminKnowledgeResources = () => {
                   <dd className="mt-1 text-foreground whitespace-pre-wrap">{viewRow.description || '—'}</dd>
                 </div>
               </dl>
-              {previewUrl ? (
+              {viewRow.download_href?.trim() ? (
                 <div className="rounded-lg border border-border/80 bg-muted/20 p-4">
                   <p className="text-sm font-medium mb-3">Preview</p>
-                  <KnowledgeResourcePdfFlipbook fileUrl={previewUrl} />
+                  <KnowledgeResourcePdfFlipbook
+                    sessionPreviewPath={adminKnowledgeResourcePdfPreviewPath(viewRow.id)}
+                  />
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">No PDF is attached to this resource.</p>

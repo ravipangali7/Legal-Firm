@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import HTMLFlipBook from 'react-pageflip';
+import { apiUrl } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -9,16 +10,33 @@ import 'react-pdf/dist/Page/TextLayer.css';
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 type KnowledgeResourcePdfFlipbookProps = {
-  fileUrl: string;
   className?: string;
+  /** Public PDF URL (may fail cross-origin when media is served without CORS). */
+  fileUrl?: string;
+  /** Admin-only: path under the API, e.g. `/api/admin/knowledge-resources/{id}/preview-pdf/`. */
+  sessionPreviewPath?: string;
 };
 
 const PAGE_WIDTH = 420;
 const PAGE_HEIGHT = Math.round(PAGE_WIDTH * 1.414);
 
-export function KnowledgeResourcePdfFlipbook({ fileUrl, className }: KnowledgeResourcePdfFlipbookProps) {
+export function KnowledgeResourcePdfFlipbook({
+  fileUrl,
+  sessionPreviewPath,
+  className,
+}: KnowledgeResourcePdfFlipbookProps) {
   const [numPages, setNumPages] = useState(0);
   const [err, setErr] = useState<string | null>(null);
+
+  const file = useMemo(() => {
+    if (sessionPreviewPath) {
+      return { url: apiUrl(sessionPreviewPath), withCredentials: true as const };
+    }
+    if (fileUrl) return fileUrl;
+    return null;
+  }, [sessionPreviewPath, fileUrl]);
+
+  const docKey = sessionPreviewPath ?? fileUrl ?? '';
 
   const onLoadSuccess = useCallback(({ numPages: n }: { numPages: number }) => {
     setNumPages(n);
@@ -33,22 +51,22 @@ export function KnowledgeResourcePdfFlipbook({ fileUrl, className }: KnowledgeRe
   useEffect(() => {
     setNumPages(0);
     setErr(null);
-  }, [fileUrl]);
+  }, [docKey]);
 
   const pages = useMemo(() => {
     if (!numPages) return null;
     return Array.from({ length: numPages }, (_, i) => i + 1);
   }, [numPages]);
 
-  if (!fileUrl) {
+  if (!file) {
     return <p className="text-sm text-muted-foreground">No PDF URL.</p>;
   }
 
   return (
     <div className={cn('w-full flex flex-col items-center gap-3', className)}>
       <Document
-        key={fileUrl}
-        file={fileUrl}
+        key={docKey}
+        file={file}
         onLoadSuccess={onLoadSuccess}
         onLoadError={onLoadError}
         loading={<p className="text-sm text-muted-foreground py-8">Loading PDF…</p>}
@@ -83,7 +101,6 @@ export function KnowledgeResourcePdfFlipbook({ fileUrl, className }: KnowledgeRe
           </HTMLFlipBook>
         )}
       </Document>
-      {err && !numPages && <p className="text-sm text-destructive">{err}</p>}
     </div>
   );
 }

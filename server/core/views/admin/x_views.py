@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 
+from django.conf import settings
 from django.contrib.auth import login
+from django.http import FileResponse
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMessage, get_connection
 from django.core.validators import validate_email
@@ -1526,3 +1529,34 @@ def admin_knowledge_resource_detail(request, resource_id: uuid.UUID):
         return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
     ser.save()
     return Response(ser.data)
+
+
+@csrf_exempt
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_knowledge_resource_pdf_preview(request, resource_id: uuid.UUID):
+    """Stream the PDF for admin flipbook preview (CORS via API; does not increment download_count)."""
+    if err := _require_super_admin_for_knowledge_resources(request):
+        return err
+    obj = get_object_or_404(KnowledgeResource, pk=resource_id)
+    if obj.pdf_file:
+        try:
+            return FileResponse(
+                obj.pdf_file.open("rb"),
+                as_attachment=False,
+                content_type="application/pdf",
+            )
+        except (OSError, ValueError):
+            pass
+    href = (obj.download_href or "").strip()
+    if href.startswith("/media/"):
+        rel = href[len("/media/") :].lstrip("/")
+        abs_path = os.path.normpath(os.path.join(settings.MEDIA_ROOT, rel))
+        media_root = os.path.normpath(settings.MEDIA_ROOT)
+        if abs_path.startswith(media_root) and os.path.isfile(abs_path):
+            return FileResponse(
+                open(abs_path, "rb"),
+                as_attachment=False,
+                content_type="application/pdf",
+            )
+    return Response({"detail": "PDF is not available for this resource."}, status=status.HTTP_404_NOT_FOUND)
