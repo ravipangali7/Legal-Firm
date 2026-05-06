@@ -1,6 +1,19 @@
+import { BACKEND_BASE_URL } from '@/lib/constants';
+
+const trimSlash = (u: string) => u.replace(/\/$/, '');
+
+/** API origin for resolving Django `/media/...` (and similar) on a different host than the SPA. */
+function mediaBaseOrigin(): string {
+  const fromEnv = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  if (fromEnv) return trimSlash(fromEnv);
+  if (import.meta.env.DEV) return '';
+  return trimSlash(BACKEND_BASE_URL);
+}
+
 /**
  * Resolve CMS image URLs for the SPA (port 8080): absolute URLs and data URLs pass through;
- * root-relative paths (e.g. Django `/media/...`) are prefixed with the API origin when needed.
+ * root-relative paths (e.g. Django `/media/...`) are prefixed with `VITE_API_URL`, or in
+ * production builds without that env, `BACKEND_BASE_URL`.
  */
 export function cmsMediaSrc(src: string): string {
   const s = (src || '').trim();
@@ -8,7 +21,7 @@ export function cmsMediaSrc(src: string): string {
   if (/^https?:\/\//i.test(s)) return s;
   if (s.startsWith('//')) return `https:${s}`;
   if (s.startsWith('/')) {
-    const base = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '');
+    const base = mediaBaseOrigin();
     if (base) return `${base}${s}`;
     if (import.meta.env.DEV && s.startsWith('/media/')) {
       return s;
