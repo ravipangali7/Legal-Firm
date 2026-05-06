@@ -11,7 +11,7 @@ from secrets import randbelow
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
-from django.http import FileResponse, HttpResponseRedirect
+from django.http import FileResponse, HttpResponseRedirect, JsonResponse
 from django.db import DatabaseError
 from django.db.models import F, Q
 from django.utils import timezone
@@ -727,15 +727,32 @@ def auth_stop_impersonate(request):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def auth_me(request):
+    """
+    GET: 200 + user JSON when logged in; 200 + JSON null when anonymous (SPA polls this).
+    PATCH: requires an authenticated session.
+    """
     user = request.user
-    if request.method == "PATCH":
-        ser = UserSelfUpdateSerializer(user, data=request.data, partial=True)
-        if not ser.is_valid():
-            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
-        ser.save()
-        user.refresh_from_db()
+    if request.method == "GET":
+        if not user.is_authenticated:
+            # DRF `Response(None)` can yield an empty body; SPA uses `response.json()` and expects JSON `null`.
+            return JsonResponse(None, safe=False)
+        refresh_user_entitlements(user)
+        data = UserMeSerializer(user).data
+        if request.session.get(IMPERSONATOR_SESSION_KEY):
+            data["impersonation"] = {"active": True}
+        return Response(data)
+    if not user.is_authenticated:
+        return Response(
+            {"detail": "Authentication credentials were not provided."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+    ser = UserSelfUpdateSerializer(user, data=request.data, partial=True)
+    if not ser.is_valid():
+        return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+    ser.save()
+    user.refresh_from_db()
     refresh_user_entitlements(user)
     data = UserMeSerializer(user).data
     if request.session.get(IMPERSONATOR_SESSION_KEY):
