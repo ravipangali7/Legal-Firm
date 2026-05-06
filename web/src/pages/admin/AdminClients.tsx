@@ -114,14 +114,20 @@ const AdminClients = () => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Type</Label>
-                <Select value={form.type} onValueChange={(v: any) => setForm({ ...form, type: v })}>
+                <Select
+                  value={form.type}
+                  onValueChange={(v: Client['type']) => setForm({ ...form, type: v })}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="business">Business</SelectItem><SelectItem value="individual">Individual</SelectItem></SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Status</Label>
-                <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
+                <Select
+                  value={form.status}
+                  onValueChange={(v: Client['status']) => setForm({ ...form, status: v })}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
                 </Select>

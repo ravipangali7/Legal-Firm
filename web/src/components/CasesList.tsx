@@ -26,7 +26,7 @@ const CasesList = ({ cases, selectedCategory, onCasePreview }: CasesListProps) =
 
   // Filter and sort cases
   const filteredAndSortedCases = useMemo(() => {
-    let filtered = cases.filter((caseItem) => {
+    const filtered = cases.filter((caseItem) => {
       if (selectedCategory !== "all") {
         if (slugify(caseItem.category) !== selectedCategory) return false;
       }
@@ -43,8 +43,9 @@ const CasesList = ({ cases, selectedCategory, onCasePreview }: CasesListProps) =
       return true;
     });
 
-    // Sort cases
-    filtered.sort((a, b) => {
+    // Sort cases (copy so we do not mutate the filtered array)
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
       switch (sortBy) {
         case 'date-desc':
           return new Date(b.dateFiled).getTime() - new Date(a.dateFiled).getTime();
@@ -58,7 +59,7 @@ const CasesList = ({ cases, selectedCategory, onCasePreview }: CasesListProps) =
       }
     });
 
-    return filtered;
+    return sorted;
   }, [cases, selectedCategory, searchTerm, sortBy]);
 
   // Pagination

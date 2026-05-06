@@ -86,16 +86,9 @@ const SubscriberNotificationDetail = () => {
     staleTime: 30_000,
   });
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
-        Loading…
-      </div>
-    );
-  }
-
   const notification = data?.notifications?.find((n) => n.id === id);
-  const unread = typeof user.unread_notifications_count === 'number' ? user.unread_notifications_count : 0;
+  const unread =
+    user && typeof user.unread_notifications_count === 'number' ? user.unread_notifications_count : 0;
   const tone = notificationTone(notification?.type);
 
   useEffect(() => {
@@ -117,7 +110,15 @@ const SubscriberNotificationDetail = () => {
       cancelled = true;
       markReadPostedForId.current = null;
     };
-  }, [id, user, notification?.id, notification?.read, queryClient, refreshUser]);
+  }, [id, user, notification, queryClient, refreshUser]);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
+        Loading…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { ArrowUpRight } from 'lucide-react';
 import { useCms } from '@/store/cmsStore';
@@ -19,7 +20,8 @@ const ServicesGrid = () => {
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {items.map((s) => {
-            const Icon = (Icons as any)[s.icon] ?? Icons.Sparkles;
+            const iconKey = s.icon as keyof typeof Icons;
+            const Icon = (iconKey in Icons ? Icons[iconKey] : Icons.Sparkles) as LucideIcon;
             const to = `/services/${encodeURIComponent(s.id)}`;
             return (
               <Link key={s.id} to={to} className={cardClassName}>

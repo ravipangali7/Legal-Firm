@@ -499,6 +499,9 @@ export const useCms = () => {
   return ctx;
 };
 
+/** Safe on pages without `CmsStoreProvider` (e.g. public header); returns `null` instead of throwing. */
+export const useCmsOptional = () => useContext(Ctx);
+
 // ============ helpers ============
 export const fileToDataUrl = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {

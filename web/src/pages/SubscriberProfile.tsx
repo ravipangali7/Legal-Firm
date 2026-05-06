@@ -41,6 +41,7 @@ const emptyProfile: AuthMeProfile = {
 
 const SubscriberProfile = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user, refreshUser, logout } = useAuth();
   const [signOutOpen, setSignOutOpen] = useState(false);
@@ -108,7 +109,6 @@ const SubscriberProfile = () => {
     );
   }
 
-  const location = useLocation();
   const hubPath = subscriberHubPath(location.pathname);
   const unread = typeof user.unread_notifications_count === 'number' ? user.unread_notifications_count : 0;
 

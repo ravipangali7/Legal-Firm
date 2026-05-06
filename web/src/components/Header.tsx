@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { useCms, type NavItem } from '@/store/cmsStore';
+import { useCmsOptional, type NavItem } from '@/store/cmsStore';
 import { useSiteConfig } from '@/context/SiteConfigContext';
 import { SiteThemeToggle } from '@/components/SiteThemeToggle';
 import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
@@ -119,17 +119,18 @@ const Header = () => {
   const { config } = useSiteConfig();
   const { data: homepageData, isSuccess: homepageLoaded } = useQuery(siteHomepageQueryOptions);
 
-  let navItems: NavItem[] = [];
-  try {
-    const cms = useCms();
-    navItems = cms.navItems;
-  } catch {
-    // Fallback when outside CmsStoreProvider
-    const stored = localStorage.getItem('taxlexis_cms_v2');
-    if (stored) {
-      try { navItems = JSON.parse(stored).navItems || []; } catch {}
+  const cmsOptional = useCmsOptional();
+  const navItems = useMemo((): NavItem[] => {
+    if (cmsOptional) return cmsOptional.navItems;
+    try {
+      const stored = localStorage.getItem('taxlexis_cms_v2');
+      if (!stored) return [];
+      const parsed = JSON.parse(stored) as { navItems?: NavItem[] };
+      return Array.isArray(parsed.navItems) ? parsed.navItems : [];
+    } catch {
+      return [];
     }
-  }
+  }, [cmsOptional]);
 
   const byLabel = useMemo(() => new Map(navItems.map((n) => [n.label, n])), [navItems]);
 

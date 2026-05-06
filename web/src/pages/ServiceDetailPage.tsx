@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import * as Icons from 'lucide-react';
-import { ArrowLeft, ArrowUpRight } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, type LucideIcon } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -75,7 +75,8 @@ const ServiceDetailPage = () => {
     );
   }
 
-  const Icon = (Icons as any)[service.icon] ?? Icons.Sparkles;
+  const iconKey = service.icon as keyof typeof Icons;
+  const Icon = (iconKey in Icons ? Icons[iconKey] : Icons.Sparkles) as LucideIcon;
 
   return (
     <CmsStoreProvider>

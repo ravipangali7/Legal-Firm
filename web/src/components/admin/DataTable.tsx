@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   Search,
   Filter,
@@ -41,7 +41,7 @@ export interface Column<T> {
   key: keyof T | string;
   label: string;
   sortable?: boolean;
-  render?: (value: any, row: T) => React.ReactNode;
+  render?: (value: unknown, row: T) => ReactNode;
 }
 
 export interface DataTableProps<T> {
@@ -94,9 +94,13 @@ const DataTable = <T extends { id: string | number }>({
     setSelectedRows(newSelected);
   };
 
-  const getValue = (row: T, key: string) => {
-    return key.split('.').reduce((obj: any, k) => obj?.[k], row);
-  };
+  const getValue = (row: T, key: string): unknown =>
+    key.split('.').reduce<unknown>((acc, k) => {
+      if (acc !== null && typeof acc === 'object' && k in acc) {
+        return (acc as Record<string, unknown>)[k];
+      }
+      return undefined;
+    }, row as unknown);
 
   const totalPages = Math.ceil(data.length / parseInt(rowsPerPage));
 

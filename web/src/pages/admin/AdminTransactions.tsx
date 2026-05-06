@@ -343,14 +343,20 @@ const AdminTransactions = () => {
               <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} /></div>
               <div>
                 <Label>Currency</Label>
-                <Select value={form.currency} onValueChange={(v: any) => setForm({ ...form, currency: v })}>
+                <Select
+                  value={form.currency}
+                  onValueChange={(v: Transaction['currency']) => setForm({ ...form, currency: v })}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="NPR">NPR</SelectItem><SelectItem value="USD">USD</SelectItem></SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Method</Label>
-                <Select value={form.method} onValueChange={(v: any) => setForm({ ...form, method: v })}>
+                <Select
+                  value={form.method}
+                  onValueChange={(v: Transaction['method']) => setForm({ ...form, method: v })}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="esewa">eSewa</SelectItem><SelectItem value="bank">Bank</SelectItem><SelectItem value="stripe">Stripe</SelectItem></SelectContent>
                 </Select>
@@ -359,7 +365,10 @@ const AdminTransactions = () => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Status</Label>
-                <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
+                <Select
+                  value={form.status}
+                  onValueChange={(v: Transaction['status']) => setForm({ ...form, status: v })}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="pending">Pending</SelectItem><SelectItem value="verified">Verified</SelectItem><SelectItem value="rejected">Rejected</SelectItem><SelectItem value="refunded">Refunded</SelectItem></SelectContent>
                 </Select>

@@ -25,5 +25,12 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-unused-vars": "off",
     },
+  },
+  {
+    files: ["**/components/ui/chart.tsx"],
+    rules: {
+      // shadcn/recharts chart shell relies on `@ts-nocheck` for upstream typing gaps
+      "@typescript-eslint/ban-ts-comment": "off",
+    },
   }
 );

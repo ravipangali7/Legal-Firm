@@ -231,7 +231,10 @@ const AdminProjects = () => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Status</Label>
-                <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
+                <Select
+                  value={form.status}
+                  onValueChange={(v: Project['status']) => setForm({ ...form, status: v })}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="planning">Planning</SelectItem><SelectItem value="in_progress">In Progress</SelectItem><SelectItem value="review">Review</SelectItem><SelectItem value="completed">Completed</SelectItem></SelectContent>
                 </Select>

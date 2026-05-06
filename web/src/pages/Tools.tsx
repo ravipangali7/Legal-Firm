@@ -7,7 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calculator, Receipt, TrendingUp, Wallet, Type, Ruler } from 'lucide-react';
-import { numberToNepaliEnglishWords, toDevanagari, hillToSqft, sqftToHill, teraiToSqft, sqftToTerai, SQFT_TO_SQM } from '@/lib/nepaliUtils';
+import {
+  numberToNepaliEnglishWords,
+  toDevanagari,
+  hillToSqft,
+  sqftToHill,
+  teraiToSqft,
+  sqftToTerai,
+  SQFT_TO_SQM,
+} from '@/lib/nepaliUtils';
 import { useAuth } from '@/context/AuthContext';
 import PaywallGate from '@/components/PaywallGate';
 import { canAccessTaxTools } from '@/lib/subscriptionAccess';
@@ -77,7 +85,8 @@ const Tools = () => {
   const hillSqft = hillToSqft(+hill.ropani || 0, +hill.aana || 0, +hill.paisa || 0, +hill.daam || 0);
   const teraiSqft = teraiToSqft(+terai.bigha || 0, +terai.kattha || 0, +terai.dhur || 0);
   const totalSqft = landMode === 'hill' ? hillSqft : teraiSqft;
-  const otherSystem = landMode === 'hill' ? sqftToTerai(totalSqft) : sqftToHill(totalSqft);
+  const teraiEquivalent = landMode === 'hill' ? sqftToTerai(totalSqft) : null;
+  const hillEquivalent = landMode === 'terai' ? sqftToHill(totalSqft) : null;
 
   const toolsUnlocked = canAccessTaxTools(user);
 
@@ -257,11 +266,16 @@ const Tools = () => {
                       </div>
                       <div className="pt-2 border-t border-primary/10">
                         <div className="text-xs text-muted-foreground mb-1">Equivalent in {landMode === 'hill' ? 'Terai system' : 'Hill system'}</div>
-                        {landMode === 'hill' ? (
-                          <div className="font-medium">{(otherSystem as any).bigha} Bigha · {(otherSystem as any).kattha} Kattha · {(otherSystem as any).dhur} Dhur</div>
-                        ) : (
-                          <div className="font-medium">{(otherSystem as any).ropani} Ropani · {(otherSystem as any).aana} Aana · {(otherSystem as any).paisa} Paisa · {(otherSystem as any).daam} Daam</div>
-                        )}
+                        {teraiEquivalent ? (
+                          <div className="font-medium">
+                            {teraiEquivalent.bigha} Bigha · {teraiEquivalent.kattha} Kattha · {teraiEquivalent.dhur} Dhur
+                          </div>
+                        ) : hillEquivalent ? (
+                          <div className="font-medium">
+                            {hillEquivalent.ropani} Ropani · {hillEquivalent.aana} Aana · {hillEquivalent.paisa} Paisa ·{' '}
+                            {hillEquivalent.daam} Daam
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   )}
