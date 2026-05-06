@@ -1,24 +1,40 @@
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Briefcase } from 'lucide-react';
+import { ArrowLeft, Award, Briefcase, Mail } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { CmsStoreProvider, useCms } from '@/store/cmsStore';
 import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
+import { professionalsPageQueryOptions } from '@/lib/professionalsPageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
+import { resolveProfessionalsTeam } from '@/lib/professionalsTeam';
+import type { ProfessionalsPageApi } from '@/lib/api';
 import { CmsImage } from '@/components/CmsImage';
+import { safeCmsExternalHref } from '@/lib/cmsAssetUrl';
 import { SocialRow, initials } from './Professionals';
 
-function ProfessionalDetailBody({ loadError, memberId }: { loadError: boolean; memberId: string }) {
+function ProfessionalDetailBody({
+  loadError,
+  professionalsLoadError,
+  professionalsPage,
+  memberId,
+}: {
+  loadError: boolean;
+  professionalsLoadError: boolean;
+  professionalsPage: ProfessionalsPageApi | undefined;
+  memberId: string;
+}) {
   const { team: allTeam } = useCms();
   const team = useMemo(
-    () => [...allTeam].filter((m) => m.enabled).sort((a, b) => a.order - b.order),
-    [allTeam],
+    () => resolveProfessionalsTeam(professionalsPage, allTeam),
+    [professionalsPage, allTeam],
   );
   const id = decodeURIComponent(memberId);
   const member = team.find((m) => m.id === id);
+  const emailTrim = member?.contactEmail?.trim() ?? '';
+  const emailHref = emailTrim ? safeCmsExternalHref(emailTrim, 'email') : null;
   if (!member) {
     return (
       <main className="pt-28 pb-16 px-4 flex-1">
@@ -70,11 +86,20 @@ function ProfessionalDetailBody({ loadError, memberId }: { loadError: boolean; m
                 <Briefcase className="h-5 w-5 shrink-0 opacity-90" />
                 {member.role}
               </p>
+              {member.experienceYears > 0 ? (
+                <p className="text-primary-foreground/80 mt-2 flex items-center gap-2 text-sm">
+                  <Award className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                  {member.experienceYears} {member.experienceYears === 1 ? 'year' : 'years'} in practice
+                </p>
+              ) : null}
             </div>
           </div>
-          {loadError && (
+          {(loadError || professionalsLoadError) && (
             <p className="text-sm text-primary-foreground/90 mt-6 max-w-xl">
-              Live profile could not be loaded; showing saved or default content.
+              {loadError ? 'Homepage content could not be loaded; navigation may use defaults. ' : ''}
+              {professionalsLoadError
+                ? 'Professionals data could not be refreshed; profile may be from cache or defaults.'
+                : ''}
             </p>
           )}
         </div>
@@ -86,6 +111,14 @@ function ProfessionalDetailBody({ loadError, memberId }: { loadError: boolean; m
         ) : (
           <p className="text-muted-foreground italic">No biography has been added for this profile yet.</p>
         )}
+        {emailHref ? (
+          <p className="mt-6 flex items-start gap-2 text-muted-foreground">
+            <Mail className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+            <a href={emailHref} className="text-foreground hover:underline break-all">
+              {emailTrim}
+            </a>
+          </p>
+        ) : null}
         <div className="mt-8">
           <SocialRow member={member} />
         </div>
@@ -97,6 +130,11 @@ function ProfessionalDetailBody({ loadError, memberId }: { loadError: boolean; m
 const ProfessionalDetail = () => {
   const { memberId } = useParams<{ memberId: string }>();
   const { data, isLoading, isError } = useQuery(siteHomepageQueryOptions);
+  const {
+    data: professionalsPage,
+    isLoading: professionalsLoading,
+    isError: professionalsError,
+  } = useQuery(professionalsPageQueryOptions);
   const initialSnapshot = useMemo(() => (data ? mapHomepageApiToSnapshot(data) : null), [data]);
 
   if (!memberId) {
@@ -118,7 +156,7 @@ const ProfessionalDetail = () => {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || professionalsLoading) {
     return (
       <CmsStoreProvider>
         <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
@@ -132,7 +170,12 @@ const ProfessionalDetail = () => {
     <CmsStoreProvider initialSnapshot={initialSnapshot}>
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
-        <ProfessionalDetailBody loadError={isError} memberId={memberId} />
+        <ProfessionalDetailBody
+          loadError={isError}
+          professionalsLoadError={professionalsError}
+          professionalsPage={professionalsPage}
+          memberId={memberId}
+        />
         <Footer />
       </div>
     </CmsStoreProvider>

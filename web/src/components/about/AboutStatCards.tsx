@@ -31,8 +31,8 @@ export function AboutStatCards({ stats, className }: AboutStatCardsProps) {
           <div
             key={s.id ?? `${s.label}-${i}`}
             className={cn(
-              'flex min-h-[6.75rem] sm:min-h-[7.5rem] flex-col justify-center rounded-xl border border-border/80 bg-card px-4 py-4 sm:px-5 sm:py-5 shadow-sm',
-              'ring-1 ring-slate-950/[0.03]',
+              'flex min-h-[6.75rem] sm:min-h-[7.5rem] flex-col justify-center rounded-xl border border-border/55 bg-card px-4 py-4 sm:px-5 sm:py-5 shadow-sm',
+              'ring-1 ring-slate-950/[0.02]',
             )}
           >
             <div

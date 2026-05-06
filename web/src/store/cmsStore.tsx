@@ -111,9 +111,9 @@ const seedSlides: HeroSlide[] = [
 
 const seedAbout: AboutSection = {
   enabled: true,
-  eyebrow: 'Who we are',
-  title: 'TaxLexis Legal',
-  body: 'We combine deep expertise in tax law and compliance with practical guidance so your business stays audit-ready and strategically positioned. Acts, cases, and procedures—organized for clarity and speed.',
+  eyebrow: 'About TaxLexis',
+  title: 'Modern legal counsel, rooted in Nepalese practice',
+  body: '<p>For over a decade, TaxLexis has helped individuals and businesses navigate tax and corporate law with clarity and confidence. Our team combines local expertise with modern tools so you get practical advice, not just theory.</p>',
   image: hero3,
   stats: [
     { label: 'Years of practice', value: '12+' },

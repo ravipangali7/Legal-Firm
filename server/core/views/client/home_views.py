@@ -328,7 +328,7 @@ def site_homepage(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def public_professionals_page(request):
-    """Hero title, subtitle, and stats for the public Professionals page (computed from CMS)."""
+    """Hero, computed stats, and full enabled team roster for the public Professionals page (from CMS/DB)."""
     try:
         return Response(build_professionals_page_payload())
     except DatabaseError:

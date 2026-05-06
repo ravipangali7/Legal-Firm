@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { LucideIcon } from 'lucide-react';
@@ -23,6 +23,7 @@ import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
 import { safeCmsExternalHref } from '@/lib/cmsAssetUrl';
 import { CmsImage } from '@/components/CmsImage';
 import type { ProfessionalsPageApi } from '@/lib/api';
+import { resolveProfessionalsTeam } from '@/lib/professionalsTeam';
 
 const STAT_ICONS: Record<string, LucideIcon> = {
   users: Users,
@@ -97,28 +98,8 @@ function ProfessionalsBody({
   pageError: boolean;
 }) {
   const { team: allTeam } = useCms();
-
-  const team = useMemo(
-    () => [...allTeam].filter((m) => m.enabled).sort((a, b) => a.order - b.order),
-    [allTeam],
-  );
-
-  const combinedExperienceYears = useMemo(
-    () => team.reduce((sum, m) => sum + (typeof m.experienceYears === 'number' ? Math.max(0, m.experienceYears) : 0), 0),
-    [team],
-  );
-
-  const heroStats = useMemo(() => {
-    const raw = page?.stats ?? [];
-    return raw.map((s) => {
-      const isCombinedYears =
-        s.icon === 'award' ||
-        /combined\s+experience|years\s+.*experience|experience\s+year/i.test(s.label || '');
-      if (!isCombinedYears) return s;
-      const value = combinedExperienceYears > 0 ? `${combinedExperienceYears}+` : '—';
-      return { ...s, value };
-    });
-  }, [page?.stats, combinedExperienceYears]);
+  const team = resolveProfessionalsTeam(page, allTeam);
+  const heroStats = page?.stats ?? [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -166,6 +147,8 @@ function ProfessionalsBody({
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {team.map((p) => {
+                const emailTrim = p.contactEmail?.trim() ?? '';
+                const emailHref = emailTrim ? safeCmsExternalHref(emailTrim, 'email') : null;
                 return (
                   <Card
                     key={p.id}
@@ -196,8 +179,23 @@ function ProfessionalsBody({
                           <p className="text-sm text-primary-onBg font-medium flex items-center justify-center gap-1 mt-1">
                             <Briefcase className="h-3.5 w-3.5" /> {p.role}
                           </p>
+                          {p.experienceYears > 0 ? (
+                            <p className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1.5">
+                              <Award className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                              <span>
+                                {p.experienceYears} {p.experienceYears === 1 ? 'year' : 'years'} in practice
+                              </span>
+                            </p>
+                          ) : null}
                           {p.bio ? (
                             <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{p.bio}</p>
+                          ) : null}
+                          {emailHref ? (
+                            <p className="text-xs text-muted-foreground mt-3 break-all">
+                              <a href={emailHref} className="hover:text-primary-onBg hover:underline">
+                                {emailTrim}
+                              </a>
+                            </p>
                           ) : null}
                         </div>
                       </Link>

@@ -49,6 +49,27 @@ export function looksLikeHtml(raw: string): boolean {
   return /<[a-z][\s\S]*>/i.test(raw.trim());
 }
 
+/** Decode `&lt;p&gt;...` style bodies saved from rich text / double-escaped CMS (browser only). */
+export function decodeHtmlEntitiesBrowser(s: string): string {
+  if (typeof document === 'undefined') return s;
+  const ta = document.createElement('textarea');
+  ta.innerHTML = s;
+  return ta.value;
+}
+
+/**
+ * When markup was entity-encoded for storage, decode once so `HtmlPreview` can render real HTML.
+ */
+export function unwrapEntityEncodedHtmlIfNeeded(raw: string): string {
+  const t = (raw ?? '').trim();
+  if (!t || looksLikeHtml(t)) return raw ?? '';
+  if (typeof document === 'undefined') return raw ?? '';
+  if (!t.includes('&lt;')) return raw ?? '';
+  const decoded = decodeHtmlEntitiesBrowser(t).trim();
+  if (decoded !== t && looksLikeHtml(decoded)) return decoded;
+  return raw ?? '';
+}
+
 /**
  * Normalize editor/API body to HTML: plain text becomes paragraphs;
  * HTML is sanitized and given heading ids.

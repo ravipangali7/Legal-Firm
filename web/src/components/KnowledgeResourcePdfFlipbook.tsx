@@ -13,7 +13,7 @@ type KnowledgeResourcePdfFlipbookProps = {
   className?: string;
   /** Public PDF URL (may fail cross-origin when media is served without CORS). */
   fileUrl?: string;
-  /** Admin-only: path under the API, e.g. `/api/admin/knowledge-resources/{id}/preview-pdf/`. */
+  /** Admin-only: path under the API, e.g. `/api/admin/knowledge-resources/{id}/?preview=pdf`. */
   sessionPreviewPath?: string;
 };
 

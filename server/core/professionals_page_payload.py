@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .homepage_payload import team_member_public_dict
 from .models import ProfessionalsPageConfig, ServiceItem, TeamMember
 
 
@@ -30,8 +31,14 @@ def build_professionals_page_payload() -> dict:
         {"icon": "book_open", "label": stat_practice_label, "value": fmt_count(services_n)},
     ]
 
+    team = [
+        team_member_public_dict(tm)
+        for tm in TeamMember.objects.filter(enabled=True).order_by("order", "name")
+    ]
+
     return {
         "title": cfg.hero_title or "Our Professionals",
         "subtitle": cfg.hero_subtitle or "",
         "stats": stats,
+        "team": team,
     }

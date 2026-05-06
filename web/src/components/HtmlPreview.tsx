@@ -1,4 +1,4 @@
-import { looksLikeHtml, sanitizeAndHeadingIds } from '@/lib/summaryHtml';
+import { looksLikeHtml, sanitizeAndHeadingIds, unwrapEntityEncodedHtmlIfNeeded } from '@/lib/summaryHtml';
 import { cn } from '@/lib/utils';
 
 type HtmlPreviewProps = {
@@ -24,7 +24,7 @@ const wideBlockContainClasses =
   'min-w-0 max-w-full break-words [&_img]:max-w-full [&_img]:h-auto [&_video]:max-w-full [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto';
 
 export function HtmlPreview({ content, className, inheritTypography, containWideBlocks }: HtmlPreviewProps) {
-  const raw = content ?? '';
+  const raw = unwrapEntityEncodedHtmlIfNeeded(content ?? '');
   const trimmed = raw.trim();
   if (!trimmed) return null;
 

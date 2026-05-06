@@ -1512,33 +1512,8 @@ def admin_knowledge_resources(request):
     return Response(KnowledgeResourceAdminSerializer(obj).data, status=status.HTTP_201_CREATED)
 
 
-@csrf_exempt
-@api_view(["GET", "PATCH", "DELETE"])
-@permission_classes([IsAuthenticated])
-def admin_knowledge_resource_detail(request, resource_id: uuid.UUID):
-    if err := _require_super_admin_for_knowledge_resources(request):
-        return err
-    obj = get_object_or_404(KnowledgeResource, pk=resource_id)
-    if request.method == "GET":
-        return Response(KnowledgeResourceAdminSerializer(obj).data)
-    if request.method == "DELETE":
-        obj.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    ser = KnowledgeResourceAdminSerializer(obj, data=request.data, partial=True)
-    if not ser.is_valid():
-        return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
-    ser.save()
-    return Response(ser.data)
-
-
-@csrf_exempt
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def admin_knowledge_resource_pdf_preview(request, resource_id: uuid.UUID):
-    """Stream the PDF for admin flipbook preview (CORS via API; does not increment download_count)."""
-    if err := _require_super_admin_for_knowledge_resources(request):
-        return err
-    obj = get_object_or_404(KnowledgeResource, pk=resource_id)
+def _admin_knowledge_resource_pdf_response(obj: KnowledgeResource):
+    """Inline PDF for flipbook preview (does not increment download_count)."""
     if obj.pdf_file:
         try:
             return FileResponse(
@@ -1560,3 +1535,24 @@ def admin_knowledge_resource_pdf_preview(request, resource_id: uuid.UUID):
                 content_type="application/pdf",
             )
     return Response({"detail": "PDF is not available for this resource."}, status=status.HTTP_404_NOT_FOUND)
+
+
+@csrf_exempt
+@api_view(["GET", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated])
+def admin_knowledge_resource_detail(request, resource_id: uuid.UUID):
+    if err := _require_super_admin_for_knowledge_resources(request):
+        return err
+    obj = get_object_or_404(KnowledgeResource, pk=resource_id)
+    if request.method == "GET" and (request.GET.get("preview") or "").strip().lower() == "pdf":
+        return _admin_knowledge_resource_pdf_response(obj)
+    if request.method == "GET":
+        return Response(KnowledgeResourceAdminSerializer(obj).data)
+    if request.method == "DELETE":
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    ser = KnowledgeResourceAdminSerializer(obj, data=request.data, partial=True)
+    if not ser.is_valid():
+        return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+    ser.save()
+    return Response(ser.data)

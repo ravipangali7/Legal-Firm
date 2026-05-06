@@ -38,14 +38,24 @@ function AboutBody({ loadError }: { loadError: boolean }) {
     [allTeam],
   );
 
+  const cornerHighlight =
+    stats[0] && (stats[0].value ?? '').trim()
+      ? { value: (stats[0].value ?? '').trim(), label: (stats[0].label ?? '').trim() || 'Years of practice' }
+      : null;
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
       <main className="pt-32 pb-16">
-        <section className="px-4 mb-16 sm:mb-20 bg-muted/45 py-14 sm:py-16">
+        <section className="px-4 mb-16 sm:mb-20 bg-background py-14 sm:py-16">
           <div className="container mx-auto max-w-6xl">
             <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-14 xl:gap-x-16 gap-10 lg:gap-y-0 lg:items-start">
-              <AboutMediaVisual imageSrc={about.image || ''} alt={about.title || 'About'} className="order-1 w-full" />
+              <AboutMediaVisual
+                imageSrc={about.image || ''}
+                alt={about.title || 'About'}
+                className="order-1 w-full"
+                cornerHighlight={cornerHighlight}
+              />
               <div className="order-2 min-w-0 flex flex-col">
                 {about.eyebrow ? (
                   <span className="block text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>

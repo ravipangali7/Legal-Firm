@@ -51,12 +51,12 @@ class Command(BaseCommand):
 
         about = models.AboutSection.load()
         about.enabled = True
-        about.eyebrow = "Who we are"
-        about.title = "TaxLexis Legal"
+        about.eyebrow = "About TaxLexis"
+        about.title = "Modern legal counsel, rooted in Nepalese practice"
         about.body = (
-            "We combine deep expertise in tax law and compliance with practical guidance "
-            "so your business stays audit-ready and strategically positioned. Acts, cases, "
-            "and procedures—organized for clarity and speed."
+            "<p>For over a decade, TaxLexis has helped individuals and businesses navigate "
+            "tax and corporate law with clarity and confidence. Our team combines local "
+            "expertise with modern tools so you get practical advice, not just theory.</p>"
         )
         about.save()
         download_url_to_imagefield(
@@ -66,8 +66,10 @@ class Command(BaseCommand):
         )
         about.save()
         about.stats.all().delete()
-        models.AboutStat.objects.create(section=about, label="Years", value="15+", order=0)
-        models.AboutStat.objects.create(section=about, label="Clients", value="500+", order=1)
+        models.AboutStat.objects.create(section=about, label="Years of practice", value="12+", order=0)
+        models.AboutStat.objects.create(section=about, label="Clients served", value="1,400+", order=1)
+        models.AboutStat.objects.create(section=about, label="Cases won", value="320+", order=2)
+        models.AboutStat.objects.create(section=about, label="Practice areas", value="11", order=3)
 
         footer = models.FooterConfig.load()
         footer.tagline = (

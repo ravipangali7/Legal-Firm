@@ -125,7 +125,7 @@ const sectionStyleKeys: (keyof SectionToggles)[] = [
   'footer',
 ];
 
-function mapTeamFromApi(apiTeam: HomepageApiResponse['team']): TeamMember[] {
+export function mapTeamFromApi(apiTeam: HomepageApiResponse['team']): TeamMember[] {
   return (apiTeam || []).map((tm) => {
     const rawY = tm.years_experience;
     const experienceYears = Math.max(

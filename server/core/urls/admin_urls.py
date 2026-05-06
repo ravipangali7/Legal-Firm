@@ -64,9 +64,5 @@ urlpatterns = [
     path("knowledge-resource-categories/", x_views.admin_knowledge_resource_categories),
     path("knowledge-resource-categories/<uuid:category_id>/", x_views.admin_knowledge_resource_category_detail),
     path("knowledge-resources/", x_views.admin_knowledge_resources),
-    path(
-        "knowledge-resources/<uuid:resource_id>/preview-pdf/",
-        x_views.admin_knowledge_resource_pdf_preview,
-    ),
     path("knowledge-resources/<uuid:resource_id>/", x_views.admin_knowledge_resource_detail),
 ]
