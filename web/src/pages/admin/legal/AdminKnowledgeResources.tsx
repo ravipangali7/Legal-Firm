@@ -416,8 +416,7 @@ const AdminKnowledgeResources = () => {
                 <div className="rounded-lg border border-border/80 bg-muted/20 p-4">
                   <p className="text-sm font-medium mb-3">Preview</p>
                   <KnowledgeResourcePdfFlipbook
-                    // sessionPreviewPath={adminKnowledgeResourcePdfPreviewPath(viewRow.id)}
-                    sessionPreviewPath={adminKnowledgeResourcePdfPreviewPath(viewRow.download_href)}
+                    sessionPreviewPath={adminKnowledgeResourcePdfPreviewPath(viewRow.id)}
                   />
                 </div>
               ) : (
