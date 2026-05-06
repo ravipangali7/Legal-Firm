@@ -192,24 +192,44 @@ function mapSlides(apiSlides: HomepageApiResponse['slides']): HeroSlide[] {
   });
 }
 
+function parseTestimonialRating(raw: unknown): number {
+  if (typeof raw === 'number' && !Number.isNaN(raw) && raw > 0) {
+    return Math.min(5, Math.max(1, Math.floor(raw)));
+  }
+  if (typeof raw === 'string') {
+    const n = parseInt(raw.trim(), 10);
+    if (!Number.isNaN(n) && n > 0) return Math.min(5, Math.max(1, n));
+  }
+  return 5;
+}
+
 function mapTestimonials(raw: HomepageApiResponse['testimonials']): TestimonialsBlock {
   const fallback = defaultCmsSnapshot.testimonials;
   if (!raw) return fallback;
+
   const items: TestimonialItem[] = (raw.items || []).map((t, i) => ({
     id: t.id,
     order: t.order,
-    enabled: t.enabled,
-    name: t.name,
+    enabled: Boolean(t.enabled),
+    name: t.name ?? '',
     roleTitle: t.role_title || '',
     content: t.content || '',
-    rating: typeof t.rating === 'number' && t.rating > 0 ? t.rating : 5,
+    rating: parseTestimonialRating(t.rating),
     image: testimonialPortraitSrc(t.image, i),
   }));
+
+  const metrics: { value: string; label: string }[] = Array.isArray(raw.metrics)
+    ? raw.metrics.map((m) => ({
+        value: String(m?.value ?? '').trim(),
+        label: String(m?.label ?? '').trim(),
+      }))
+    : [];
+
   return {
-    title: raw.title?.trim() || fallback.title,
-    intro: raw.intro?.trim() || fallback.intro,
-    metrics: Array.isArray(raw.metrics) && raw.metrics.length > 0 ? raw.metrics : fallback.metrics,
-    items: items.length > 0 ? items : fallback.items,
+    title: (raw.title ?? '').trim() || fallback.title,
+    intro: (raw.intro ?? '').trim(),
+    metrics,
+    items,
   };
 }
 

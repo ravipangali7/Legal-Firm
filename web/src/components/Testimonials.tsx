@@ -65,15 +65,12 @@ const Testimonials = () => {
         </div>
 
         {metrics.length > 0 && (
-          <div className="text-center mt-12">
-            <div className="inline-flex flex-wrap items-center justify-center gap-0 bg-card rounded-lg px-4 sm:px-8 py-4 shadow-md max-w-full">
+          <div className="mt-12 w-full max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 bg-card rounded-lg border border-border/60 shadow-md overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border">
               {metrics.map((m, idx) => (
-                <div key={`${m.value}-${m.label}`} className="flex items-center">
-                  {idx > 0 ? <div className="h-12 w-px bg-border mx-4 sm:mx-6 hidden sm:block shrink-0" aria-hidden /> : null}
-                  <div className="text-center min-w-[6.5rem] px-2">
-                    <div className="text-2xl font-bold text-primary-onBg">{m.value}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{m.label}</div>
-                  </div>
+                <div key={`testimonial-metric-${idx}`} className="text-center px-6 py-5 sm:py-6">
+                  <div className="text-xl sm:text-2xl font-bold text-primary-onBg">{m.value}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground mt-1">{m.label}</div>
                 </div>
               ))}
             </div>
