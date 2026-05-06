@@ -1,0 +1,83 @@
+"""Django signals implementing cross-model rules."""
+
+from __future__ import annotations
+
+from django.db.models.signals import post_delete, post_save, pre_save
+from django.dispatch import receiver
+
+from .dashboard_events import record_transaction_verified
+from .models import Procedure, ProcedureStep, Transaction
+from .sms import send_payment_rejection_sms
+from .staff_notifications import notify_super_admins_in_app
+from .subscription_service import apply_refunded_transaction, apply_verified_transaction
+
+
+@receiver(pre_save, sender=Transaction)
+def transaction_cache_previous_status(sender, instance: Transaction, **kwargs):
+    if instance.pk:
+        try:
+            prev = Transaction.objects.get(pk=instance.pk)
+            instance._status_previous = prev.status  # type: ignore[attr-defined]
+        except Transaction.DoesNotExist:
+            instance._status_previous = None  # type: ignore[attr-defined]
+    else:
+        instance._status_previous = None  # type: ignore[attr-defined]
+
+
+@receiver(post_save, sender=Transaction)
+def transaction_subscription_effects(sender, instance: Transaction, created: bool, **kwargs):
+    """Verified payments activate subscription; refunds downgrade after verification."""
+    prev = getattr(instance, "_status_previous", None)
+
+    if created:
+        if instance.status == Transaction.Status.VERIFIED:
+            apply_verified_transaction(instance)
+            record_transaction_verified(instance)
+        elif instance.status == Transaction.Status.PENDING:
+            # eSewa creates a pending row at checkout initiation; notify Super Admins
+            # only for flows that actually require manual verification.
+            if instance.method == Transaction.Method.ESEWA:
+                return
+            who = (instance.user.full_name or instance.user.email or "A user").strip()
+            plan_part = f" — {instance.get_plan_display()}" if instance.plan else ""
+            notify_super_admins_in_app(
+                title="Payment pending verification",
+                body=f"{who} submitted {instance.method} payment for invoice {instance.invoice}{plan_part}.",
+                link="/admin/transactions",
+            )
+        return
+
+    if prev == instance.status:
+        return
+
+    if instance.status == Transaction.Status.VERIFIED:
+        apply_verified_transaction(instance)
+        record_transaction_verified(instance)
+        return
+
+    if instance.status == Transaction.Status.REJECTED and prev == Transaction.Status.PENDING:
+        reason = (getattr(instance, "rejection_reason", None) or "").strip()
+        if len(reason) >= 3:
+            send_payment_rejection_sms(instance.user, instance.invoice, reason)
+        return
+
+    if (
+        instance.status == Transaction.Status.REFUNDED
+        and prev == Transaction.Status.VERIFIED
+    ):
+        apply_refunded_transaction(instance)
+
+
+def _refresh_procedure_steps_count(procedure_id):
+    n = ProcedureStep.objects.filter(procedure_id=procedure_id).count()
+    Procedure.objects.filter(pk=procedure_id).update(steps_count=n)
+
+
+@receiver(post_save, sender=ProcedureStep)
+def procedure_step_saved(sender, instance: ProcedureStep, **kwargs):
+    _refresh_procedure_steps_count(instance.procedure_id)
+
+
+@receiver(post_delete, sender=ProcedureStep)
+def procedure_step_deleted(sender, instance: ProcedureStep, **kwargs):
+    _refresh_procedure_steps_count(instance.procedure_id)

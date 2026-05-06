@@ -1,0 +1,11 @@
+
+server/.env
+
+/*/node_modules
+/*/env
+/*/build
+/*/logs
+/*/**/__pycache__
+
+/*/*.sqlite3
+/*/db.sqlite3
