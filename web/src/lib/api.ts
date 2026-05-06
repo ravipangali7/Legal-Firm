@@ -11,7 +11,8 @@ import { getOrCreateSummaryVisitorId } from '@/lib/summaryVisitor';
 const trimSlash = (s: string) => s.replace(/\/$/, '');
 
 export function apiUrl(path: string): string {
-  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
+  // const base = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
+  const base = 'https://legalfirmserver.360winx.com';
   const p = path.startsWith('/') ? path : `/${path}`;
   if (!base) return p;
   return `${trimSlash(base)}${p}`;
