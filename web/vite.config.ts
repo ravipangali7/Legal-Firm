@@ -30,8 +30,8 @@ function professionalsJsonProxy(): Plugin {
         }
         const proxyReq = http.request(
           {
-            hostname: "127.0.0.1",
-            port: 8000,
+            hostname: "https://legalfirmserver.360winx.com",
+            port: 443,
             path: "/api/public/professionals/",
             method: "GET",
             headers: { Accept: "application/json" },
@@ -65,11 +65,11 @@ export default defineConfig(({ mode, command }) => ({
     port: 8080,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8000",
+        target: "https://legalfirmserver.360winx.com",
         changeOrigin: true,
       },
       "/media": {
-        target: "http://127.0.0.1:8000",
+        target: "https://legalfirmserver.360winx.com",
         changeOrigin: true,
       },
     },
