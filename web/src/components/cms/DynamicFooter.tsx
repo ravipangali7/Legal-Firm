@@ -4,6 +4,29 @@ import { useSiteHomepageFooter } from '@/hooks/useSiteHomepageFooter';
 import { useSiteConfig } from '@/context/SiteConfigContext';
 import { CmsImage } from '@/components/CmsImage';
 
+function columnLinkClassName() {
+  return 'text-sm text-primary-foreground/80 hover:text-accent transition-colors';
+}
+
+function FooterColumnLink({ href, label }: { href: string; label: string }) {
+  const trimmed = (href || '').trim();
+  const external =
+    /^https?:\/\//i.test(trimmed) || trimmed.startsWith('mailto:') || trimmed.startsWith('tel:');
+  const cn = columnLinkClassName();
+  if (external) {
+    return (
+      <a href={trimmed} className={cn} target="_blank" rel="noopener noreferrer">
+        {label}
+      </a>
+    );
+  }
+  return (
+    <Link to={trimmed || '/'} className={cn}>
+      {label}
+    </Link>
+  );
+}
+
 const DynamicFooter = () => {
   const footer = useSiteHomepageFooter();
   const { config } = useSiteConfig();
@@ -33,7 +56,9 @@ const DynamicFooter = () => {
               <div className="text-sm font-bold uppercase tracking-wider text-accent">{c.title}</div>
               <ul className="mt-4 space-y-2">
                 {c.links.map((l, i) => (
-                  <li key={i}><Link to={l.href} className="text-sm text-primary-foreground/80 hover:text-accent transition-colors">{l.label}</Link></li>
+                  <li key={i}>
+                    <FooterColumnLink href={l.href} label={l.label} />
+                  </li>
                 ))}
               </ul>
             </div>
@@ -43,7 +68,16 @@ const DynamicFooter = () => {
           <span>{footer.copyright}</span>
           <div className="flex gap-2">
             {footer.social.map((s) => (
-              <a key={s.label} href={s.href} className="hover:text-accent transition-colors" aria-label={s.label}>{s.label}</a>
+              <a
+                key={`${s.label}-${s.href}`}
+                href={(s.href || '').trim() || '#'}
+                className="hover:text-accent transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={s.label}
+              >
+                {s.label}
+              </a>
             ))}
           </div>
         </div>

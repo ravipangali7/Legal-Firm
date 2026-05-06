@@ -213,10 +213,19 @@ const seedNavItems: NavItem[] = [
 
 // ============ Persistence ============
 const KEY = 'taxlexis_cms_v2';
+/** Same fields as GET /api/public/professionals/; embedded on GET /api/site/homepage/. */
+export type ProfessionalsPageHeroSnapshot = {
+  title: string;
+  subtitle: string;
+  stats: { icon: string; label: string; value: string }[];
+};
+
 export type Snapshot = {
   slides: HeroSlide[]; about: AboutSection; services: ServiceItem[];
   team: TeamMember[]; news: NewsItem[]; testimonials: TestimonialsBlock; footer: FooterCfg; toggles: SectionToggles;
   sectionStyles: SectionStyles; navItems: NavItem[];
+  /** Django Super Admin (ProfessionalsPageConfig) + live team counts when present on homepage payload. */
+  professionalsPage?: ProfessionalsPageHeroSnapshot;
 };
 export const defaultCmsSnapshot: Snapshot = { slides: seedSlides, about: seedAbout, services: seedServices, team: seedTeam, news: seedNews, testimonials: seedTestimonials, footer: seedFooter, toggles: seedToggles, sectionStyles: {}, navItems: seedNavItems };
 const initial: Snapshot = defaultCmsSnapshot;

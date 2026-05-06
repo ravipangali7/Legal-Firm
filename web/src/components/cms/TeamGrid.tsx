@@ -1,19 +1,51 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { Award, BookOpen, Users, type LucideIcon } from 'lucide-react';
 import { useCms } from '@/store/cmsStore';
 import { CmsImage } from '@/components/CmsImage';
+import { heroStatsWithLiveExperience } from '@/lib/professionalsHeroStats';
 
 const initials = (n: string) => n.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
+const STAT_ICONS: Record<string, LucideIcon> = {
+  users: Users,
+  award: Award,
+  book_open: BookOpen,
+};
+
 const TeamGrid = () => {
-  const { team } = useCms();
+  const { team, professionalsPage } = useCms();
   const items = team.filter((m) => m.enabled).sort((a, b) => a.order - b.order);
+  const heroStats = useMemo(
+    () => heroStatsWithLiveExperience(professionalsPage?.stats, team),
+    [professionalsPage?.stats, team],
+  );
+  const heading = professionalsPage?.title?.trim() || 'Lawyers you can trust';
+  const subtitle = professionalsPage?.subtitle?.trim();
   if (items.length === 0) return null;
   return (
     <section className="py-20 sm:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="max-w-2xl mx-auto text-center mb-14">
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">The team</span>
-          <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-onBg">Lawyers you can trust</h2>
+          <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-onBg">{heading}</h2>
+          {subtitle ? (
+            <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">{subtitle}</p>
+          ) : null}
+          {heroStats.length > 0 ? (
+            <div className="flex flex-wrap justify-center gap-8 sm:gap-10 mt-10">
+              {heroStats.map((s) => {
+                const Icon = STAT_ICONS[s.icon] ?? Users;
+                return (
+                  <div key={`${s.icon}-${s.label}`} className="text-center min-w-[100px]">
+                    <Icon className="h-6 w-6 mx-auto mb-2 text-accent" />
+                    <div className="text-2xl sm:text-3xl font-bold text-primary-onBg tabular-nums">{s.value}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground mt-1">{s.label}</div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {items.map((m) => (

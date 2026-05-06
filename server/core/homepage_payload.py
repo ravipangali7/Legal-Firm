@@ -14,6 +14,7 @@ from .models import (
     Testimonial,
     TestimonialsConfig,
 )
+from .professionals_page_payload import build_professionals_page_payload
 
 
 def _file_url(field_file) -> str:
@@ -213,4 +214,5 @@ def build_homepage_snapshot() -> dict:
         "news": news,
         "testimonials": testimonials_block,
         "footer": footer_block,
+        "professionals_page": build_professionals_page_payload(),
     }

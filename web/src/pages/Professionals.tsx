@@ -23,6 +23,7 @@ import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
 import { safeCmsExternalHref } from '@/lib/cmsAssetUrl';
 import { CmsImage } from '@/components/CmsImage';
 import type { ProfessionalsPageApi } from '@/lib/api';
+import { heroStatsWithLiveExperience } from '@/lib/professionalsHeroStats';
 
 const STAT_ICONS: Record<string, LucideIcon> = {
   users: Users,
@@ -103,22 +104,7 @@ function ProfessionalsBody({
     [allTeam],
   );
 
-  const combinedExperienceYears = useMemo(
-    () => team.reduce((sum, m) => sum + (typeof m.experienceYears === 'number' ? Math.max(0, m.experienceYears) : 0), 0),
-    [team],
-  );
-
-  const heroStats = useMemo(() => {
-    const raw = page?.stats ?? [];
-    return raw.map((s) => {
-      const isCombinedYears =
-        s.icon === 'award' ||
-        /combined\s+experience|years\s+.*experience|experience\s+year/i.test(s.label || '');
-      if (!isCombinedYears) return s;
-      const value = combinedExperienceYears > 0 ? `${combinedExperienceYears}+` : '—';
-      return { ...s, value };
-    });
-  }, [page?.stats, combinedExperienceYears]);
+  const heroStats = useMemo(() => heroStatsWithLiveExperience(page?.stats, team), [page?.stats, team]);
 
   return (
     <div className="min-h-screen bg-background">

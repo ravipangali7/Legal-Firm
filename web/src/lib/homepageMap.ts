@@ -112,6 +112,12 @@ export type HomepageApiResponse = {
     }>;
     social: Array<{ label: string; href: string }>;
   };
+  /** Same shape as GET /api/public/professionals/; embedded so the homepage team block stays in sync. */
+  professionals_page?: {
+    title: string;
+    subtitle: string;
+    stats: Array<{ icon: string; label: string; value: string }>;
+  };
 };
 
 const sectionStyleKeys: (keyof SectionToggles)[] = [
@@ -257,6 +263,16 @@ export function mapHomepageApiToSnapshot(api: HomepageApiResponse): Snapshot {
       }
     : defaultCmsSnapshot.about;
 
+  const pp = api.professionals_page;
+  const professionalsPage =
+    pp && typeof pp.title === 'string'
+      ? {
+          title: pp.title || '',
+          subtitle: typeof pp.subtitle === 'string' ? pp.subtitle.trim() : '',
+          stats: Array.isArray(pp.stats) ? pp.stats : [],
+        }
+      : undefined;
+
   return {
     toggles,
     sectionStyles,
@@ -273,6 +289,7 @@ export function mapHomepageApiToSnapshot(api: HomepageApiResponse): Snapshot {
       columns: api.footer?.columns?.length ? api.footer.columns : defaultCmsSnapshot.footer.columns,
       social: api.footer?.social?.length ? api.footer.social : defaultCmsSnapshot.footer.social,
     },
+    ...(professionalsPage ? { professionalsPage } : {}),
   };
 }
 

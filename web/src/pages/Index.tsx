@@ -10,7 +10,7 @@ import DynamicFooter from '@/components/cms/DynamicFooter';
 import ProceduresHomeBlock from '@/components/cms/ProceduresHomeBlock';
 import Testimonials from '@/components/Testimonials';
 import ChatWidget from '@/components/ChatWidget';
-import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
+import { siteHomepageIndexQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
 import { CmsStoreProvider, useCms, type SectionToggles } from '@/store/cmsStore';
 import type { CSSProperties } from 'react';
@@ -65,7 +65,7 @@ const Sections = () => {
 };
 
 const Index = () => {
-  const { data, isLoading } = useQuery(siteHomepageQueryOptions);
+  const { data, isLoading } = useQuery(siteHomepageIndexQueryOptions);
 
   const initialSnapshot = useMemo(() => (data ? mapHomepageApiToSnapshot(data) : null), [data]);
 
