@@ -11,6 +11,7 @@ import type {
   TestimonialsBlock,
 } from '@/store/cmsStore';
 import { defaultCmsSnapshot } from '@/store/cmsStore';
+import hero3 from '@/assets/hero-3.jpg';
 
 /** Response shape from GET /api/site/homepage/ (snake_case from Django). */
 export type HomepageApiResponse = {
@@ -239,7 +240,7 @@ export function mapHomepageApiToSnapshot(api: HomepageApiResponse): Snapshot {
         eyebrow: api.about.eyebrow,
         title: api.about.title,
         body: api.about.body,
-        image: api.about.image,
+        image: (typeof api.about.image === 'string' ? api.about.image : '').trim() || hero3,
         stats: (api.about.stats || []).map((s) => ({
           id: s.id ? String(s.id) : undefined,
           label: s.label,

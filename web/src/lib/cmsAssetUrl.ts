@@ -25,6 +25,10 @@ export function cmsMediaSrc(src: string): string {
   if (/^https?:\/\//i.test(s)) return s;
   if (s.startsWith('//')) return `https:${s}`;
   if (s.startsWith('/')) {
+    // Vite bundled images (e.g. seed slides / default about); never prefix with the API host.
+    if (s.startsWith('/assets/') || (import.meta.env.DEV && s.startsWith('/src/'))) {
+      return s;
+    }
     const base = mediaBaseOrigin();
     if (base) return `${base}${s}`;
     if (import.meta.env.DEV && s.startsWith('/media/')) {
