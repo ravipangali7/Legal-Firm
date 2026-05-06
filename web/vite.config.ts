@@ -59,7 +59,7 @@ function professionalsJsonProxy(): Plugin {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode, command }) => ({
   server: {
     host: "::",
     port: 8080,
@@ -77,8 +77,9 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     mode === "development" && professionalsJsonProxy(),
     react(),
-    mode === 'development' &&
-    componentTagger(),
+    mode === "development" &&
+      command === "serve" &&
+      componentTagger(),
   ].filter(Boolean),
   resolve: {
     alias: {

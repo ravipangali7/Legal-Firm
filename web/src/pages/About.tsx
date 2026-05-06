@@ -12,7 +12,7 @@ import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
 import { CmsImage } from '@/components/CmsImage';
 import * as Icons from 'lucide-react';
 import { ArrowUpRight, Users } from 'lucide-react';
-import { HtmlPreview } from '@/components/HtmlPreview';
+import { AboutDescriptionCollapsible } from '@/components/about/AboutDescriptionCollapsible';
 import { PageHelpFaqs } from '@/components/PageHelpFaqs';
 
 const initials = (name: string) =>
@@ -47,8 +47,8 @@ function AboutBody({ loadError }: { loadError: boolean }) {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
       <main className="pt-32 pb-16">
-        <section className="px-4 mb-16 sm:mb-20 bg-background py-14 sm:py-16">
-          <div className="container mx-auto max-w-6xl">
+        <section className="py-20 sm:py-24 bg-background overflow-x-hidden mb-16 sm:mb-20">
+          <div className="container mx-auto max-w-6xl px-4 sm:px-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-14 xl:gap-x-16 gap-10 lg:gap-y-0 lg:items-start">
               <AboutMediaVisual
                 imageSrc={about.image || ''}
@@ -60,12 +60,11 @@ function AboutBody({ loadError }: { loadError: boolean }) {
                 {about.eyebrow ? (
                   <span className="block text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
                 ) : null}
-                <h1 className="mt-3 text-4xl sm:text-5xl font-bold text-primary-onBg leading-[1.1] tracking-tight [overflow-wrap:anywhere]">
+                <h1 className="mt-3 text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-primary-onBg leading-[1.12] tracking-tight [overflow-wrap:anywhere]">
                   {about.title || 'About'}
                 </h1>
-                <HtmlPreview
+                <AboutDescriptionCollapsible
                   content={about.body || ''}
-                  containWideBlocks
                   className="mt-6 max-w-xl text-muted-foreground prose-neutral dark:prose-invert prose-base sm:prose-lg prose-p:text-muted-foreground prose-p:leading-relaxed prose-headings:text-primary-onBg"
                 />
                 {loadError ? (

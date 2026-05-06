@@ -44,9 +44,9 @@ export function sanitizeAndHeadingIds(html: string): string {
   return doc.body.innerHTML;
 }
 
-/** Heuristic: treat as HTML when it looks like markup. */
+/** Heuristic: treat as HTML when it looks like markup (allows `</p>`, `< p>`, etc.). */
 export function looksLikeHtml(raw: string): boolean {
-  return /<[a-z][\s\S]*>/i.test(raw.trim());
+  return /<\s*\/?\s*[a-z][\s\S]*>/i.test(raw.trim());
 }
 
 /** Decode `&lt;p&gt;...` style bodies saved from rich text / double-escaped CMS (browser only). */

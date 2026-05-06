@@ -727,15 +727,23 @@ def auth_stop_impersonate(request):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def auth_me(request):
+    """GET returns JSON `null` when anonymous (SPA boot) instead of 403 from IsAuthenticated."""
     user = request.user
     if request.method == "PATCH":
+        if not user.is_authenticated:
+            return Response(
+                {"detail": "Authentication credentials were not provided."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         ser = UserSelfUpdateSerializer(user, data=request.data, partial=True)
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
         ser.save()
         user.refresh_from_db()
+    elif request.method == "GET" and not user.is_authenticated:
+        return Response(None)
     refresh_user_entitlements(user)
     data = UserMeSerializer(user).data
     if request.session.get(IMPERSONATOR_SESSION_KEY):

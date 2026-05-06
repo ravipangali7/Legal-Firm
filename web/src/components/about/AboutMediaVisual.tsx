@@ -1,3 +1,4 @@
+import { Award } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CmsImage } from '@/components/CmsImage';
 
@@ -37,16 +38,29 @@ export function AboutMediaVisual({ imageSrc, alt, className, cornerHighlight }: 
       {cornerHighlight ? (
         <div
           className={cn(
-            'absolute z-10 right-3 bottom-3 sm:right-4 sm:bottom-4 max-w-[min(100%,14rem)] sm:max-w-[15.5rem]',
+            'absolute z-10 right-3 bottom-3 sm:right-4 sm:bottom-4 max-w-[min(100%,15rem)] sm:max-w-[16.5rem]',
             'rounded-xl bg-accent px-4 py-3.5 sm:px-5 sm:py-4 shadow-[0_8px_28px_-6px_rgba(15,23,42,0.2)]',
             'ring-[3px] ring-background',
           )}
         >
-          <div className="text-3xl sm:text-4xl font-bold tabular-nums text-slate-950 leading-[0.95] tracking-tight">
-            {cornerHighlight.value}
-          </div>
-          <div className="mt-2 text-[0.625rem] sm:text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-slate-950 leading-snug">
-            {cornerHighlight.label}
+          <div className="flex items-start gap-3">
+            <div
+              className={cn(
+                'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+                'bg-slate-950/[0.08] ring-1 ring-slate-950/10',
+              )}
+              aria-hidden
+            >
+              <Award className="h-4 w-4 text-slate-950" strokeWidth={2.25} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-3xl sm:text-4xl font-bold tabular-nums text-slate-950 leading-[0.95] tracking-tight">
+                {cornerHighlight.value}
+              </div>
+              <div className="mt-2 text-[0.625rem] sm:text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-slate-950 leading-snug">
+                {cornerHighlight.label}
+              </div>
+            </div>
           </div>
         </div>
       ) : null}

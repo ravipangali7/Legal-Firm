@@ -1,4 +1,4 @@
-import { HtmlPreview } from '@/components/HtmlPreview';
+import { AboutDescriptionCollapsible } from '@/components/about/AboutDescriptionCollapsible';
 import { AboutMediaVisual } from '@/components/about/AboutMediaVisual';
 import { AboutStatCards } from '@/components/about/AboutStatCards';
 import { useCms } from '@/store/cmsStore';
@@ -31,9 +31,7 @@ const AboutBlock = () => {
             <h2 className="mt-3 text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-primary-onBg leading-[1.12] tracking-tight [overflow-wrap:anywhere]">
               {about.title}
             </h2>
-            <div className="min-w-0">
-              <HtmlPreview content={about.body || ''} containWideBlocks className={previewBodyClass} />
-            </div>
+            <AboutDescriptionCollapsible content={about.body || ''} className={previewBodyClass} />
             <AboutStatCards stats={stats} className="mt-8 sm:mt-10 w-full" />
           </div>
         </div>
