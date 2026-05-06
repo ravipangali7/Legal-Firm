@@ -510,20 +510,15 @@ export interface ProfessionalsPageStatApi {
   value: string;
 }
 
-/** One team row from `GET /api/public/professionals/` (same fields as homepage `team`). */
-export type ProfessionalsPageTeamMemberApi = HomepageApiResponse['team'][number];
-
 export interface ProfessionalsPageApi {
   title: string;
   subtitle: string;
   stats: ProfessionalsPageStatApi[];
-  /** Enabled members, ordered; present when API is current. */
-  team?: ProfessionalsPageTeamMemberApi[];
 }
 
 /**
- * Hero, stats, and enabled team roster for the Professionals page. In dev, defaults to same-origin
- * `/professionals` with `Accept: application/json` (Vite proxies to Django). Override with `VITE_PROFESSIONALS_PAGE_URL`.
+ * Hero + stats for the Professionals page. In dev, defaults to same-origin `/professionals`
+ * with `Accept: application/json` (Vite proxies to Django). Override with `VITE_PROFESSIONALS_PAGE_URL`.
  */
 export async function fetchProfessionalsPage(): Promise<ProfessionalsPageApi> {
   const custom = (import.meta.env.VITE_PROFESSIONALS_PAGE_URL as string | undefined)?.trim();
@@ -1404,9 +1399,9 @@ export async function fetchAdminKnowledgeResources(): Promise<KnowledgeResourceA
   return r.json() as Promise<KnowledgeResourceAdminApi[]>;
 }
 
-/** Super-admin PDF stream for flipbook preview (GET; no download_count bump). */
+/** Super-admin PDF stream for flipbook preview on the existing detail URL (GET; no new route; no download_count bump). */
 export function adminKnowledgeResourcePdfPreviewPath(id: string): string {
-  return `/api/admin/knowledge-resources/${encodeURIComponent(id)}/preview-pdf/`;
+  return `/api/admin/knowledge-resources/${encodeURIComponent(id)}/?preview=pdf`;
 }
 
 function knowledgeResourceFormData(fields: {

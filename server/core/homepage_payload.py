@@ -25,25 +25,6 @@ def _file_url(field_file) -> str:
         return ""
 
 
-def team_member_public_dict(tm: TeamMember) -> dict:
-    """Shape for public JSON (homepage and `/api/public/professionals/`)."""
-    return {
-        "id": str(tm.id),
-        "order": tm.order,
-        "enabled": tm.enabled,
-        "name": tm.name,
-        "role": tm.role,
-        "bio": tm.bio,
-        "avatar": _file_url(tm.avatar),
-        "linkedin_url": tm.linkedin_url or "",
-        "facebook_url": tm.facebook_url or "",
-        "twitter_url": tm.twitter_url or "",
-        "instagram_url": tm.instagram_url or "",
-        "contact_email": tm.contact_email or "",
-        "years_experience": int(tm.years_experience or 0),
-    }
-
-
 def _iso_date(value) -> str:
     if value is None:
         return ""
@@ -132,7 +113,25 @@ def build_homepage_snapshot() -> dict:
             }
         )
 
-    team = [team_member_public_dict(tm) for tm in TeamMember.objects.order_by("order", "name")]
+    team = []
+    for tm in TeamMember.objects.order_by("order", "name"):
+        team.append(
+            {
+                "id": str(tm.id),
+                "order": tm.order,
+                "enabled": tm.enabled,
+                "name": tm.name,
+                "role": tm.role,
+                "bio": tm.bio,
+                "avatar": _file_url(tm.avatar),
+                "linkedin_url": tm.linkedin_url or "",
+                "facebook_url": tm.facebook_url or "",
+                "twitter_url": tm.twitter_url or "",
+                "instagram_url": tm.instagram_url or "",
+                "contact_email": tm.contact_email or "",
+                "years_experience": int(tm.years_experience or 0),
+            }
+        )
 
     news = []
     for n in NewsItem.objects.order_by("-date", "order"):

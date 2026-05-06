@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from .homepage_payload import team_member_public_dict
 from .models import ProfessionalsPageConfig, ServiceItem, TeamMember
 
 
@@ -17,12 +16,9 @@ def build_professionals_page_payload() -> dict:
         return str(count) if count > 0 else "—"
 
     def fmt_years() -> str:
-        # Show a numeric value whenever there is a roster (0 means not entered in admin yet).
-        if years_sum > 0:
-            return f"{years_sum}+"
-        if n > 0:
-            return "0"
-        return "—"
+        if years_sum <= 0:
+            return "—"
+        return f"{years_sum}+"
 
     stat_professionals_label = cfg.stat_professionals_label or "Professionals"
     stat_experience_label = cfg.stat_experience_label or "Years combined experience"
@@ -34,14 +30,8 @@ def build_professionals_page_payload() -> dict:
         {"icon": "book_open", "label": stat_practice_label, "value": fmt_count(services_n)},
     ]
 
-    team = [
-        team_member_public_dict(tm)
-        for tm in TeamMember.objects.filter(enabled=True).order_by("order", "name")
-    ]
-
     return {
         "title": cfg.hero_title or "Our Professionals",
         "subtitle": cfg.hero_subtitle or "",
         "stats": stats,
-        "team": team,
     }
