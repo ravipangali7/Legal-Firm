@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Card, CardContent } from '@/components/ui/card';
-import { AboutMediaVisual } from '@/components/about/AboutMediaVisual';
+import { AboutMediaAndStats } from '@/components/about/AboutMediaAndStats';
 import { CmsStoreProvider, useCms } from '@/store/cmsStore';
 import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
@@ -12,7 +12,6 @@ import { CmsImage } from '@/components/CmsImage';
 import * as Icons from 'lucide-react';
 import { ArrowUpRight, Users } from 'lucide-react';
 import { HtmlPreview } from '@/components/HtmlPreview';
-import { cn } from '@/lib/utils';
 import { PageHelpFaqs } from '@/components/PageHelpFaqs';
 
 const initials = (name: string) =>
@@ -27,15 +26,6 @@ const initials = (name: string) =>
 function AboutBody({ loadError }: { loadError: boolean }) {
   const { about, services, team: allTeam } = useCms();
   const stats = about.stats ?? [];
-  const statCount = stats.length;
-  const statGridClass =
-    statCount <= 1
-      ? 'grid-cols-1 max-w-[16rem]'
-      : statCount === 2
-        ? 'grid-cols-2 max-w-lg gap-5 sm:gap-6'
-        : statCount === 3
-          ? 'grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5'
-          : 'grid-cols-2 gap-5 sm:gap-6';
 
   const serviceItems = useMemo(
     () => [...services].filter((s) => s.enabled).sort((a, b) => a.order - b.order),
@@ -51,44 +41,32 @@ function AboutBody({ loadError }: { loadError: boolean }) {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
       <main className="pt-32 pb-16">
-        <section className="px-4 mb-16 sm:mb-20">
+        <section className="px-4 mb-16 sm:mb-20 bg-muted/45 py-14 sm:py-16">
           <div className="container mx-auto max-w-6xl">
-            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-14 xl:gap-x-16 gap-10 lg:gap-y-0 lg:items-start">
-              <AboutMediaVisual imageSrc={about.image || ''} alt={about.title || 'About'} className="order-1 w-full" />
-              <div className="order-2 min-w-0 flex flex-col">
-                {about.eyebrow ? (
-                  <span className="block text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
-                ) : null}
-                <h1 className="mt-3 text-4xl sm:text-5xl font-bold text-primary-onBg leading-[1.1] tracking-tight [overflow-wrap:anywhere]">
-                  {about.title || 'About'}
-                </h1>
-                <HtmlPreview
-                  content={about.body || ''}
-                  containWideBlocks
-                  className="mt-6 max-w-xl text-muted-foreground prose-neutral dark:prose-invert prose-base sm:prose-lg prose-p:text-muted-foreground prose-p:leading-relaxed prose-headings:text-primary-onBg"
-                />
-                {loadError ? (
-                  <p className="text-sm text-muted-foreground mt-4">
-                    Live content could not be loaded; showing saved or default information.
-                  </p>
-                ) : null}
-                {statCount > 0 ? (
-                  <div className={cn('mt-10 grid min-w-0 w-full', statGridClass)}>
-                    {stats.map((s, i) => (
-                      <div
-                        key={s.id ?? `${s.label}-${i}`}
-                        className="bg-secondary/50 rounded-xl border border-border px-5 py-5 min-w-0 flex flex-col justify-center"
-                      >
-                        <div className="text-lg sm:text-xl font-bold text-primary-onBg tabular-nums tracking-tight leading-tight [overflow-wrap:anywhere]">
-                          {s.value}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-2 leading-snug line-clamp-2">{s.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+            <div className="min-w-0 max-w-3xl">
+              {about.eyebrow ? (
+                <span className="block text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
+              ) : null}
+              <h1 className="mt-3 text-4xl sm:text-5xl font-bold text-primary-onBg leading-[1.1] tracking-tight [overflow-wrap:anywhere]">
+                {about.title || 'About'}
+              </h1>
+              <HtmlPreview
+                content={about.body || ''}
+                containWideBlocks
+                className="mt-6 text-muted-foreground prose-neutral dark:prose-invert prose-base sm:prose-lg prose-p:text-muted-foreground prose-p:leading-relaxed prose-headings:text-primary-onBg"
+              />
+              {loadError ? (
+                <p className="text-sm text-muted-foreground mt-4">
+                  Live content could not be loaded; showing saved or default information.
+                </p>
+              ) : null}
             </div>
+            <AboutMediaAndStats
+              imageSrc={about.image || ''}
+              alt={about.title || 'About'}
+              stats={stats}
+              className="mt-10 sm:mt-12"
+            />
           </div>
         </section>
 

@@ -116,8 +116,10 @@ const seedAbout: AboutSection = {
   body: 'We combine deep expertise in tax law and compliance with practical guidance so your business stays audit-ready and strategically positioned. Acts, cases, and procedures—organized for clarity and speed.',
   image: hero3,
   stats: [
-    { label: 'Years', value: '15+' },
-    { label: 'Clients', value: '500+' },
+    { label: 'Years of practice', value: '12+' },
+    { label: 'Clients served', value: '1,400+' },
+    { label: 'Cases won', value: '320+' },
+    { label: 'Practice areas', value: '11' },
   ],
 };
 
