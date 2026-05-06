@@ -817,7 +817,8 @@ class TestimonialsConfig(SingletonModel):
 
 
 class Testimonial(UUIDModel):
-    order = models.PositiveSmallIntegerField(default=0)
+    # Integer (not small) so CMS sort order stays valid for large testimonial lists.
+    order = models.PositiveIntegerField(default=0)
     enabled = models.BooleanField(default=True)
     name = models.CharField(max_length=255)
     role_title = models.CharField(max_length=255, blank=True)

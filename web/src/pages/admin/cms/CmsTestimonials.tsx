@@ -250,7 +250,7 @@ const CmsTestimonials = () => {
         <SheetContent className="w-full sm:max-w-lg flex flex-col">
           <SheetHeader>
             <SheetTitle>{editing === 'add' ? 'Add testimonial' : 'Edit testimonial'}</SheetTitle>
-            <SheetDescription>Quotes appear in the rotating testimonial cards.</SheetDescription>
+            <SheetDescription>Quotes appear on the public homepage; every enabled testimonial is listed.</SheetDescription>
           </SheetHeader>
           {draft ? (
             <div className="grid flex-1 gap-4 overflow-y-auto py-2 pr-1">
