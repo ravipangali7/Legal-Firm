@@ -31,7 +31,11 @@ const AboutBlock = () => {
             <h2 className="mt-3 text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-primary-onBg leading-[1.12] tracking-tight [overflow-wrap:anywhere]">
               {about.title}
             </h2>
-            <AboutDescriptionCollapsible content={about.body || ''} className={previewBodyClass} />
+            <AboutDescriptionCollapsible
+              content={about.body || ''}
+              className={previewBodyClass}
+              seeMoreHref="/about"
+            />
             <AboutStatCards stats={stats} className="mt-8 sm:mt-10 w-full" />
           </div>
         </div>

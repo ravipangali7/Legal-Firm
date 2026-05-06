@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { HtmlPreview } from '@/components/HtmlPreview';
 import { cn } from '@/lib/utils';
 
@@ -6,6 +7,8 @@ type AboutDescriptionCollapsibleProps = {
   content: string;
   className: string;
   containWideBlocks?: boolean;
+  /** When set, “See more” is a link here instead of expanding in place (e.g. `/about` from the homepage block). */
+  seeMoreHref?: string;
 };
 
 function collapsedMaxPx(): number {
@@ -14,16 +17,18 @@ function collapsedMaxPx(): number {
 }
 
 /**
- * Renders CMS about body HTML with optional clamp + “See more” / “See less” when text exceeds a few lines.
+ * Renders CMS about body HTML with optional clamp + “See more” (expand in place or link to `seeMoreHref`).
  */
 export function AboutDescriptionCollapsible({
   content,
   className,
   containWideBlocks = true,
+  seeMoreHref,
 }: AboutDescriptionCollapsibleProps) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
+  const linkAway = Boolean(seeMoreHref?.trim());
 
   useLayoutEffect(() => {
     const inner = measureRef.current;
@@ -53,17 +58,16 @@ export function AboutDescriptionCollapsible({
   const trimmed = (content ?? '').trim();
   if (!trimmed) return null;
 
+  const clamped = linkAway ? hasOverflow : !expanded && hasOverflow;
+
   return (
     <div className="min-w-0">
       <div
         ref={measureRef}
-        className={cn(
-          'relative',
-          !expanded && hasOverflow && 'max-h-[11rem] sm:max-h-[13rem] overflow-hidden',
-        )}
+        className={cn('relative', clamped && 'max-h-[11rem] sm:max-h-[13rem] overflow-hidden')}
       >
         <HtmlPreview content={content} containWideBlocks={containWideBlocks} className={className} />
-        {!expanded && hasOverflow ? (
+        {clamped ? (
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-background to-transparent"
             aria-hidden
@@ -71,14 +75,23 @@ export function AboutDescriptionCollapsible({
         ) : null}
       </div>
       {hasOverflow ? (
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="mt-3 text-sm font-semibold text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
-          aria-expanded={expanded}
-        >
-          {expanded ? 'See less' : 'See more'}
-        </button>
+        linkAway ? (
+          <Link
+            to={seeMoreHref!.trim()}
+            className="mt-3 inline-block text-sm font-semibold text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+          >
+            See more
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-3 text-sm font-semibold text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+            aria-expanded={expanded}
+          >
+            {expanded ? 'See less' : 'See more'}
+          </button>
+        )
       ) : null}
     </div>
   );
