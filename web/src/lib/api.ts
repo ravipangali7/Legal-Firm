@@ -1404,9 +1404,9 @@ export async function fetchAdminKnowledgeResources(): Promise<KnowledgeResourceA
   return r.json() as Promise<KnowledgeResourceAdminApi[]>;
 }
 
-/** Super-admin PDF stream for flipbook preview on the existing detail URL (GET; no new route; no download_count bump). */
+/** Super-admin PDF stream for flipbook preview (GET; no download_count bump). */
 export function adminKnowledgeResourcePdfPreviewPath(id: string): string {
-  return `/api/admin/knowledge-resources/${encodeURIComponent(id)}/?preview=pdf`;
+  return `/api/admin/knowledge-resources/${encodeURIComponent(id)}/preview-pdf/`;
 }
 
 function knowledgeResourceFormData(fields: {

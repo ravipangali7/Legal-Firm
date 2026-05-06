@@ -22,8 +22,8 @@ Endpoint → PermissionModule mapping (enforced in `x_views` / `dashboard_views`
                  admin_summary_categories, admin_summary_category_detail, admin_summaries, admin_summary_detail,
                  admin_acts, admin_act_detail, admin_procedures, admin_procedure_detail
 - Notices: admin_notices, admin_notice_detail (super administrators only; not in the RBAC matrix)
-- Knowledge resources: admin_knowledge_resources, admin_knowledge_resource_detail (super administrators only;
-  not in the RBAC matrix)
+- Knowledge resources: admin_knowledge_resources, admin_knowledge_resource_pdf_preview,
+  admin_knowledge_resource_detail (super administrators only; not in the RBAC matrix)
 - Notifications: admin_panel_notifications, admin_panel_notifications_mark_all_read, admin_panel_notification_detail
 """
 

@@ -1538,6 +1538,17 @@ def _admin_knowledge_resource_pdf_response(obj: KnowledgeResource):
 
 
 @csrf_exempt
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_knowledge_resource_pdf_preview(request, resource_id: uuid.UUID):
+    """Same PDF stream as GET detail with ?preview=pdf (path variant for flipbook / proxies)."""
+    if err := _require_super_admin_for_knowledge_resources(request):
+        return err
+    obj = get_object_or_404(KnowledgeResource, pk=resource_id)
+    return _admin_knowledge_resource_pdf_response(obj)
+
+
+@csrf_exempt
 @api_view(["GET", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def admin_knowledge_resource_detail(request, resource_id: uuid.UUID):

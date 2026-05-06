@@ -23,7 +23,7 @@ import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
 import { safeCmsExternalHref } from '@/lib/cmsAssetUrl';
 import { CmsImage } from '@/components/CmsImage';
 import type { ProfessionalsPageApi } from '@/lib/api';
-import { resolveProfessionalsTeam } from '@/lib/professionalsTeam';
+import { resolveProfessionalsHeroStats, resolveProfessionalsTeam } from '@/lib/professionalsTeam';
 
 const STAT_ICONS: Record<string, LucideIcon> = {
   users: Users,
@@ -99,7 +99,7 @@ function ProfessionalsBody({
 }) {
   const { team: allTeam } = useCms();
   const team = resolveProfessionalsTeam(page, allTeam);
-  const heroStats = page?.stats ?? [];
+  const heroStats = resolveProfessionalsHeroStats(page);
 
   return (
     <div className="min-h-screen bg-background">

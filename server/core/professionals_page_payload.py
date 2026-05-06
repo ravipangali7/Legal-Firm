@@ -17,9 +17,12 @@ def build_professionals_page_payload() -> dict:
         return str(count) if count > 0 else "—"
 
     def fmt_years() -> str:
-        if years_sum <= 0:
-            return "—"
-        return f"{years_sum}+"
+        # Show a numeric value whenever there is a roster (0 means not entered in admin yet).
+        if years_sum > 0:
+            return f"{years_sum}+"
+        if n > 0:
+            return "0"
+        return "—"
 
     stat_professionals_label = cfg.stat_professionals_label or "Professionals"
     stat_experience_label = cfg.stat_experience_label or "Years combined experience"
