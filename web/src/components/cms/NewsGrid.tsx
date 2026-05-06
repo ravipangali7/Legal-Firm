@@ -18,9 +18,9 @@ const NewsGrid = () => {
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {items.map((n) => (
-            <Link key={n.id} to={`/news/${n.id}`} className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-elegant transition-all">
+            <Link key={n.id} to={`/news/${n.id}`} className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-elegant transition-shadow">
               <div className="aspect-[16/10] overflow-hidden bg-muted">
-                {n.image && <img src={cmsMediaSrc(n.image)} alt={n.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />}
+                {n.image && <img src={cmsMediaSrc(n.image)} alt={n.title} className="w-full h-full object-cover" loading="lazy" />}
               </div>
               <div className="p-5">
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">

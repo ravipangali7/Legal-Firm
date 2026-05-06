@@ -4,7 +4,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { useCms } from '@/store/cmsStore';
 
 const cardClassName =
-  'group relative bg-card border border-border rounded-2xl p-6 hover:shadow-elegant hover:-translate-y-1 transition-all duration-300 overflow-hidden block no-underline text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+  'group relative bg-card border border-border rounded-2xl p-6 hover:shadow-elegant transition-shadow duration-300 overflow-hidden block no-underline text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 const ServicesGrid = () => {
   const { services } = useCms();

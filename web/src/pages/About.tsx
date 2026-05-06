@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Card, CardContent } from '@/components/ui/card';
+import { AboutMediaVisual } from '@/components/about/AboutMediaVisual';
 import { CmsStoreProvider, useCms } from '@/store/cmsStore';
 import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
@@ -13,13 +14,6 @@ import { ArrowUpRight, Users } from 'lucide-react';
 import { HtmlPreview } from '@/components/HtmlPreview';
 import { cn } from '@/lib/utils';
 import { PageHelpFaqs } from '@/components/PageHelpFaqs';
-
-function bodyParagraphs(body: string): string[] {
-  const t = (body || '').trim();
-  if (!t) return [];
-  const parts = t.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
-  return parts.length ? parts : [t];
-}
 
 const initials = (name: string) =>
   name
@@ -32,10 +26,7 @@ const initials = (name: string) =>
 
 function AboutBody({ loadError }: { loadError: boolean }) {
   const { about, services, team: allTeam } = useCms();
-  const imgSrc = cmsMediaSrc(about.image);
-  const paragraphs = useMemo(() => bodyParagraphs(about.body), [about.body]);
-  const lead = paragraphs[0] ?? '';
-  const rest = paragraphs.slice(1);
+  const imgSrc = cmsMediaSrc(about.image || '');
   const stats = about.stats ?? [];
   const statCount = stats.length;
   const statGridClass =
@@ -61,96 +52,44 @@ function AboutBody({ loadError }: { loadError: boolean }) {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
       <main className="pt-32 pb-16">
-        <section className="px-4 mb-12">
-          <div className="container mx-auto max-w-5xl text-center">
-            {about.eyebrow ? (
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
-            ) : null}
-            <h1 className="text-4xl md:text-5xl font-bold text-primary-onBg mt-3 mb-4">{about.title || 'About'}</h1>
-            {lead ? (
-              <div className="flex justify-center">
-                <HtmlPreview
-                  content={lead}
-                  containWideBlocks
-                  className="max-w-3xl w-full text-lg text-muted-foreground prose-neutral dark:prose-invert prose-p:text-muted-foreground"
-                />
-              </div>
-            ) : null}
-            {loadError ? (
-              <p className="text-sm text-muted-foreground mt-4 max-w-xl mx-auto">
-                Live content could not be loaded; showing saved or default information.
-              </p>
-            ) : null}
-          </div>
-        </section>
-
-        {(imgSrc || rest.length > 0 || statCount > 0) && (
-          <section className="px-4 mb-16">
-            {imgSrc && rest.length === 0 && statCount === 0 ? (
-              <div className="container mx-auto max-w-3xl">
-                <div className="relative rounded-3xl overflow-hidden shadow-elegant bg-muted aspect-[4/3]">
-                  <img src={imgSrc} alt={about.title} className="w-full h-full object-cover" loading="lazy" />
-                </div>
-              </div>
-            ) : (
-            <div
-              className={cn(
-                'container mx-auto max-w-6xl gap-12',
-                imgSrc ? 'grid lg:grid-cols-2 lg:items-start lg:gap-14' : 'max-w-3xl mx-auto space-y-8',
-              )}
-            >
-              {imgSrc ? (
-                <div className="relative order-2 lg:order-1 min-w-0 lg:sticky lg:top-28 self-start">
-                  <div className="aspect-[4/3] rounded-3xl overflow-hidden shadow-elegant bg-muted">
-                    <img src={imgSrc} alt={about.title} className="w-full h-full object-cover" loading="lazy" />
-                  </div>
-                  {statCount > 0 ? (
-                    <div className="absolute -bottom-6 -right-2 sm:-right-6 bg-accent text-accent-foreground rounded-2xl px-5 py-4 sm:px-6 sm:py-5 shadow-gold max-w-[min(100%,18rem)]">
-                      <div className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight tabular-nums [overflow-wrap:anywhere]">
-                        {stats[0].value}
+        <section className="px-4 mb-16 sm:mb-20">
+          <div className="container mx-auto max-w-6xl grid lg:grid-cols-2 gap-12 lg:gap-16 lg:items-center">
+            <AboutMediaVisual imageSrc={imgSrc} alt={about.title || 'About'} className="order-1" />
+            <div className="min-w-0 order-2">
+              {about.eyebrow ? (
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
+              ) : null}
+              <h1 className="mt-3 text-4xl sm:text-5xl font-bold text-primary-onBg leading-[1.1] tracking-tight [overflow-wrap:anywhere]">
+                {about.title || 'About'}
+              </h1>
+              <HtmlPreview
+                content={about.body || ''}
+                containWideBlocks
+                className="mt-6 max-w-xl text-muted-foreground prose-neutral dark:prose-invert prose-base sm:prose-lg prose-p:text-muted-foreground prose-p:leading-relaxed prose-headings:text-primary-onBg"
+              />
+              {loadError ? (
+                <p className="text-sm text-muted-foreground mt-4">
+                  Live content could not be loaded; showing saved or default information.
+                </p>
+              ) : null}
+              {statCount > 0 ? (
+                <div className={cn('mt-10 grid min-w-0', statGridClass)}>
+                  {stats.map((s, i) => (
+                    <div
+                      key={s.id ?? `${s.label}-${i}`}
+                      className="bg-secondary/50 rounded-xl border border-border px-5 py-5 min-w-0 flex flex-col justify-center"
+                    >
+                      <div className="text-lg sm:text-xl font-bold text-primary-onBg tabular-nums tracking-tight leading-tight [overflow-wrap:anywhere]">
+                        {s.value}
                       </div>
-                      <div className="text-xs uppercase tracking-wider mt-2 text-accent-foreground/90 line-clamp-2">
-                        {stats[0].label}
-                      </div>
+                      <div className="text-xs text-muted-foreground mt-2 leading-snug line-clamp-2">{s.label}</div>
                     </div>
-                  ) : null}
+                  ))}
                 </div>
               ) : null}
-              <div className={cn('space-y-5 min-w-0', imgSrc && 'order-1 lg:order-2')}>
-                {rest.map((p, i) => (
-                  <HtmlPreview
-                    key={i}
-                    content={p}
-                    containWideBlocks
-                    className="text-muted-foreground prose-neutral dark:prose-invert prose-p:text-muted-foreground max-w-none"
-                  />
-                ))}
-                {statCount > 0 ? (
-                  <div
-                    className={cn(
-                      'grid min-w-0 pt-2',
-                      statGridClass,
-                      !imgSrc && statCount > 2 && 'max-w-4xl mx-auto w-full',
-                    )}
-                  >
-                    {stats.map((s, i) => (
-                      <div
-                        key={s.id ?? `${s.label}-${i}`}
-                        className="bg-secondary/50 rounded-xl border border-border px-5 py-5 min-w-0 flex flex-col justify-center"
-                      >
-                        <div className="text-lg sm:text-xl font-bold text-primary-onBg tabular-nums tracking-tight leading-tight [overflow-wrap:anywhere]">
-                          {s.value}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-2 leading-snug line-clamp-2">{s.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
             </div>
-            )}
-          </section>
-        )}
+          </div>
+        </section>
 
         {serviceItems.length > 0 ? (
           <section className="px-4 mb-16 bg-secondary/40 py-16">
@@ -167,7 +106,7 @@ function AboutBody({ loadError }: { loadError: boolean }) {
                     <Link
                       key={s.id}
                       to={s.href}
-                      className="group relative bg-card border border-border rounded-2xl p-6 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                      className="group relative bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow"
                     >
                       <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary-onBg flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                         <Icon className="h-5 w-5" />
@@ -195,7 +134,7 @@ function AboutBody({ loadError }: { loadError: boolean }) {
                   <p className="mt-1 text-muted-foreground text-sm">A sample of who you will work with.</p>
                 </div>
                 <Link to="/professionals" className="text-sm font-semibold text-primary-onBg hover:underline shrink-0">
-                  View all professionals â†’
+                  View all professionals →
                 </Link>
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
