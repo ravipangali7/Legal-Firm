@@ -25,7 +25,7 @@ const CmsLayoutInner = () => (
     <div>
       <h1 className="text-2xl lg:text-3xl font-bold">Homepage CMS</h1>
       <p className="text-muted-foreground mt-1">
-        Manage every section of the public homepage. Changes sync to the server automatically.
+        Manage every section of the public homepage. Changes sync in the background; use Save on a section when you want an immediate publish and confirmation.
       </p>
     </div>
     <div className="grid grid-cols-12 gap-6">
