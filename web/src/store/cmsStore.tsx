@@ -311,6 +311,8 @@ interface CmsStore extends Snapshot {
   moveNavItem: (id: string, dir: -1 | 1) => void;
   // misc
   resetAll: () => void;
+  /** When `persistMode` is `remote`, PATCH the full homepage snapshot to the server immediately. */
+  flushRemoteSave: () => Promise<void>;
   persistMode: 'local' | 'remote' | 'readonly';
 }
 
@@ -386,6 +388,17 @@ export const CmsStoreProvider = ({
   }, [data, persistMode, onRemoteSave]);
 
   const set = useCallback(<K extends keyof Snapshot>(k: K, v: Snapshot[K]) => setData((d) => ({ ...d, [k]: v })), []);
+
+  const flushRemoteSave = useCallback(async () => {
+    if (persistMode !== 'remote') return;
+    const snap = dataRef.current;
+    const payload = mapSnapshotToHomepagePayload(snap);
+    const res = await patchAdminCmsHomepage(payload);
+    const next = mapHomepageApiToSnapshot(res);
+    setData(next);
+    lastSentJson.current = JSON.stringify(mapSnapshotToHomepagePayload(next));
+    onRemoteSave?.();
+  }, [persistMode, onRemoteSave]);
 
   const value: CmsStore = {
     ...data,
@@ -466,6 +479,7 @@ export const CmsStoreProvider = ({
       if (persistMode === 'remote' || persistMode === 'readonly') return;
       setData({ ...defaultCmsSnapshot });
     },
+    flushRemoteSave,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

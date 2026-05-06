@@ -16,9 +16,9 @@ const AboutBlock = () => {
           ? 'grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5'
           : 'grid-cols-2 gap-5 sm:gap-6';
   return (
-    <section className="py-20 sm:py-24 bg-background">
-      <div className="container mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 lg:items-center lg:gap-14">
-        <div className="relative">
+    <section className="py-20 sm:py-24 bg-background overflow-x-hidden">
+      <div className="container mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 lg:items-start lg:gap-14">
+        <div className="relative min-w-0 lg:sticky lg:top-28 self-start">
           <div className="aspect-[4/3] rounded-3xl overflow-hidden shadow-elegant">
             {about.image && <img src={cmsMediaSrc(about.image)} alt={about.title} className="w-full h-full object-cover" loading="lazy" />}
           </div>
@@ -31,11 +31,14 @@ const AboutBlock = () => {
             </div>
           </div>
         </div>
-        <div>
+        <div className="min-w-0">
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
-          <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-onBg leading-tight">{about.title}</h2>
+          <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-onBg leading-tight [overflow-wrap:anywhere]">
+            {about.title}
+          </h2>
           <HtmlPreview
             content={about.body || ''}
+            containWideBlocks
             className="mt-5 max-w-none text-muted-foreground prose-neutral dark:prose-invert prose-base sm:prose-lg prose-p:text-muted-foreground prose-p:leading-relaxed"
           />
           <div className={cn('mt-8 grid min-w-0', statGridClass)}>

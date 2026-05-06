@@ -79,7 +79,7 @@ const Index = () => {
 
   return (
     <CmsStoreProvider initialSnapshot={initialSnapshot} persistMode="readonly">
-      <div className="min-h-screen">
+      <div className="min-h-screen overflow-x-hidden">
         <Header />
         <Sections />
         <ChatWidget />

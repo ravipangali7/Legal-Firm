@@ -58,7 +58,7 @@ function AboutBody({ loadError }: { loadError: boolean }) {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
       <main className="pt-32 pb-16">
         <section className="px-4 mb-12">
@@ -71,6 +71,7 @@ function AboutBody({ loadError }: { loadError: boolean }) {
               <div className="flex justify-center">
                 <HtmlPreview
                   content={lead}
+                  containWideBlocks
                   className="max-w-3xl w-full text-lg text-muted-foreground prose-neutral dark:prose-invert prose-p:text-muted-foreground"
                 />
               </div>
@@ -95,11 +96,11 @@ function AboutBody({ loadError }: { loadError: boolean }) {
             <div
               className={cn(
                 'container mx-auto max-w-6xl gap-12',
-                imgSrc ? 'grid lg:grid-cols-2 lg:items-center lg:gap-14' : 'max-w-3xl mx-auto space-y-8',
+                imgSrc ? 'grid lg:grid-cols-2 lg:items-start lg:gap-14' : 'max-w-3xl mx-auto space-y-8',
               )}
             >
               {imgSrc ? (
-                <div className="relative order-2 lg:order-1">
+                <div className="relative order-2 lg:order-1 min-w-0 lg:sticky lg:top-28 self-start">
                   <div className="aspect-[4/3] rounded-3xl overflow-hidden shadow-elegant bg-muted">
                     <img src={imgSrc} alt={about.title} className="w-full h-full object-cover" loading="lazy" />
                   </div>
@@ -115,11 +116,12 @@ function AboutBody({ loadError }: { loadError: boolean }) {
                   ) : null}
                 </div>
               ) : null}
-              <div className={cn('space-y-5', imgSrc && 'order-1 lg:order-2')}>
+              <div className={cn('space-y-5 min-w-0', imgSrc && 'order-1 lg:order-2')}>
                 {rest.map((p, i) => (
                   <HtmlPreview
                     key={i}
                     content={p}
+                    containWideBlocks
                     className="text-muted-foreground prose-neutral dark:prose-invert prose-p:text-muted-foreground max-w-none"
                   />
                 ))}
