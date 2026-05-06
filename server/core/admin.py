@@ -555,8 +555,12 @@ class HeroSlideAdmin(admin.ModelAdmin):
 
 @admin.register(models.AboutSection)
 class AboutSectionAdmin(SingletonAdminMixin, admin.ModelAdmin):
-    list_display = ("enabled", "title", "eyebrow", "stats_count")
+    list_display = ("thumb", "enabled", "title", "eyebrow", "stats_count")
     inlines = (AboutStatInline,)
+
+    @admin.display(description="Image", ordering="image")
+    def thumb(self, obj):
+        return _img_cell(_media_src(obj.image), size=44)
 
     @admin.display(description="Stats")
     def stats_count(self, obj):

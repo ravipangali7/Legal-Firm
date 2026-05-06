@@ -7,6 +7,7 @@ import binascii
 import re
 import uuid
 from pathlib import Path
+from urllib.parse import urlparse
 from typing import TYPE_CHECKING
 
 from django.core.files.base import ContentFile
@@ -66,6 +67,26 @@ def urls_match_stored_file(fieldfile, incoming: str) -> bool:
         return True
     if name in s.replace("\\", "/"):
         return True
+    # Absolute CMS/API URL for the same stored object (browser or CDN host differs from `fieldfile.url`)
+    try:
+        def _path_only(u: str) -> str:
+            u = (u or "").strip()
+            if not u:
+                return ""
+            if u.startswith("//"):
+                u = f"https:{u}"
+            if "://" in u:
+                return (urlparse(u).path or "").replace("\\", "/").rstrip("/")
+            return u.replace("\\", "/").rstrip("/")
+
+        inc_path = _path_only(s)
+        stored_path = _path_only(url)
+        if inc_path and stored_path and inc_path == stored_path:
+            return True
+        if inc_path and name and (inc_path.endswith(name) or name in inc_path):
+            return True
+    except (ValueError, TypeError, AttributeError):
+        pass
     return False
 
 
