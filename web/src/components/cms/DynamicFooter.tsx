@@ -2,12 +2,12 @@ import { Link } from 'react-router-dom';
 import defaultBrandLogo from '@/assets/logo-icon.png';
 import { useSiteHomepageFooter } from '@/hooks/useSiteHomepageFooter';
 import { useSiteConfig } from '@/context/SiteConfigContext';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { CmsImage } from '@/components/CmsImage';
 
 const DynamicFooter = () => {
   const footer = useSiteHomepageFooter();
   const { config } = useSiteConfig();
-  const logoSrc = config?.site_logo?.trim() ? cmsMediaSrc(config.site_logo) : defaultBrandLogo;
+  const logoRaw = (config?.site_logo || '').trim();
   const brandName = (config?.site_name || 'TaxLexis').trim() || 'TaxLexis';
   return (
     <footer className="bg-primary text-primary-foreground">
@@ -15,7 +15,13 @@ const DynamicFooter = () => {
         <div className="grid lg:grid-cols-12 gap-10">
           <div className="lg:col-span-4">
             <div className="flex flex-row items-center gap-3 min-w-0">
-              <img src={logoSrc} alt={brandName} className="h-12 w-auto shrink-0 bg-white rounded-lg p-1.5" />
+              <CmsImage
+                src={logoRaw}
+                alt={brandName}
+                className="h-12 w-auto shrink-0 bg-white rounded-lg p-1.5"
+                fallbackSrc={defaultBrandLogo}
+                fallbackKind="brand"
+              />
               <span className="text-lg font-semibold text-primary-foreground tracking-tight truncate" title={brandName}>
                 {brandName}
               </span>

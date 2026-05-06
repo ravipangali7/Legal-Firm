@@ -1,8 +1,8 @@
 import { Clock, User, FileText, CreditCard, Settings, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { CmsAvatarImage } from '@/components/CmsImage';
 
 interface Activity {
   id: string | number;
@@ -69,7 +69,7 @@ const ActivityList = ({
                   className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
                 >
                   <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarImage src={activity.user.avatar ? cmsMediaSrc(activity.user.avatar) : ''} />
+                    <CmsAvatarImage src={activity.user.avatar} />
                     <AvatarFallback className="text-xs bg-primary/10 text-primary-onBg">
                       {activity.user.initials}
                     </AvatarFallback>

@@ -23,8 +23,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { CmsAvatarImage } from '@/components/CmsImage';
 import logo from '@/assets/logo-icon.png';
 import { useToast } from '@/hooks/use-toast';
 import { SiteThemeToggle } from '@/components/SiteThemeToggle';
@@ -140,7 +140,7 @@ const SubscriberProfile = () => {
               <span className="text-xs text-muted-foreground">{roleDisplayLabel(user.role)}</span>
             </div>
             <Avatar className="h-9 w-9 ring-2 ring-primary/20">
-              {user.avatar ? <AvatarImage src={cmsMediaSrc(user.avatar)} alt="" /> : null}
+              {user.avatar ? <CmsAvatarImage src={user.avatar} alt="" /> : null}
               <AvatarFallback className="bg-primary text-primary-foreground font-bold">{userInitials(user)}</AvatarFallback>
             </Avatar>
             <Button variant="ghost" size="sm" type="button" onClick={() => setSignOutOpen(true)}>

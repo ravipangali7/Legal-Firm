@@ -12,7 +12,8 @@ import { blogBodyToParagraphs } from '@/lib/api';
 import { looksLikeHtml } from '@/lib/summaryHtml';
 import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
-import { cmsMediaSrc, safeCmsExternalHref } from '@/lib/cmsAssetUrl';
+import { safeCmsExternalHref } from '@/lib/cmsAssetUrl';
+import { CmsImage } from '@/components/CmsImage';
 import { RelatedContentSidebar } from '@/components/RelatedContentSidebar';
 
 const NewsEventDetail = () => {
@@ -80,8 +81,6 @@ const NewsEventDetail = () => {
     );
   }
 
-  const imgSrc = item.image ? cmsMediaSrc(item.image) : '';
-
   return (
     <CmsStoreProvider>
       <div className="min-h-screen bg-background flex flex-col">
@@ -105,11 +104,9 @@ const NewsEventDetail = () => {
               </Link>
             </Button>
 
-            {imgSrc ? (
-              <div className="mb-8 rounded-2xl overflow-hidden border border-border bg-muted aspect-[16/9] max-h-[420px]">
-                <img src={imgSrc} alt={item.title} className="w-full h-full object-cover" />
-              </div>
-            ) : null}
+            <div className="mb-8 rounded-2xl overflow-hidden border border-border bg-muted aspect-[16/9] max-h-[420px]">
+              <CmsImage src={item.image} alt={item.title} className="w-full h-full object-cover" fallbackKind="card" />
+            </div>
 
             <header className="mb-10">
               {item.tag ? (

@@ -8,7 +8,7 @@ import { AboutMediaVisual } from '@/components/about/AboutMediaVisual';
 import { CmsStoreProvider, useCms } from '@/store/cmsStore';
 import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { CmsImage } from '@/components/CmsImage';
 import * as Icons from 'lucide-react';
 import { ArrowUpRight, Users } from 'lucide-react';
 import { HtmlPreview } from '@/components/HtmlPreview';
@@ -26,7 +26,6 @@ const initials = (name: string) =>
 
 function AboutBody({ loadError }: { loadError: boolean }) {
   const { about, services, team: allTeam } = useCms();
-  const imgSrc = cmsMediaSrc(about.image || '');
   const stats = about.stats ?? [];
   const statCount = stats.length;
   const statGridClass =
@@ -54,7 +53,7 @@ function AboutBody({ loadError }: { loadError: boolean }) {
       <main className="pt-32 pb-16">
         <section className="px-4 mb-16 sm:mb-20">
           <div className="container mx-auto max-w-6xl grid lg:grid-cols-2 gap-12 lg:gap-16 lg:items-center">
-            <AboutMediaVisual imageSrc={imgSrc} alt={about.title || 'About'} className="order-1" />
+            <AboutMediaVisual imageSrc={about.image || ''} alt={about.title || 'About'} className="order-1" />
             <div className="min-w-0 order-2">
               {about.eyebrow ? (
                 <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
@@ -139,14 +138,20 @@ function AboutBody({ loadError }: { loadError: boolean }) {
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {teamPreview.map((p) => {
-                  const img = cmsMediaSrc(p.avatar);
                   return (
                     <Card key={p.id} className="overflow-hidden border-border/80">
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4">
                           <div className="h-14 w-14 rounded-full bg-primary/10 text-primary-onBg flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden">
-                            {img ? (
-                              <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
+                            {p.avatar?.trim() ? (
+                              <CmsImage
+                                src={p.avatar}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                fallbackKind="card"
+                                fillEmpty
+                              />
                             ) : (
                               initials(p.name)
                             )}

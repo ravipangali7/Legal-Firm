@@ -11,7 +11,10 @@ import type {
   TestimonialsBlock,
 } from '@/store/cmsStore';
 import { defaultCmsSnapshot } from '@/store/cmsStore';
+import hero1 from '@/assets/hero-1.jpg';
+import hero2 from '@/assets/hero-2.jpg';
 import hero3 from '@/assets/hero-3.jpg';
+import { TESTIMONIAL_FACE_FALLBACKS } from '@/lib/cmsImageFallbacks';
 
 /** Response shape from GET /api/site/homepage/ (snake_case from Django). */
 export type HomepageApiResponse = {
@@ -147,6 +150,8 @@ function mapTeamFromApi(apiTeam: HomepageApiResponse['team']): TeamMember[] {
   });
 }
 
+const HERO_ROTATION = [hero1, hero2, hero3] as const;
+
 function mapNewsFromApi(rows: HomepageApiResponse['news']): NewsItem[] {
   return (rows || []).map((n) => ({
     id: n.id,
@@ -155,7 +160,7 @@ function mapNewsFromApi(rows: HomepageApiResponse['news']): NewsItem[] {
     title: n.title,
     excerpt: n.excerpt || '',
     body: (n.body || '').trim(),
-    image: (n.image || '').trim(),
+    image: (n.image || '').trim() || hero2,
     date: typeof n.date === 'string' ? n.date.slice(0, 10) : String(n.date || '').slice(0, 10),
     href: n.href || '',
     tag: n.tag || '',
@@ -163,34 +168,40 @@ function mapNewsFromApi(rows: HomepageApiResponse['news']): NewsItem[] {
 }
 
 function mapSlides(apiSlides: HomepageApiResponse['slides']): HeroSlide[] {
-  return (apiSlides || []).map((s) => ({
-    id: s.id,
-    order: s.order,
-    enabled: s.enabled,
-    eyebrow: s.eyebrow?.trim() || undefined,
-    title: s.title,
-    subtitle: s.subtitle,
-    cta: s.cta,
-    href: s.href,
-    secondaryCta: s.secondary_cta?.trim() || undefined,
-    secondaryHref: s.secondary_href?.trim() || undefined,
-    image: s.image,
-  }));
+  return (apiSlides || []).map((s, idx) => {
+    const img = (typeof s.image === 'string' ? s.image : '').trim();
+    return {
+      id: s.id,
+      order: s.order,
+      enabled: s.enabled,
+      eyebrow: s.eyebrow?.trim() || undefined,
+      title: s.title,
+      subtitle: s.subtitle,
+      cta: s.cta,
+      href: s.href,
+      secondaryCta: s.secondary_cta?.trim() || undefined,
+      secondaryHref: s.secondary_href?.trim() || undefined,
+      image: img || HERO_ROTATION[idx % HERO_ROTATION.length],
+    };
+  });
 }
 
 function mapTestimonials(raw: HomepageApiResponse['testimonials']): TestimonialsBlock {
   const fallback = defaultCmsSnapshot.testimonials;
   if (!raw) return fallback;
-  const items: TestimonialItem[] = (raw.items || []).map((t) => ({
-    id: t.id,
-    order: t.order,
-    enabled: t.enabled,
-    name: t.name,
-    roleTitle: t.role_title || '',
-    content: t.content || '',
-    rating: typeof t.rating === 'number' && t.rating > 0 ? t.rating : 5,
-    image: t.image || '',
-  }));
+  const items: TestimonialItem[] = (raw.items || []).map((t, i) => {
+    const face = (t.image || '').trim();
+    return {
+      id: t.id,
+      order: t.order,
+      enabled: t.enabled,
+      name: t.name,
+      roleTitle: t.role_title || '',
+      content: t.content || '',
+      rating: typeof t.rating === 'number' && t.rating > 0 ? t.rating : 5,
+      image: face || TESTIMONIAL_FACE_FALLBACKS[i % TESTIMONIAL_FACE_FALLBACKS.length],
+    };
+  });
   return {
     title: raw.title?.trim() || fallback.title,
     intro: raw.intro?.trim() || fallback.intro,

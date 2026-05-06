@@ -1,9 +1,8 @@
-import { useCallback, useState } from 'react';
 import { cn } from '@/lib/utils';
-import aboutFallback from '@/assets/hero-3.jpg';
+import { CmsImage } from '@/components/CmsImage';
 
 type AboutMediaVisualProps = {
-  /** Resolved URL from `cmsMediaSrc`; empty or failed load falls back to a bundled stock photo. */
+  /** Raw CMS path or URL (resolved inside `CmsImage`). */
   imageSrc: string;
   alt: string;
   className?: string;
@@ -14,14 +13,6 @@ type AboutMediaVisualProps = {
  * and a small accent square overlapping the corner — matches the marketing layout.
  */
 export function AboutMediaVisual({ imageSrc, alt, className }: AboutMediaVisualProps) {
-  const [broken, setBroken] = useState(false);
-  const primary = (imageSrc || '').trim();
-  const resolved = !primary || broken ? aboutFallback : primary;
-
-  const onImgError = useCallback(() => {
-    setBroken(true);
-  }, []);
-
   return (
     <div className={cn('relative min-w-0', className)}>
       <div
@@ -31,12 +22,12 @@ export function AboutMediaVisual({ imageSrc, alt, className }: AboutMediaVisualP
           'shadow-[0_22px_55px_-18px_rgba(15,23,42,0.16)] ring-1 ring-border/50',
         )}
       >
-        <img
-          src={resolved}
+        <CmsImage
+          src={imageSrc}
           alt={alt}
           className="w-full h-full object-cover min-h-[12rem]"
           loading="lazy"
-          onError={onImgError}
+          fallbackKind="about"
         />
       </div>
       <div

@@ -1,6 +1,6 @@
 import { Star, Quote } from 'lucide-react';
 import { useCms } from '@/store/cmsStore';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { CmsImage } from '@/components/CmsImage';
 
 const Testimonials = () => {
   const { testimonials } = useCms();
@@ -43,11 +43,13 @@ const Testimonials = () => {
               </p>
 
               <div className="flex items-center gap-3">
-                {testimonial.image ? (
-                  <img
-                    src={cmsMediaSrc(testimonial.image)}
+                {testimonial.image?.trim() ? (
+                  <CmsImage
+                    src={testimonial.image}
                     alt={testimonial.name}
                     className="w-12 h-12 rounded-full object-cover"
+                    fallbackKind="card"
+                    fillEmpty
                   />
                 ) : (
                   <div className="w-12 h-12 rounded-full bg-primary/10 text-primary-onBg flex items-center justify-center text-sm font-bold">

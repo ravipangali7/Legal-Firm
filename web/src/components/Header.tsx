@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { CmsImage, CmsAvatarImage } from '@/components/CmsImage';
 import { Menu, X, ChevronDown, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -133,7 +133,7 @@ const Header = () => {
 
   const byLabel = useMemo(() => new Map(navItems.map((n) => [n.label, n])), [navItems]);
 
-  const brandLogoSrc = config?.site_logo?.trim() ? cmsMediaSrc(config.site_logo) : defaultBrandLogo;
+  const brandLogoRaw = (config?.site_logo || '').trim();
   const brandName = (config?.site_name || 'TaxLexis').trim() || 'TaxLexis';
 
   const displayNav = useMemo(() => {
@@ -169,7 +169,13 @@ const Header = () => {
             : 'bg-white/95 backdrop-blur-md border-b border-border px-4 sm:px-6 py-3 dark:bg-background/95 dark:border-border'
         )}>
           <Link to="/" className="flex items-center gap-2 shrink-0">
-            <img src={brandLogoSrc} alt={brandName} className={cn('object-contain transition-all', scrolled ? 'h-9' : 'h-11')} />
+            <CmsImage
+              src={brandLogoRaw}
+              alt={brandName}
+              className={cn('object-contain transition-all', scrolled ? 'h-9' : 'h-11')}
+              fallbackSrc={defaultBrandLogo}
+              fallbackKind="brand"
+            />
           </Link>
 
           <nav className="hidden lg:flex flex-1 min-w-0 items-center justify-center gap-0.5 sm:gap-1 overflow-x-auto overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -214,7 +220,7 @@ const Header = () => {
                   }
                 >
                   <Avatar className="h-8 w-8 ring-2 ring-primary/15">
-                    {user.avatar ? <AvatarImage src={cmsMediaSrc(user.avatar)} alt="" /> : null}
+                    {user.avatar ? <CmsAvatarImage src={user.avatar} alt="" /> : null}
                     <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary-onBg">
                       {userInitials(user)}
                     </AvatarFallback>
@@ -303,7 +309,7 @@ const Header = () => {
                     }
                   >
                     <Avatar className="h-8 w-8 shrink-0">
-                      {user.avatar ? <AvatarImage src={cmsMediaSrc(user.avatar)} alt="" /> : null}
+                      {user.avatar ? <CmsAvatarImage src={user.avatar} alt="" /> : null}
                       <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary-onBg">
                         {userInitials(user)}
                       </AvatarFallback>

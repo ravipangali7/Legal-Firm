@@ -2,6 +2,15 @@ import { BACKEND_BASE_URL } from '@/lib/constants';
 
 const trimSlash = (u: string) => u.replace(/\/$/, '');
 
+/** Vite output or dev sources — must not be prefixed with the Django API origin. */
+function isSpaBundledAssetPath(s: string): boolean {
+  if (s.startsWith('/assets/')) return true;
+  if (import.meta.env.DEV && s.startsWith('/src/')) return true;
+  const base = trimSlash((import.meta.env.BASE_URL as string | undefined) || '/') || '/';
+  if (base !== '/' && s.startsWith(`${base}/assets/`)) return true;
+  return false;
+}
+
 /** API origin for resolving Django `/media/...` (and similar) on a different host than the SPA. */
 function mediaBaseOrigin(): string {
   const fromEnv = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
@@ -25,8 +34,7 @@ export function cmsMediaSrc(src: string): string {
   if (/^https?:\/\//i.test(s)) return s;
   if (s.startsWith('//')) return `https:${s}`;
   if (s.startsWith('/')) {
-    // Vite bundled images (e.g. seed slides / default about); never prefix with the API host.
-    if (s.startsWith('/assets/') || (import.meta.env.DEV && s.startsWith('/src/'))) {
+    if (isSpaBundledAssetPath(s)) {
       return s;
     }
     const base = mediaBaseOrigin();

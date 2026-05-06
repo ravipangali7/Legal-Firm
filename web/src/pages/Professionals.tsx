@@ -20,7 +20,8 @@ import { CmsStoreProvider, useCms, type TeamMember } from '@/store/cmsStore';
 import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
 import { professionalsPageQueryOptions } from '@/lib/professionalsPageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
-import { cmsMediaSrc, safeCmsExternalHref } from '@/lib/cmsAssetUrl';
+import { safeCmsExternalHref } from '@/lib/cmsAssetUrl';
+import { CmsImage } from '@/components/CmsImage';
 import type { ProfessionalsPageApi } from '@/lib/api';
 
 const STAT_ICONS: Record<string, LucideIcon> = {
@@ -165,7 +166,6 @@ function ProfessionalsBody({
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {team.map((p) => {
-                const img = cmsMediaSrc(p.avatar);
                 return (
                   <Card
                     key={p.id}
@@ -179,8 +179,15 @@ function ProfessionalsBody({
                         <div className="h-2 bg-gradient-to-r from-primary to-accent" />
                         <div className="p-6 text-center">
                           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary/60 text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-4 ring-4 ring-primary/10 group-hover:ring-primary/30 transition-all overflow-hidden">
-                            {img ? (
-                              <img src={img} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+                            {p.avatar?.trim() ? (
+                              <CmsImage
+                                src={p.avatar}
+                                alt={p.name}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                fallbackKind="card"
+                                fillEmpty
+                              />
                             ) : (
                               initials(p.name)
                             )}

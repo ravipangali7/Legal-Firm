@@ -2,7 +2,6 @@ import { HtmlPreview } from '@/components/HtmlPreview';
 import { AboutMediaVisual } from '@/components/about/AboutMediaVisual';
 import { useCms } from '@/store/cmsStore';
 import { cn } from '@/lib/utils';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
 
 const AboutBlock = () => {
   const { about } = useCms();
@@ -16,11 +15,10 @@ const AboutBlock = () => {
         : statCount === 3
           ? 'grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5'
           : 'grid-cols-2 gap-5 sm:gap-6';
-  const imgSrc = cmsMediaSrc(about.image || '');
   return (
     <section className="py-20 sm:py-24 bg-background overflow-x-hidden">
       <div className="container mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 lg:items-center lg:gap-16 max-w-6xl">
-        <AboutMediaVisual imageSrc={imgSrc} alt={about.title || 'About'} className="order-1" />
+        <AboutMediaVisual imageSrc={about.image || ''} alt={about.title || 'About'} className="order-1" />
         <div className="min-w-0 order-2 space-y-0">
           {about.eyebrow ? (
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>

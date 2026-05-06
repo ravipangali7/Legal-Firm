@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CmsStoreProvider, useCms } from '@/store/cmsStore';
 import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { CmsImage } from '@/components/CmsImage';
 import { SocialRow, initials } from './Professionals';
 
 function ProfessionalDetailBody({ loadError, memberId }: { loadError: boolean; memberId: string }) {
@@ -19,8 +19,6 @@ function ProfessionalDetailBody({ loadError, memberId }: { loadError: boolean; m
   );
   const id = decodeURIComponent(memberId);
   const member = team.find((m) => m.id === id);
-  const img = member ? cmsMediaSrc(member.avatar) : '';
-
   if (!member) {
     return (
       <main className="pt-28 pb-16 px-4 flex-1">
@@ -53,8 +51,15 @@ function ProfessionalDetailBody({ loadError, memberId }: { loadError: boolean; m
           </Button>
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
             <div className="w-28 h-28 shrink-0 rounded-full bg-primary-foreground/15 ring-4 ring-primary-foreground/20 flex items-center justify-center text-3xl font-bold overflow-hidden">
-              {img ? (
-                <img src={img} alt={member.name} className="w-full h-full object-cover" loading="eager" />
+              {member.avatar?.trim() ? (
+                <CmsImage
+                  src={member.avatar}
+                  alt={member.name}
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                  fallbackKind="card"
+                  fillEmpty
+                />
               ) : (
                 initials(member.name)
               )}

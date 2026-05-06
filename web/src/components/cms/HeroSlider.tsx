@@ -4,7 +4,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCms } from '@/store/cmsStore';
 import { cn } from '@/lib/utils';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { CmsImage } from '@/components/CmsImage';
 
 const HeroSlider = () => {
   const { slides } = useCms();
@@ -29,7 +29,13 @@ const HeroSlider = () => {
     <section className="relative h-[88vh] min-h-[560px] max-h-[820px] overflow-hidden pt-[72px] sm:pt-20">
       {visible.map((slide, idx) => (
         <div key={slide.id} className={cn('absolute inset-0 transition-opacity duration-1000', idx === i ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
-          <img src={cmsMediaSrc(slide.image)} alt="" className="absolute inset-0 w-full h-full object-cover scale-105" loading={idx === 0 ? 'eager' : 'lazy'} />
+          <CmsImage
+            src={slide.image}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover scale-105"
+            loading={idx === 0 ? 'eager' : 'lazy'}
+            fallbackKind="hero"
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-primary/[0.94] via-primary/75 to-primary/35" />
           <div className="absolute inset-0 bg-gradient-to-t from-primary/65 via-transparent to-transparent" />
           {/* Lady Justice–style emphasis on the right: extra depth for legal hero stock photos */}

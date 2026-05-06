@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useCms } from '@/store/cmsStore';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { CmsImage } from '@/components/CmsImage';
 
 const initials = (n: string) => n.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
@@ -23,8 +23,15 @@ const TeamGrid = () => {
               className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-elegant transition-all block text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="aspect-square bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground">
-                {m.avatar ? (
-                  <img src={cmsMediaSrc(m.avatar)} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
+                {m.avatar?.trim() ? (
+                  <CmsImage
+                    src={m.avatar}
+                    alt={m.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    fallbackKind="card"
+                    fillEmpty
+                  />
                 ) : (
                   <span className="text-4xl font-bold">{initials(m.name)}</span>
                 )}

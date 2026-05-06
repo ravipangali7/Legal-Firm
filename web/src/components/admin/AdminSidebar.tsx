@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import fallbackSidebarLogo from '@/assets/logo.png';
 import { useAdminStore } from '@/store/adminStore';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { CmsImage } from '@/components/CmsImage';
 import { useAuth } from '@/context/AuthContext';
 import { evaluateAdminModulePerm } from '@/lib/adminPermissionUtil';
 import {
@@ -140,11 +140,7 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: AdminSidebarProps) => {
   const { users, notifications, supportTickets, roles, settings } = useAdminStore();
   const [logoutOpen, setLogoutOpen] = useState(false);
 
-  const sidebarLogoSrc = useMemo(() => {
-    const raw = settings.siteLogo?.trim();
-    if (raw) return cmsMediaSrc(raw);
-    return fallbackSidebarLogo;
-  }, [settings.siteLogo]);
+  const sidebarLogoRaw = (settings.siteLogo || '').trim();
 
   const sidebarLogoAlt = (settings.siteName || 'Admin').trim() || 'Site logo';
 
@@ -204,13 +200,15 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: AdminSidebarProps) => {
           collapsed ? 'justify-center' : 'gap-3'
         )}>
           <Link to="/admin" className="flex items-center gap-3">
-            <img
-              src={sidebarLogoSrc}
+            <CmsImage
+              src={sidebarLogoRaw}
               alt={sidebarLogoAlt}
               className={cn(
                 'object-contain transition-all duration-300',
                 collapsed ? 'h-10 w-10' : 'h-10'
               )}
+              fallbackSrc={fallbackSidebarLogo}
+              fallbackKind="brand"
             />
           </Link>
         </div>

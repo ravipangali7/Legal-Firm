@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X } from 'lucide-react';
 import { fileToDataUrl } from '@/store/cmsStore';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { CmsImage } from '@/components/CmsImage';
 
 interface Props {
   value: string;
@@ -14,8 +14,6 @@ interface Props {
 
 const ImageInput = ({ value, onChange, label = 'Image', accept = 'image/*' }: Props) => {
   const ref = useRef<HTMLInputElement>(null);
-  const previewSrc = value ? (value.startsWith('data:') ? value : cmsMediaSrc(value)) : '';
-
   const onFile = async (f?: File | null) => {
     if (!f) return;
     onChange(await fileToDataUrl(f));
@@ -28,8 +26,14 @@ const ImageInput = ({ value, onChange, label = 'Image', accept = 'image/*' }: Pr
       <div className="text-sm font-medium">{label}</div>
       <div className="flex gap-3 items-start">
         <div className="w-24 h-16 rounded border bg-muted overflow-hidden flex-shrink-0">
-          {previewSrc ? (
-            <img src={previewSrc} alt="" className="w-full h-full object-cover" />
+          {value ? (
+            <CmsImage
+              src={value}
+              alt=""
+              className="w-full h-full object-cover"
+              fillEmpty={false}
+              fallbackKind="card"
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">No image</div>
           )}

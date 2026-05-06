@@ -12,7 +12,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { CmsAvatarImage } from '@/components/CmsImage';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +40,6 @@ import type { UserRole } from './AdminSidebar';
 import { useAdminStore } from '@/store/adminStore';
 import { useAuth } from '@/context/AuthContext';
 import { navigateToNotificationTarget } from '@/lib/adminNotificationNav';
-import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
 import { SiteThemeToggle } from '@/components/SiteThemeToggle';
 
 function formatRelativeTime(iso: string): string {
@@ -86,13 +86,13 @@ const AdminHeader = ({ sidebarCollapsed, onMobileMenuToggle, currentRole }: Admi
     return users.find((u) => u.role === currentRole) ?? users[0];
   }, [users, currentRole, authUser?.id, authUser?.is_staff]);
 
-  /** Same as subscriber UI: media paths are API-relative; SPA on :8080 must prefix API origin. */
-  const headerAvatarSrc = useMemo(() => {
+  /** Raw media path / URL for `CmsAvatarImage` (same precedence as before). */
+  const headerAvatarRaw = useMemo(() => {
     const fromRow = displayUser?.avatar?.trim();
-    if (fromRow) return cmsMediaSrc(fromRow);
+    if (fromRow) return displayUser?.avatar ?? '';
     if (authUser?.is_staff && displayUser && authUser.id === displayUser.id) {
       const fromMe = authUser.avatar?.trim();
-      if (fromMe) return cmsMediaSrc(fromMe);
+      if (fromMe) return authUser.avatar;
     }
     return '';
   }, [displayUser, authUser?.is_staff, authUser?.id, authUser?.avatar]);
@@ -221,7 +221,7 @@ const AdminHeader = ({ sidebarCollapsed, onMobileMenuToggle, currentRole }: Admi
               className="flex items-center gap-2 pl-2 pr-1 h-10 rounded-l-lg hover:bg-accent/60 transition-colors max-w-[200px]"
             >
               <Avatar className="h-8 w-8 shrink-0">
-                {headerAvatarSrc ? <AvatarImage src={headerAvatarSrc} alt="" /> : null}
+                {headerAvatarRaw ? <CmsAvatarImage src={headerAvatarRaw} alt="" /> : null}
                 <AvatarFallback className="bg-primary/10 text-primary-onBg font-semibold text-xs">
                   {(displayUser?.name ?? 'Admin')
                     .split(' ')
