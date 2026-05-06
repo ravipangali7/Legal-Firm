@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Loader2, LayoutGrid, LayoutList, Plus } from 'lucide-react';
+import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
 import { cn } from '@/lib/utils';
 import { useCmsPageSave } from '@/hooks/useCmsPageSave';
 
@@ -84,7 +85,9 @@ export function CmsThumb({
   alt: string;
   className?: string;
 }) {
-  const has = Boolean(src && src.trim());
+  const raw = (src || '').trim();
+  const has = Boolean(raw);
+  const resolved = has ? cmsMediaSrc(raw) : '';
   return (
     <div
       className={cn(
@@ -93,7 +96,7 @@ export function CmsThumb({
       )}
     >
       {has ? (
-        <img src={src} alt="" className="h-full w-full object-cover" />
+        <img src={resolved} alt="" className="h-full w-full object-cover" />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-muted-foreground px-1 text-center leading-tight">
           No image

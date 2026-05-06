@@ -190,7 +190,9 @@ STATIC_URL = 'static/'
 # ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-MEDIA_URL = 'media/'
+# Leading slash so `FileField.url` is root-relative (`/media/...`). A bare `media/...`
+# URL breaks on nested SPA routes (e.g. `/news/<id>` resolves to `/news/media/...`).
+MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Google Sign-In (OAuth 2.0 Web client ID). Public; also returned by `/api/public/config/` for the SPA.

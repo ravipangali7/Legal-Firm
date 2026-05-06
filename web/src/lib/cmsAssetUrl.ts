@@ -16,7 +16,11 @@ function mediaBaseOrigin(): string {
  * production builds without that env, `BACKEND_BASE_URL`.
  */
 export function cmsMediaSrc(src: string): string {
-  const s = (src || '').trim();
+  let s = (src || '').trim();
+  // Legacy Django `MEDIA_URL = 'media/'` produced path-relative URLs; normalize for nested routes.
+  if (s.startsWith('media/')) {
+    s = `/${s}`;
+  }
   if (!s || s.startsWith('data:')) return s;
   if (/^https?:\/\//i.test(s)) return s;
   if (s.startsWith('//')) return `https:${s}`;
