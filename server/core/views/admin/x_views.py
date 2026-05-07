@@ -84,7 +84,6 @@ from core.staff_notifications import fan_out_broadcast_in_app, sync_broadcast_me
 from core.project_notifications import notify_client_assigned_to_project
 from core.subscription_service import revoke_user_subscription_entitlements
 from core.rbac import require_admin_perm, require_clients_list_or_users_edit
-from core.sync_user_client import sync_crm_client_for_user
 from core.views.knowledge_resource_pdf import resolve_knowledge_resource_pdf
 
 User = get_user_model()
@@ -152,7 +151,6 @@ def admin_users(request):
     if not ser.is_valid():
         return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
     user = ser.save()
-    sync_crm_client_for_user(user)
     return Response(UserAdminSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
@@ -185,9 +183,6 @@ def admin_user_detail(request, user_id: int):
                 )
 
         ser.save()
-        # Ensure CRM Client upsert after role/profile writes (serializer also syncs; this
-        # runs after the full save() so the admin UI snapshot always sees the new row).
-        sync_crm_client_for_user(user)
         if new_status == User.Status.SUSPENDED and prev_status != User.Status.SUSPENDED:
             send_user_suspension_sms(user, suspension_reason)
         return Response(UserAdminSerializer(user).data)

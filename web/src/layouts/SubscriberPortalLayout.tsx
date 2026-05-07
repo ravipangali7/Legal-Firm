@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -11,7 +11,17 @@ import {
 } from '@/lib/userDisplay';
 import { fetchAuthDashboard, type AuthDashboardNotification, type AuthMeUser } from '@/lib/api';
 import { subscriberHubHeaderTitle, subscriberHubPath } from '@/lib/subscriberPortalPaths';
-import { Bell, LogOut, Menu } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Bell,
+  FolderKanban,
+  HelpCircle,
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  Menu,
+  Settings,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -33,11 +43,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
 import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
-import {
-  buildPortalSidebarItems,
-  PORTAL_NAV_SECTION_LABEL,
-  PORTAL_NAV_SECTION_ORDER,
-} from '@/lib/portalSidebarNav';
 
 const NOTIF_QUEUE_PARAM = 'notif_queue';
 
@@ -66,6 +71,15 @@ function notificationTypeBadge(type: string | null | undefined): { label: string
   return { label: 'Info', className: 'bg-blue-100 text-blue-900 dark:bg-blue-900/40 dark:text-blue-100' };
 }
 
+type NavItem = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  end?: boolean;
+  /** Admin Roles module name; omitted = always shown */
+  permModule?: string;
+};
+
 function SidebarNav({
   hubPath,
   user,
@@ -77,7 +91,17 @@ function SidebarNav({
   onNavigate?: () => void;
   className?: string;
 }) {
-  const navItems = useMemo(() => buildPortalSidebarItems(user, hubPath), [user, hubPath]);
+  const mainItemsAll: NavItem[] = [
+    { to: hubPath, label: hubPath === '/client' ? 'Client home' : 'Dashboard', icon: LayoutDashboard, end: true, permModule: PORTAL_PERM_MODULES.dashboard },
+    { to: `${hubPath}/notifications`, label: 'Notifications', icon: Bell, permModule: PORTAL_PERM_MODULES.notifications },
+    { to: `${hubPath}/projects`, label: 'Projects', icon: FolderKanban, permModule: PORTAL_PERM_MODULES.projects },
+    { to: `${hubPath}/profile`, label: 'Settings', icon: Settings, permModule: PORTAL_PERM_MODULES.profile },
+    { to: `${hubPath}/help`, label: 'Help', icon: HelpCircle, permModule: PORTAL_PERM_MODULES.help },
+  ];
+  const mainItems = mainItemsAll.filter((item) => !item.permModule || evaluatePortalModuleView(user, item.permModule));
+
+  const showSupportNav = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.support);
+  const siteSectionVisible = showSupportNav;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -87,32 +111,38 @@ function SidebarNav({
         : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
     );
 
-  const sectionBlocks = PORTAL_NAV_SECTION_ORDER.flatMap((section) => {
-    const sectionItems = navItems.filter((i) => i.section === section);
-    if (!sectionItems.length) return [];
-    return [{ section, items: sectionItems } as const];
-  });
-
   return (
     <nav className={cn('flex flex-col gap-1 p-3', className)} aria-label="Portal navigation">
-      {sectionBlocks.map((block, idx) => (
-        <div key={block.section}>
-          <p
-            className={cn(
-              'px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground',
-              idx > 0 && 'mt-4',
-            )}
-          >
-            {PORTAL_NAV_SECTION_LABEL[block.section]}
-          </p>
-          {block.items.map((item) => (
-            <NavLink key={item.key} to={item.to} end={item.end} className={linkClass} onClick={onNavigate}>
+      {mainItems.length ? (
+        <>
+          <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overview</p>
+          {mainItems.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end} className={linkClass} onClick={onNavigate}>
               <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
             </NavLink>
           ))}
-        </div>
-      ))}
+        </>
+      ) : null}
+
+      {siteSectionVisible ? (
+        <>
+          <p
+            className={cn(
+              'px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground',
+              mainItems.length ? 'mt-4' : '',
+            )}
+          >
+            Site
+          </p>
+          {showSupportNav ? (
+            <NavLink to={`${hubPath}/support`} className={linkClass} onClick={onNavigate}>
+              <LifeBuoy className="h-4 w-4 shrink-0" />
+              Support
+            </NavLink>
+          ) : null}
+        </>
+      ) : null}
     </nav>
   );
 }

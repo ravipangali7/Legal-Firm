@@ -926,12 +926,6 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
         }
         await adminPatch(`users/${id}/`, body);
         await refreshFromApi();
-        // CRM Client rows are upserted when role becomes client; a second snapshot pass
-        // avoids stale empty Clients after read-replica / transaction visibility lag.
-        if (patch.role === 'client') {
-          await new Promise((r) => setTimeout(r, 250));
-          await refreshFromApi();
-        }
         pushAudit({
           action: 'update',
           entityType: 'User',

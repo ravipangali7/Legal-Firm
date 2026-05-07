@@ -41,7 +41,6 @@ import SubscriberNotificationDetail from "./pages/SubscriberNotificationDetail";
 import SubscriberProfile from "./pages/SubscriberProfile";
 import SubscriberHelpPortal from "./pages/SubscriberHelpPortal";
 import SubscriberSupportPortal from "./pages/SubscriberSupportPortal";
-import SubscriberPortalAccess from "./pages/SubscriberPortalAccess";
 import SubscriberPortalLayout from "./layouts/SubscriberPortalLayout";
 import FreeAccount from "./pages/FreeAccount";
 
@@ -223,7 +222,6 @@ const AppRoutes = () => {
             <Route path="profile" element={<SubscriberProfile />} />
             <Route path="help" element={<SubscriberHelpPortal />} />
             <Route path="support" element={<SubscriberSupportPortal />} />
-            <Route path="access" element={<SubscriberPortalAccess />} />
           </Route>
           <Route
             path="/client"
@@ -242,7 +240,6 @@ const AppRoutes = () => {
             <Route path="profile" element={<SubscriberProfile />} />
             <Route path="help" element={<SubscriberHelpPortal />} />
             <Route path="support" element={<SubscriberSupportPortal />} />
-            <Route path="access" element={<SubscriberPortalAccess />} />
           </Route>
           <Route
             path="/account"
