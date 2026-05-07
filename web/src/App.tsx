@@ -39,6 +39,7 @@ import BackToTop from "./components/BackToTop";
 import SubscriberDashboard from "./pages/SubscriberDashboard";
 import SubscriberNotificationDetail from "./pages/SubscriberNotificationDetail";
 import SubscriberProfile from "./pages/SubscriberProfile";
+import SubscriberPortalLayout from "./layouts/SubscriberPortalLayout";
 import FreeAccount from "./pages/FreeAccount";
 
 // Admin
@@ -201,67 +202,35 @@ const AppRoutes = () => {
           <Route path="/notices/:slug" element={<NoticeDetail />} />
           <Route path="/notices" element={<Notices />} />
 
-          {/* User dashboards (session required) */}
+          {/* User & client portals — shared sidebar layout + RBAC hub guard */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
                 <SubscriberPortalRoleGuard>
-                  <SubscriberDashboard />
+                  <SubscriberPortalLayout />
                 </SubscriberPortalRoleGuard>
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/dashboard/notifications/:id"
-            element={
-              <ProtectedRoute>
-                <SubscriberPortalRoleGuard>
-                  <SubscriberNotificationDetail />
-                </SubscriberPortalRoleGuard>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/profile"
-            element={
-              <ProtectedRoute>
-                <SubscriberPortalRoleGuard>
-                  <SubscriberProfile />
-                </SubscriberPortalRoleGuard>
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route index element={<SubscriberDashboard />} />
+            <Route path="notifications/:id" element={<SubscriberNotificationDetail />} />
+            <Route path="profile" element={<SubscriberProfile />} />
+          </Route>
           <Route
             path="/client"
             element={
               <ProtectedRoute>
                 <SubscriberPortalRoleGuard>
-                  <SubscriberDashboard />
+                  <SubscriberPortalLayout />
                 </SubscriberPortalRoleGuard>
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/client/notifications/:id"
-            element={
-              <ProtectedRoute>
-                <SubscriberPortalRoleGuard>
-                  <SubscriberNotificationDetail />
-                </SubscriberPortalRoleGuard>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/client/profile"
-            element={
-              <ProtectedRoute>
-                <SubscriberPortalRoleGuard>
-                  <SubscriberProfile />
-                </SubscriberPortalRoleGuard>
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route index element={<SubscriberDashboard />} />
+            <Route path="notifications/:id" element={<SubscriberNotificationDetail />} />
+            <Route path="profile" element={<SubscriberProfile />} />
+          </Route>
           <Route
             path="/account"
             element={

@@ -1,17 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { useSiteConfig } from '@/context/SiteConfigContext';
 import {
-  accountTypeDisplayLine,
   firstGreetingName,
   planTierLabel,
   roleDisplayLabel,
   subscriberDashboardSubtitle,
-  userDisplayName,
-  userInitials,
 } from '@/lib/userDisplay';
 import { fetchAuthDashboard, type AuthDashboardPayload, type AuthDashboardNotification, type AuthMeUser } from '@/lib/api';
 import {
@@ -23,14 +20,13 @@ import {
   hasPremiumBillingActive,
   shouldRecommendRenewal,
 } from '@/lib/subscriptionAccess';
-import { subscriberHubHeaderTitle, subscriberHubPath } from '@/lib/subscriberPortalPaths';
+import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
 import type { LucideIcon } from 'lucide-react';
 import {
   BookOpen,
   FileText,
   Bell,
   LifeBuoy,
-  LogOut,
   Calculator,
   Scale,
   Clock,
@@ -41,25 +37,10 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { CmsAvatarImage } from '@/components/CmsImage';
-import logo from '@/assets/logo-icon.png';
-import { useToast } from '@/hooks/use-toast';
-import { SiteThemeToggle } from '@/components/SiteThemeToggle';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import DashboardWalletForm, { type WalletBillingCycle } from '@/components/dashboard/DashboardWalletForm';
 import { DashboardStatCard } from '@/components/dashboard/DashboardStatCard';
@@ -216,10 +197,8 @@ const SubscriberDashboard = () => {
   const queryClient = useQueryClient();
   const { config, loading: siteConfigLoading } = useSiteConfig();
   const { toast } = useToast();
-  const [signOutOpen, setSignOutOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const notifSigRef = useRef<string>('');
-  const { user, logout, refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const tabParam = normalizeDashboardTabParam(searchParams.get('tab'));
   const activeTab = tabParam && DASH_TABS.has(tabParam) ? tabParam : 'activity';
@@ -262,7 +241,6 @@ const SubscriberDashboard = () => {
       },
       { replace: true }
     );
-    setNotifOpen(false);
   };
 
   const openNotificationDetailFromTab = (n: AuthDashboardNotification) => {
@@ -397,7 +375,6 @@ const SubscriberDashboard = () => {
   const hasLibraryAccess = hasLibraryEntitlement(user);
   const premiumActive = hasPremiumBillingActive(user);
   const renewRecommended = shouldRecommendRenewal(user);
-  const unread = typeof user.unread_notifications_count === 'number' ? user.unread_notifications_count : 0;
   const progressVal = libraryProgressValue(user);
 
   const benefitsEndLabel = safeFormatDate(user.plan_benefits_end ?? null);
@@ -440,167 +417,7 @@ const SubscriberDashboard = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-background">
-      {user.is_staff ? (
-        <div className="border-b border-primary/20 bg-primary/5">
-          <div className="max-w-7xl mx-auto px-4 py-2.5 text-sm text-muted-foreground flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center sm:text-left sm:justify-start">
-            <span>
-              You are signed in as <span className="font-medium text-foreground">{roleDisplayLabel(user.role)}</span> (staff). Site
-              management and role-based tools live in the admin panel.
-            </span>
-            <Link to="/admin" className="font-medium text-primary-onBg underline-offset-4 hover:underline shrink-0">
-              Open admin panel
-            </Link>
-          </div>
-        </div>
-      ) : null}
-      <header className="border-b bg-card sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
-          <Link to="/" className="flex items-center gap-2 min-w-0">
-            <img src={logo} alt="" className="h-8 w-8 shrink-0" />
-            <div className="flex flex-col min-w-0 leading-tight">
-              <span className="font-bold text-lg">{subscriberHubHeaderTitle(location.pathname, user)}</span>
-              <span className="text-[11px] text-muted-foreground truncate">
-                {hubPath === '/client'
-                  ? `${roleDisplayLabel(user.role)} · ${accountTypeDisplayLine(user)}`
-                  : user.is_staff
-                    ? `${roleDisplayLabel(user.role)} · ${accountTypeDisplayLine(user)}`
-                    : accountTypeDisplayLine(user)}
-              </span>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <SiteThemeToggle />
-            <Popover open={notifOpen} onOpenChange={setNotifOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" type="button">
-                  <Bell className="h-5 w-5" />
-                  {unread > 0 ? (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-0.5 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
-                      {unread > 9 ? '9+' : unread}
-                    </span>
-                  ) : null}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-0 text-popover-foreground bg-popover border-border">
-                <div className="p-3 border-b border-border">
-                  <h4 className="text-sm font-semibold">Notifications</h4>
-                  <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
-                    Tap an item to add it to the Notifications tab on this page. Open the full message from that tab.
-                  </p>
-                </div>
-                <div className="max-h-[min(22rem,calc(100vh-12rem))] overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <p className="px-3 py-4 text-xs text-muted-foreground text-center">No notifications yet.</p>
-                  ) : (
-                    notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => enqueueBellNotification(n.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            enqueueBellNotification(n.id);
-                          }
-                        }}
-                        className={cn(
-                          'flex items-start gap-3 p-3 mx-1 mb-1 rounded-md border border-transparent hover:bg-accent/50 transition-colors cursor-pointer text-left',
-                          !n.read && 'bg-primary/5'
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            'h-2 w-2 rounded-full mt-2 shrink-0',
-                            n.read ? 'bg-muted-foreground/50' : 'bg-primary'
-                          )}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className={cn('text-sm', !n.read && 'font-medium')}>{n.title}</p>
-                            <Badge className={cn('h-5 px-1.5 text-[10px]', notificationTypeBadge(n.type).className)}>
-                              {notificationTypeBadge(n.type).label}
-                            </Badge>
-                          </div>
-                          {n.body ? (
-                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
-                          ) : null}
-                          <p className="text-xs text-muted-foreground mt-1">{safeFormatDistance(n.created_at)}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <div className="p-2 border-t border-border">
-                  <Button variant="ghost" size="sm" className="w-full text-primary-onBg h-9 text-xs" asChild>
-                    <Link to={`${hubPath}?tab=notifications`} onClick={() => setNotifOpen(false)}>
-                      {hubPath === '/client' ? 'View on client portal' : 'View on dashboard'}
-                    </Link>
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-            <button
-              type="button"
-              onClick={() => navigate(`${hubPath}/profile`)}
-              className="flex items-center gap-2 rounded-lg pr-1 py-0.5 pl-1 sm:pl-2 -mr-0.5 text-left hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Open profile settings"
-            >
-              <div className="hidden sm:flex flex-col items-end max-w-[180px] mr-0.5">
-                <span className="text-sm font-medium truncate w-full text-end">{userDisplayName(user)}</span>
-                <span className="text-xs text-muted-foreground">{roleDisplayLabel(user.role)}</span>
-              </div>
-              <Avatar className="h-9 w-9 ring-2 ring-primary/20 shrink-0">
-                {user.avatar ? <CmsAvatarImage src={user.avatar} alt="" /> : null}
-                <AvatarFallback className="bg-primary text-primary-foreground font-bold">{userInitials(user)}</AvatarFallback>
-              </Avatar>
-            </button>
-            <Button variant="ghost" size="sm" type="button" onClick={() => setSignOutOpen(true)}>
-              <LogOut className="h-4 w-4 mr-2" />Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <AlertDialog open={signOutOpen} onOpenChange={setSignOutOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Sign out?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You will be signed out on this device. To use your account again, you will need to sign in with your email,
-              phone code, or Google account.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
-            <Button
-              type="button"
-              variant="destructive"
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                void (async () => {
-                  try {
-                    await logout();
-                    setSignOutOpen(false);
-                    navigate('/login');
-                  } catch (e) {
-                    toast({
-                      title: 'Could not sign out',
-                      description: e instanceof Error ? e.message : 'Try again in a moment.',
-                      variant: 'destructive',
-                    });
-                  }
-                })();
-              }}
-            >
-              Sign out
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8 w-full">
         {hasPendingVerification ? (
           <Alert className="border-amber-500/40 bg-amber-50/80 text-amber-950 dark:bg-amber-950/30 dark:text-amber-50 dark:border-amber-800/60">
             <AlertTriangle className="h-4 w-4" />
@@ -957,7 +774,6 @@ const SubscriberDashboard = () => {
             </Button>
           </CardContent>
         </Card>
-      </main>
     </div>
   );
 };
