@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, MoreHorizontal, Eye, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,14 +13,63 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
-import { useAdminStore, type Project } from '@/store/adminStore';
+import { useAdminStore, type Project, type Client, type AdminUser } from '@/store/adminStore';
 
 const empty: Omit<Project, 'id' | 'progress'> = {
   name: '', client: '', type: '', status: 'planning', dueDate: '', team: [],
 };
 
+type ProjectClientOption = { key: string; value: string; label: string; disabled?: boolean };
+
+/** CRM rows for accounts with the Client role, plus optional CRM-only row when editing/assigning an existing project. */
+function buildProjectClientSelectOptions(
+  users: AdminUser[],
+  clients: Client[],
+  hintCompany: string | null | undefined
+): ProjectClientOption[] {
+  const out: ProjectClientOption[] = [];
+  const seen = new Set<string>();
+  const push = (o: ProjectClientOption) => {
+    if (seen.has(o.value)) return;
+    seen.add(o.value);
+    out.push(o);
+  };
+
+  if (hintCompany) {
+    const cur = clients.find((c) => c.company === hintCompany);
+    if (cur) {
+      const linked = users.some(
+        (u) =>
+          u.role === 'client' &&
+          (u.email || '').trim().toLowerCase() === cur.email.trim().toLowerCase()
+      );
+      if (!linked) {
+        push({
+          key: `crm-${cur.id}`,
+          value: cur.company,
+          label: `${cur.company} (CRM record, no Client-role login)`,
+        });
+      }
+    }
+  }
+
+  for (const u of users) {
+    if (u.role !== 'client' || !(u.email || '').trim()) continue;
+    const em = u.email.trim().toLowerCase();
+    const row = clients.find((c) => c.email.trim().toLowerCase() === em);
+    const value = row?.company ?? u.email.trim();
+    const label = row
+      ? `${row.company} (${u.email})`
+      : `${(u.name || '').trim() || u.email} — refresh admin data after assigning Client role`;
+    push({ key: u.id, value, label, disabled: !row });
+  }
+
+  return out;
+}
+
 const AdminProjects = () => {
-  const { projects, clients, addProject, updateProject, deleteProject, assignProjectClient, apiConnected } = useAdminStore();
+  const { projects, clients, users, addProject, updateProject, deleteProject, assignProjectClient, apiConnected } =
+    useAdminStore();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -46,6 +95,24 @@ const AdminProjects = () => {
     return ms && mst;
   }), [projects, search, statusFilter]);
 
+  const projectDialogClientOptions = useMemo(
+    () => buildProjectClientSelectOptions(users, clients, open && editing ? editing.client : null),
+    [users, clients, open, editing]
+  );
+
+  const assignDialogClientOptions = useMemo(
+    () => buildProjectClientSelectOptions(users, clients, assignTarget?.client),
+    [users, clients, assignTarget?.client]
+  );
+
+  const renderClientSelectItems = useCallback((opts: ProjectClientOption[]) => {
+    return opts.map((o) => (
+      <SelectItem key={o.key} value={o.value} disabled={o.disabled}>
+        {o.label}
+      </SelectItem>
+    ));
+  }, []);
+
   const openAdd = () => { setEditing(null); setForm(empty); setProgress(0); setOpen(true); };
   const openEdit = (p: Project) => { setEditing(p); setForm({ name: p.name, client: p.client, type: p.type, status: p.status, dueDate: p.dueDate, team: p.team }); setProgress(p.progress); setOpen(true); };
 
@@ -58,7 +125,7 @@ const AdminProjects = () => {
         await updateProject(editing.id, { ...projectPatch, progress });
         toast({ title: 'Project updated' });
       } else {
-        addProject(form);
+        await addProject(form);
         toast({ title: 'Project created' });
       }
       setOpen(false);
@@ -166,13 +233,7 @@ const AdminProjects = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Select a client" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.company}>
-                        {c.company}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectContent>{renderClientSelectItems(assignDialogClientOptions)}</SelectContent>
                 </Select>
               </div>
             </div>
@@ -223,7 +284,7 @@ const AdminProjects = () => {
                 <Label>Client</Label>
                 <Select value={form.client} onValueChange={(v) => setForm({ ...form, client: v })}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.company}>{c.company}</SelectItem>)}</SelectContent>
+                  <SelectContent>{renderClientSelectItems(projectDialogClientOptions)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Type</Label><Input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} placeholder="Tax / Corporate / IP..." /></div>

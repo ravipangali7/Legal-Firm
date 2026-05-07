@@ -1044,6 +1044,14 @@ export async function fetchPublicHelpArticles(category?: string | null): Promise
   return r.json();
 }
 
+/** Published help for signed-in portal users (session cookie; same payload as `fetchPublicHelpArticles`). */
+export async function fetchAuthHelpArticles(category?: string | null): Promise<PublicHelpArticle[]> {
+  const q = category?.trim() ? `?category=${encodeURIComponent(category.trim())}` : '';
+  const r = await sessionFetch(`/api/auth/help-articles/${q}`);
+  if (!r.ok) throw new Error(`help-articles ${r.status}`);
+  return r.json();
+}
+
 export async function fetchPublicBlogPost(id: string): Promise<BlogPostPublicDetail | null> {
   const r = await fetch(apiUrl(`/api/blog-posts/${encodeURIComponent(id)}/`), { credentials: 'omit' });
   if (r.status === 404) return null;

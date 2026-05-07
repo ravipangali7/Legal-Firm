@@ -755,6 +755,28 @@ def auth_me(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+def auth_help_articles(request):
+    """
+    Published help articles for the subscriber shell (/client/help, /dashboard/help).
+
+    Uses the session cookie like other /api/auth/* routes so the portal does not rely on
+    anonymous cross-origin fetches to /api/public/help-articles/.
+    """
+    refresh_user_entitlements(request.user)
+    if not portal_module_perm(request.user, "Help", "view"):
+        return Response(
+            {"detail": "You do not have permission to view help articles."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    qs = HelpArticle.objects.filter(published=True).order_by("sort_order", "title")
+    cat = (request.query_params.get("category") or "").strip()
+    if cat:
+        qs = qs.filter(category=cat)
+    return Response(HelpArticleSerializer(qs, many=True).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def auth_dashboard(request):
     """Activity, notifications, billing, and catalog counts for the current session."""
     refresh_user_entitlements(request.user)

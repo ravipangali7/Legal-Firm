@@ -47,6 +47,7 @@ urlpatterns = [
     path("auth/logout/", home_views.auth_logout),
     path("auth/stop-impersonate/", home_views.auth_stop_impersonate),
     path("auth/me/", home_views.auth_me),
+    path("auth/help-articles/", home_views.auth_help_articles),
     path("auth/dashboard/", home_views.auth_dashboard),
     path("auth/my-contact-messages/", home_views.auth_my_contact_messages),
     path("auth/my-projects/", home_views.auth_my_projects),

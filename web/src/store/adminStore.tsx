@@ -489,6 +489,18 @@ function mapMeToAdminUser(u: AuthMeUser): AdminUser {
   };
 }
 
+/** Match project form / assign-dialog value (CRM company name, account email, or client id) to a Client row. */
+function resolveClientFromProjectPicker(clients: Client[], token: string): Client | undefined {
+  const t = (token || '').trim();
+  if (!t) return undefined;
+  const byId = clients.find((c) => c.id === t);
+  if (byId) return byId;
+  const byCompany = clients.find((c) => c.company === t);
+  if (byCompany) return byCompany;
+  const tl = t.toLowerCase();
+  return clients.find((c) => c.email.trim().toLowerCase() === tl);
+}
+
 // ============ Context ============
 interface AdminStore {
   currentRole: UserRole; setCurrentRole: (r: UserRole) => void;
@@ -507,10 +519,10 @@ interface AdminStore {
   deleteTransaction: (id: string) => void;
   clients: Client[]; addClient: (c: Omit<Client, 'id' | 'joinedAt' | 'activeProjects'>) => void; updateClient: (id: string, patch: Partial<Client>) => void; deleteClient: (id: string) => void;
   projects: Project[];
-  addProject: (p: Omit<Project, 'id' | 'progress'>) => void;
+  addProject: (p: Omit<Project, 'id' | 'progress'>) => Promise<void>;
   updateProject: (id: string, patch: Partial<Project>) => Promise<void>;
   /** PATCH project client only; awaits API when connected so the server can send notifications. */
-  assignProjectClient: (projectId: string, clientCompany: string) => Promise<void>;
+  assignProjectClient: (projectId: string, clientPickerValue: string) => Promise<void>;
   deleteProject: (id: string) => void;
   plans: PricingPlan[]; addPlan: (p: Omit<PricingPlan, 'id'>) => void; updatePlan: (id: string, patch: Partial<PricingPlan>) => void; deletePlan: (id: string) => void;
   settings: AppSettings; updateSettings: (patch: Partial<AppSettings>) => void;
@@ -1312,42 +1324,48 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
       });
     },
     projects,
-    addProject: (p) => {
+    addProject: async (p) => {
       if (apiConnected) {
-        void (async () => {
-          const cl = clients.find((x) => x.company === p.client);
-          if (!cl) return;
-          const teamIds = p.team
-            .map((n) => users.find((u) => u.name === n)?.id ?? n)
-            .filter((id): id is string => typeof id === 'string' && isUuid(id));
-          const body: Record<string, unknown> = {
-            name: p.name,
-            client: cl.id,
-            type: p.type,
-            status: p.status,
-            progress: 0,
-            due_date: p.dueDate,
-          };
-          if (teamIds.length > 0) body.team_member_ids = teamIds;
-          await adminPost('projects/', body);
-          await refreshFromApi();
-          pushAudit({
-            action: 'create',
-            entityType: 'Project',
-            detail: `Created project "${p.name}" for ${p.client}.`,
-            metadata: { api: 'POST /api/admin/projects/', client: p.client, type: p.type, status: p.status },
-          });
-        })();
+        const cl = resolveClientFromProjectPicker(clients, p.client);
+        if (!cl) {
+          throw new Error(
+            'No CRM client matches this selection. Users with the Client role need an email on file; refresh the admin panel after changing roles, then try again.'
+          );
+        }
+        const teamIds = p.team
+          .map((n) => users.find((u) => u.name === n)?.id ?? n)
+          .filter((id): id is string => typeof id === 'string' && isUuid(id));
+        const body: Record<string, unknown> = {
+          name: p.name,
+          client: cl.id,
+          type: p.type,
+          status: p.status,
+          progress: 0,
+          due_date: p.dueDate,
+        };
+        if (teamIds.length > 0) body.team_member_ids = teamIds;
+        await adminPost('projects/', body);
+        await refreshFromApi();
+        pushAudit({
+          action: 'create',
+          entityType: 'Project',
+          detail: `Created project "${p.name}" for ${cl.company}.`,
+          metadata: { api: 'POST /api/admin/projects/', client: cl.company, type: p.type, status: p.status },
+        });
         return;
       }
+      const cl = resolveClientFromProjectPicker(clients, p.client);
+      if (!cl) {
+        throw new Error('Select a client that exists in the Clients list (local demo).');
+      }
       const newId = uid('p');
-      setProjects((s) => [{ ...p, id: newId, progress: 0 }, ...s]);
+      setProjects((s) => [{ ...p, id: newId, client: cl.company, progress: 0 }, ...s]);
       pushAudit({
         action: 'create',
         entityType: 'Project',
         entityId: newId,
         detail: `Created project "${p.name}" (local demo).`,
-        metadata: { mode: 'local_demo', client: p.client },
+        metadata: { mode: 'local_demo', client: cl.company },
       });
     },
     updateProject: async (id, patch) => {
@@ -1366,7 +1384,7 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
           if (teamIds.length > 0) body.team_member_ids = teamIds;
         }
         if (patch.client !== undefined) {
-          const cl = clients.find((x) => x.company === patch.client);
+          const cl = resolveClientFromProjectPicker(clients, patch.client);
           if (cl) body.client = cl.id;
         }
         await adminPatch(`projects/${id}/`, body);
@@ -1396,12 +1414,13 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
       });
       return Promise.resolve();
     },
-    assignProjectClient: async (projectId, clientCompany) => {
+    assignProjectClient: async (projectId, clientPickerValue) => {
       const prev = projects.find((x) => x.id === projectId);
       if (!prev) return;
-      if (prev.client === clientCompany) return;
-      const cl = clients.find((x) => x.company === clientCompany);
+      const cl = resolveClientFromProjectPicker(clients, clientPickerValue);
       if (!cl) throw new Error('Client not found');
+      const clientCompany = cl.company;
+      if (prev.client === clientCompany) return;
       if (apiConnected) {
         await adminPatch(`projects/${projectId}/`, { client: cl.id });
         await refreshFromApi();

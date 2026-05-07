@@ -5,7 +5,7 @@ import { BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpArticleProse } from '@/components/HelpArticleProse';
-import { fetchPublicHelpArticles, type PublicHelpArticle } from '@/lib/api';
+import { fetchAuthHelpArticles, type PublicHelpArticle } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
 import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
@@ -15,10 +15,12 @@ export default function SubscriberHelpPortal() {
   const location = useLocation();
   const hubPath = subscriberHubPath(location.pathname);
   const { user } = useAuth();
+  const canViewHelp = Boolean(user) && evaluatePortalModuleView(user, PORTAL_PERM_MODULES.help);
 
   const { data: articles = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['public-help-articles'],
-    queryFn: fetchPublicHelpArticles,
+    queryKey: ['auth-help-articles'],
+    queryFn: () => fetchAuthHelpArticles(),
+    enabled: canViewHelp,
     staleTime: 60_000,
   });
 
