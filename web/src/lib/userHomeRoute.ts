@@ -1,6 +1,15 @@
 import type { AuthMeUser } from '@/lib/api';
 import { hasLibraryEntitlement } from '@/lib/subscriptionAccess';
 
+const KNOWN_HOME_PATHS = new Set(['/admin', '/client', '/dashboard', '/account']);
+
+function normalizedServerHome(user: AuthMeUser): string | null {
+  const raw = user.app_home_path;
+  if (typeof raw !== 'string') return null;
+  const p = raw.trim();
+  return KNOWN_HOME_PATHS.has(p) ? p : null;
+}
+
 /** Normalize `role` from `/api/auth/me/` (string, or rare `{ key }` shape). */
 export function normalizeRoleKey(user: AuthMeUser): string {
   const raw = user.role as unknown;
@@ -20,6 +29,11 @@ export function normalizeRoleKey(user: AuthMeUser): string {
  * Mirrors backend `post_auth_app_home_path` / prior `computedUserHomeHref` logic.
  */
 export function hubPathForRole(user: AuthMeUser): string {
+  // Server-side value is authoritative when present (keeps SPA redirects in sync
+  // with backend RBAC/home-path rules on every environment).
+  const serverHome = normalizedServerHome(user);
+  if (serverHome) return serverHome;
+
   if (user.is_superuser) return '/admin';
   const role = normalizeRoleKey(user);
   if ((role === 'super_admin' || role === 'admin' || role === 'editor') && user.is_staff) {
