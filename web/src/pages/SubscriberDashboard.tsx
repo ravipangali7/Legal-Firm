@@ -445,7 +445,7 @@ const SubscriberDashboard = () => {
         <div className="border-b border-primary/20 bg-primary/5">
           <div className="max-w-7xl mx-auto px-4 py-2.5 text-sm text-muted-foreground flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center sm:text-left sm:justify-start">
             <span>
-              You are signed in as <span className="font-medium text-foreground">{roleDisplayLabel(user)}</span> (staff). Site
+              You are signed in as <span className="font-medium text-foreground">{roleDisplayLabel(user.role)}</span> (staff). Site
               management and role-based tools live in the admin panel.
             </span>
             <Link to="/admin" className="font-medium text-primary-onBg underline-offset-4 hover:underline shrink-0">

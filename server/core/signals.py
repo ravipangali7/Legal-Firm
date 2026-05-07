@@ -14,18 +14,15 @@ from .subscription_service import apply_refunded_transaction, apply_verified_tra
 
 @receiver(pre_save, sender=User)
 def user_sync_staff_flags(sender, instance: User, **kwargs):
-    """Keep ``is_staff`` / ``is_superuser`` aligned with ``role`` (SPA hub + admin API gates)."""
+    """Keep ``is_staff`` / ``is_superuser`` aligned with ``role`` (all accounts are staff; superuser only for super_admin)."""
     if not instance.role_id:
         return
     role_key = instance.role.key
     if role_key == "super_admin":
         instance.is_staff = True
         instance.is_superuser = True
-    elif role_key in ("admin", "editor"):
+    else:
         instance.is_staff = True
-        instance.is_superuser = False
-    elif role_key in ("client", "user"):
-        instance.is_staff = False
         instance.is_superuser = False
 
 

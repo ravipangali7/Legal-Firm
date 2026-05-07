@@ -1033,11 +1033,8 @@ class UserAdminSerializer(serializers.ModelSerializer):
         if role_key == "super_admin":
             validated_data["is_staff"] = True
             validated_data["is_superuser"] = True
-        elif role_key in ("admin", "editor"):
+        else:
             validated_data["is_staff"] = True
-            validated_data["is_superuser"] = False
-        elif role_key in ("client", "user"):
-            validated_data["is_staff"] = False
             validated_data["is_superuser"] = False
         user = User.objects.create_user(password=pw, **validated_data)
         UserProfile.objects.create(
@@ -1066,11 +1063,8 @@ class UserAdminSerializer(serializers.ModelSerializer):
             if role_key == "super_admin":
                 instance.is_staff = True
                 instance.is_superuser = True
-            elif role_key in ("admin", "editor"):
+            else:
                 instance.is_staff = True
-                instance.is_superuser = False
-            elif role_key in ("client", "user"):
-                instance.is_staff = False
                 instance.is_superuser = False
         if sync_benefits_to_period_end:
             instance.plan_benefits_end = instance.subscription_period_end

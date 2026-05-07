@@ -57,7 +57,7 @@ USERS_SPEC = [
         "status": models.User.Status.ACTIVE,
         "subscribed": True,
         "plan": models.User.Plan.PREMIUM,
-        "is_staff": False,
+        "is_staff": True,
         "is_superuser": False,
     },
     {
@@ -68,7 +68,7 @@ USERS_SPEC = [
         "status": models.User.Status.ACTIVE,
         "subscribed": False,
         "plan": models.User.Plan.FREE,
-        "is_staff": False,
+        "is_staff": True,
         "is_superuser": False,
     },
     {
@@ -79,7 +79,7 @@ USERS_SPEC = [
         "status": models.User.Status.PENDING,
         "subscribed": False,
         "plan": models.User.Plan.FREE,
-        "is_staff": False,
+        "is_staff": True,
         "is_superuser": False,
     },
     {
@@ -90,7 +90,7 @@ USERS_SPEC = [
         "status": models.User.Status.SUSPENDED,
         "subscribed": False,
         "plan": models.User.Plan.FREE,
-        "is_staff": False,
+        "is_staff": True,
         "is_superuser": False,
     },
 ]

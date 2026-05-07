@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 def _upload_user_avatar(instance, filename):
@@ -132,7 +133,7 @@ class UserManager(BaseUserManager):
         return user
 
     def create_user(self, email, password=None, **extra_fields):
-        extra_fields.setdefault("is_staff", False)
+        extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", False)
         extra_fields = self._coerce_role_fk(extra_fields, default_key="user")
         return self._create_user(email, password, **extra_fields)
@@ -152,6 +153,11 @@ class User(AbstractUser):
     """Custom user: email login; ``role`` is a FK to :class:`Role` (RBAC matrix + frontend ``UserRole``)."""
 
     username = None
+    is_staff = models.BooleanField(
+        _("staff status"),
+        default=True,
+        help_text=_("Designates whether the user can log into this admin site."),
+    )
     email = models.EmailField("email address", unique=True)
     full_name = models.CharField(max_length=255)
     phone = models.CharField(max_length=64, blank=True)

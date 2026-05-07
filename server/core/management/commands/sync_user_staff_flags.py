@@ -1,4 +1,4 @@
-"""Re-sync ``is_staff`` / ``is_superuser`` for every user from their ``role`` (see ``user_sync_staff_flags`` signal)."""
+"""Re-sync ``is_staff`` / ``is_superuser`` for every user from their ``role`` (see ``user_sync_staff_flags`` signal; all users are staff)."""
 
 from django.core.management.base import BaseCommand
 
@@ -16,11 +16,8 @@ class Command(BaseCommand):
             if role_key == "super_admin":
                 user.is_staff = True
                 user.is_superuser = True
-            elif role_key in ("admin", "editor"):
+            else:
                 user.is_staff = True
-                user.is_superuser = False
-            elif role_key in ("client", "user"):
-                user.is_staff = False
                 user.is_superuser = False
             user.save(update_fields=["is_staff", "is_superuser"])
             n += 1
