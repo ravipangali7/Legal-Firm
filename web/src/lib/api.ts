@@ -30,7 +30,10 @@ export async function sessionFetch(path: string, init?: RequestInit): Promise<Re
   if (csrftoken && !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
     headers.set('X-CSRFToken', csrftoken);
   }
-  return fetch(apiUrl(path), { ...init, credentials: 'include', headers });
+  const adminPath = path.includes('/api/admin/');
+  const cache: RequestCache =
+    (init?.cache as RequestCache | undefined) ?? (adminPath ? 'no-store' : 'default');
+  return fetch(apiUrl(path), { ...init, credentials: 'include', headers, cache });
 }
 
 export interface PublicSiteConfig {

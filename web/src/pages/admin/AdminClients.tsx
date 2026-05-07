@@ -18,7 +18,7 @@ const empty: Omit<Client, 'id' | 'joinedAt' | 'activeProjects'> = {
 };
 
 const AdminClients = () => {
-  const { clients, addClient, updateClient, deleteClient } = useAdminStore();
+  const { clients, addClient, updateClient, deleteClient, adminSnapshotLoaded, apiConnected } = useAdminStore();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -48,13 +48,22 @@ const AdminClients = () => {
           <h1 className="text-2xl lg:text-3xl font-bold">Clients</h1>
           <p className="text-muted-foreground mt-1">Business and individual clients</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Client</Button>
+        <Button onClick={openAdd} disabled={!adminSnapshotLoaded}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Client
+        </Button>
       </div>
 
       <Card className="p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search company, contact, email..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+          <Input
+            placeholder="Search company, contact, email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+            disabled={!adminSnapshotLoaded}
+          />
         </div>
       </Card>
 
@@ -72,8 +81,22 @@ const AdminClients = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center h-24 text-muted-foreground">No clients found</TableCell></TableRow>}
-            {filtered.map((c) => (
+            {!adminSnapshotLoaded && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                  Loading clients from the server…
+                </TableCell>
+              </TableRow>
+            )}
+            {adminSnapshotLoaded && filtered.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                  {apiConnected ? 'No clients found' : 'Connect to the API to manage clients, or run the app in dev with a local backend.'}
+                </TableCell>
+              </TableRow>
+            )}
+            {adminSnapshotLoaded &&
+              filtered.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.company}</TableCell>
                 <TableCell><div>{c.contact}</div><div className="text-xs text-muted-foreground">{c.email}</div></TableCell>

@@ -25,8 +25,11 @@ type ProjectClientOption = { key: string; value: string; label: string; disabled
 function buildProjectClientSelectOptions(
   users: AdminUser[],
   clients: Client[],
-  hintCompany: string | null | undefined
+  hintCompany: string | null | undefined,
+  snapshotReady: boolean
 ): ProjectClientOption[] {
+  if (!snapshotReady) return [];
+
   const out: ProjectClientOption[] = [];
   const seen = new Set<string>();
   const push = (o: ProjectClientOption) => {
@@ -60,7 +63,7 @@ function buildProjectClientSelectOptions(
     const value = row?.company ?? u.email.trim();
     const label = row
       ? `${row.company} (${u.email})`
-      : `${(u.name || '').trim() || u.email} — refresh admin data after assigning Client role`;
+      : `${(u.name || '').trim() || u.email} — no CRM client for this email yet (save Client role with email, then check Clients)`;
     push({ key: u.id, value, label, disabled: !row });
   }
 
@@ -68,8 +71,17 @@ function buildProjectClientSelectOptions(
 }
 
 const AdminProjects = () => {
-  const { projects, clients, users, addProject, updateProject, deleteProject, assignProjectClient, apiConnected } =
-    useAdminStore();
+  const {
+    projects,
+    clients,
+    users,
+    addProject,
+    updateProject,
+    deleteProject,
+    assignProjectClient,
+    apiConnected,
+    adminSnapshotLoaded,
+  } = useAdminStore();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -96,13 +108,14 @@ const AdminProjects = () => {
   }), [projects, search, statusFilter]);
 
   const projectDialogClientOptions = useMemo(
-    () => buildProjectClientSelectOptions(users, clients, open && editing ? editing.client : null),
-    [users, clients, open, editing]
+    () =>
+      buildProjectClientSelectOptions(users, clients, open && editing ? editing.client : null, adminSnapshotLoaded),
+    [users, clients, open, editing, adminSnapshotLoaded]
   );
 
   const assignDialogClientOptions = useMemo(
-    () => buildProjectClientSelectOptions(users, clients, assignTarget?.client),
-    [users, clients, assignTarget?.client]
+    () => buildProjectClientSelectOptions(users, clients, assignTarget?.client, adminSnapshotLoaded),
+    [users, clients, assignTarget?.client, adminSnapshotLoaded]
   );
 
   const renderClientSelectItems = useCallback((opts: ProjectClientOption[]) => {
@@ -229,9 +242,13 @@ const AdminProjects = () => {
               </p>
               <div>
                 <Label>Client</Label>
-                <Select value={assignClient} onValueChange={setAssignClient}>
+                <Select
+                  value={assignClient}
+                  onValueChange={setAssignClient}
+                  disabled={!adminSnapshotLoaded}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a client" />
+                    <SelectValue placeholder={adminSnapshotLoaded ? 'Select a client' : 'Loading directory…'} />
                   </SelectTrigger>
                   <SelectContent>{renderClientSelectItems(assignDialogClientOptions)}</SelectContent>
                 </Select>
@@ -243,7 +260,7 @@ const AdminProjects = () => {
               Cancel
             </Button>
             <Button
-              disabled={assignSaving || !assignTarget || !assignClient}
+              disabled={assignSaving || !assignTarget || !assignClient || !adminSnapshotLoaded}
               onClick={async () => {
                 if (!assignTarget || !assignClient) return;
                 if (assignTarget.client === assignClient) {
@@ -282,8 +299,14 @@ const AdminProjects = () => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Client</Label>
-                <Select value={form.client} onValueChange={(v) => setForm({ ...form, client: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                <Select
+                  value={form.client}
+                  onValueChange={(v) => setForm({ ...form, client: v })}
+                  disabled={!adminSnapshotLoaded}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={adminSnapshotLoaded ? 'Select' : 'Loading directory…'} />
+                  </SelectTrigger>
                   <SelectContent>{renderClientSelectItems(projectDialogClientOptions)}</SelectContent>
                 </Select>
               </div>
@@ -311,7 +334,7 @@ const AdminProjects = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
-            <Button onClick={() => void submit()} disabled={saving}>
+            <Button onClick={() => void submit()} disabled={saving || !adminSnapshotLoaded}>
               {saving ? 'Saving…' : editing ? 'Save' : 'Create'}
             </Button>
           </DialogFooter>

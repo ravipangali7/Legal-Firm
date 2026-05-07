@@ -8,7 +8,6 @@ from django.dispatch import receiver
 from .dashboard_events import record_transaction_verified
 from .models import Procedure, ProcedureStep, Transaction, User
 from .sms import send_payment_rejection_sms
-from .sync_user_client import sync_crm_client_for_user
 from .staff_notifications import notify_super_admins_in_app
 from .subscription_service import apply_refunded_transaction, apply_verified_transaction
 
@@ -25,12 +24,6 @@ def user_sync_staff_flags(sender, instance: User, **kwargs):
     else:
         instance.is_staff = True
         instance.is_superuser = False
-
-
-@receiver(post_save, sender=User)
-def user_sync_crm_client_row(sender, instance: User, **kwargs):
-    """Mirror ``client``-role accounts into CRM :class:`~core.models.Client` (all save paths, not only admin serializer)."""
-    sync_crm_client_for_user(instance)
 
 
 @receiver(pre_save, sender=Transaction)

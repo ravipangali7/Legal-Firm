@@ -13,7 +13,18 @@ def sync_crm_client_for_user(user: User) -> None:
     case-insensitive). This matches :func:`core.project_notifications.notify_client_assigned_to_project`,
     which resolves portal users by client email.
     """
-    if user.role_key != User.RoleKey.CLIENT:
+    pk = getattr(user, "pk", None)
+    if pk is None:
+        return
+    # Always read role + profile from the DB so this stays correct after PATCH (in-memory
+    # ``user`` from serializers/signals can lag behind ``role_id`` / profile writes).
+    try:
+        user = User.objects.select_related("role", "profile").get(pk=pk)
+    except User.DoesNotExist:
+        return
+
+    role_key = getattr(getattr(user, "role", None), "key", "") or ""
+    if role_key != "client":
         return
 
     email = (user.email or "").strip()

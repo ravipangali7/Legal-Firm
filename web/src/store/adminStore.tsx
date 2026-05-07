@@ -655,13 +655,14 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
   const [adminSnapshotLoaded, setAdminSnapshotLoaded] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('super_admin');
   const [impersonation, setImpersonation] = useState<ImpersonationState>({ active: false, user: null, originalRole: null });
-  const [users, setUsers] = useState<AdminUser[]>(seedUsers);
-  const [roles, setRoles] = useState<RoleDef[]>(seedRoles);
-  const [modules, setModules] = useState<string[]>(MODULES);
-  const [transactions, setTransactions] = useState<Transaction[]>(seedTransactions);
-  const [clients, setClients] = useState<Client[]>(seedClients);
-  const [projects, setProjects] = useState<Project[]>(seedProjects);
-  const [plans, setPlans] = useState<PricingPlan[]>(seedPlans);
+  /** Empty until the first successful `/api/admin/*` snapshot — avoids flashing TaxLexis seed rows on reload (production). */
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [roles, setRoles] = useState<RoleDef[]>([]);
+  const [modules, setModules] = useState<string[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [settings, setSettings] = useState<AppSettings>(seedSettings);
   const [notifications, setNotifications] = useState<AdminNotification[]>(() =>
     mergeNotificationReadOverrides(initialNotificationsWithInbox(seedNotifications))
@@ -670,7 +671,7 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
     buildSupportTicketsList([], seedSupportTickets)
   );
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>(() => loadAdminActivityLogs() ?? seedActivityLogs);
-  const [helpArticles, setHelpArticles] = useState<HelpArticle[]>(seedHelpArticles);
+  const [helpArticles, setHelpArticles] = useState<HelpArticle[]>([]);
 
   useEffect(() => {
     if (apiConnected) return;
@@ -716,15 +717,42 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
     let cancelled = false;
     if (authLoading) return;
     if (!authUser?.is_staff) {
+      setUsers([]);
+      setRoles([]);
+      setModules([]);
+      setTransactions([]);
+      setClients([]);
+      setProjects([]);
+      setPlans([]);
+      setHelpArticles([]);
+      setApiConnected(false);
       setAdminSnapshotLoaded(true);
       return;
     }
     setAdminSnapshotLoaded(false);
+    setUsers([]);
+    setRoles([]);
+    setModules([]);
+    setTransactions([]);
+    setClients([]);
+    setProjects([]);
+    setPlans([]);
+    setHelpArticles([]);
+    setApiConnected(false);
     (async () => {
       try {
         await refreshFromApi();
       } catch {
-        /* offline — keep seed data; apiConnected remains false until a refresh succeeds */
+        if (import.meta.env.DEV) {
+          setUsers(seedUsers);
+          setRoles(seedRoles);
+          setModules(MODULES);
+          setTransactions(seedTransactions);
+          setClients(seedClients);
+          setProjects(seedProjects);
+          setPlans(seedPlans);
+          setHelpArticles(seedHelpArticles);
+        }
       } finally {
         if (!cancelled) setAdminSnapshotLoaded(true);
       }
@@ -898,6 +926,12 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
         }
         await adminPatch(`users/${id}/`, body);
         await refreshFromApi();
+        // CRM Client rows are upserted when role becomes client; a second snapshot pass
+        // avoids stale empty Clients after read-replica / transaction visibility lag.
+        if (patch.role === 'client') {
+          await new Promise((r) => setTimeout(r, 250));
+          await refreshFromApi();
+        }
         pushAudit({
           action: 'update',
           entityType: 'User',
