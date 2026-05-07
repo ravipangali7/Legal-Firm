@@ -6,6 +6,7 @@
 import type { HomepageApiResponse } from '@/lib/homepageMap';
 import type { LegalCaseApi } from '@/lib/legalCaseMap';
 import { getCookie } from '@/lib/csrf';
+import { normalizeSpaHomePath } from '@/lib/spaHubPaths';
 import { getOrCreateSummaryVisitorId } from '@/lib/summaryVisitor';
 
 const trimSlash = (s: string) => s.replace(/\/$/, '');
@@ -154,6 +155,19 @@ export interface AuthMeUser {
   app_home_path?: string | null;
 }
 
+/** Normalize role + `app_home_path` from any auth endpoint (login, /me, OTP, Google). */
+export function normalizeAuthMeUser(data: AuthMeUser): AuthMeUser {
+  const raw = data.role as unknown;
+  if (typeof raw === 'object' && raw !== null && 'key' in raw) {
+    data.role = String((raw as { key: string }).key).trim().toLowerCase() || 'user';
+  } else if (typeof raw === 'string') {
+    data.role = raw.trim().toLowerCase() || 'user';
+  }
+  const home = normalizeSpaHomePath(data.app_home_path ?? undefined);
+  if (home) data.app_home_path = home;
+  return data;
+}
+
 export interface AuthDashboardActivity {
   id: string;
   verb: string;
@@ -200,16 +214,8 @@ export async function getAuthMe(): Promise<AuthMeUser | null> {
   const r = await fetch(apiUrl('/api/auth/me/'), { credentials: 'include' });
   if (r.status === 401 || r.status === 403) return null;
   if (!r.ok) throw new Error(`me ${r.status}`);
-  const data = (await r.json()) as AuthMeUser;
-  if (data) {
-    const raw = data.role as unknown;
-    if (typeof raw === 'object' && raw !== null && 'key' in raw) {
-      data.role = String((raw as { key: string }).key).trim().toLowerCase() || 'user';
-    } else if (typeof raw === 'string') {
-      data.role = raw.trim().toLowerCase() || 'user';
-    }
-  }
-  return data;
+  const data = (await r.json()) as AuthMeUser | null;
+  return data ? normalizeAuthMeUser(data) : null;
 }
 
 function formatAuthMePatchErrors(data: Record<string, unknown>): string {
@@ -249,7 +255,7 @@ export async function patchAuthMe(body: PatchAuthMePayload): Promise<AuthMeUser>
   if (!r.ok) {
     throw new Error(formatAuthMePatchErrors(data));
   }
-  return data as AuthMeUser;
+  return normalizeAuthMeUser(data as AuthMeUser);
 }
 
 export async function fetchAuthDashboard(): Promise<AuthDashboardPayload> {
@@ -292,7 +298,7 @@ export async function postAuthGoogle(accessToken: string): Promise<PostAuthGoogl
       full_name: typeof data.full_name === 'string' ? data.full_name : '',
     };
   }
-  return data as AuthMeUser;
+  return normalizeAuthMeUser(data as AuthMeUser);
 }
 
 export async function postAuthLogin(email: string, password: string): Promise<AuthMeUser> {
@@ -304,7 +310,7 @@ export async function postAuthLogin(email: string, password: string): Promise<Au
   if (!r.ok) {
     throw new Error(typeof data.detail === 'string' ? data.detail : 'Login failed');
   }
-  return data as AuthMeUser;
+  return normalizeAuthMeUser(data as AuthMeUser);
 }
 
 export async function postAuthOtpRequest(phone: string): Promise<{ detail?: string; debug_otp?: string }> {
@@ -330,7 +336,7 @@ export async function postAuthOtpVerify(phone: string, code: string): Promise<Au
   if (!r.ok) {
     throw new Error(typeof data.detail === 'string' ? data.detail : 'Verification failed');
   }
-  return data as AuthMeUser;
+  return normalizeAuthMeUser(data as AuthMeUser);
 }
 
 export async function postAuthLogout(): Promise<void> {
@@ -350,7 +356,7 @@ export async function postAdminUserImpersonate(userId: string): Promise<AuthMeUs
   if (!r.ok) {
     throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not start impersonation');
   }
-  return data as AuthMeUser;
+  return normalizeAuthMeUser(data as AuthMeUser);
 }
 
 /** End admin impersonation and restore the staff session. */
@@ -360,7 +366,7 @@ export async function postAuthStopImpersonate(): Promise<AuthMeUser> {
   if (!r.ok) {
     throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not exit impersonation');
   }
-  return data as AuthMeUser;
+  return normalizeAuthMeUser(data as AuthMeUser);
 }
 
 export interface SignupPayload {

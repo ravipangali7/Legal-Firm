@@ -53,7 +53,12 @@ def post_auth_app_home_path(user) -> str:
     if not getattr(user, "is_authenticated", False):
         return "/login"
     role = user.role_key
-    if role in ("super_admin", "admin", "editor") and user.is_staff:
+    # Django superuser or explicit super_admin role always lands in admin SPA.
+    if getattr(user, "is_superuser", False):
+        return "/admin"
+    if role == "super_admin":
+        return "/admin"
+    if role in ("admin", "editor") and user.is_staff:
         return "/admin"
     if role == "client":
         return "/client"

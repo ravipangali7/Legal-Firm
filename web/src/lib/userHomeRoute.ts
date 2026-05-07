@@ -1,13 +1,15 @@
 import type { AuthMeUser } from '@/lib/api';
+import { normalizeSpaHomePath, type SpaHubPath } from '@/lib/spaHubPaths';
 import { hasLibraryEntitlement } from '@/lib/subscriptionAccess';
 
-const KNOWN_HOME_PATHS = new Set(['/admin', '/client', '/dashboard', '/account']);
-
-function normalizedServerHome(user: AuthMeUser): string | null {
-  const raw = user.app_home_path;
-  if (typeof raw !== 'string') return null;
-  const p = raw.trim();
-  return KNOWN_HOME_PATHS.has(p) ? p : null;
+/** Set `localStorage.DEBUG_ROLE_REDIRECT=1` or run a dev build to see redirect decisions in the console. */
+export function logAuthRedirectDecision(message: string, payload: Record<string, unknown>): void {
+  if (typeof window === 'undefined') return;
+  const debug =
+    import.meta.env.DEV || window.localStorage?.getItem('DEBUG_ROLE_REDIRECT') === '1';
+  if (!debug) return;
+  // eslint-disable-next-line no-console -- intentional diagnostics
+  console.info(`[role-redirect] ${message}`, payload);
 }
 
 /** Normalize `role` from `/api/auth/me/` (string, or rare `{ key }` shape). */
@@ -25,18 +27,14 @@ export function normalizeRoleKey(user: AuthMeUser): string {
 }
 
 /**
- * Canonical SPA hub for this user (single source for redirects + header home).
- * Mirrors backend `post_auth_app_home_path` / prior `computedUserHomeHref` logic.
+ * Client-only fallback when `app_home_path` is missing or invalid.
+ * Matches Django `post_auth_app_home_path` after server normalization.
  */
-export function hubPathForRole(user: AuthMeUser): string {
-  // Server-side value is authoritative when present (keeps SPA redirects in sync
-  // with backend RBAC/home-path rules on every environment).
-  const serverHome = normalizedServerHome(user);
-  if (serverHome) return serverHome;
-
+export function hubPathFallback(user: AuthMeUser): SpaHubPath {
   if (user.is_superuser) return '/admin';
   const role = normalizeRoleKey(user);
-  if ((role === 'super_admin' || role === 'admin' || role === 'editor') && user.is_staff) {
+  if (role === 'super_admin') return '/admin';
+  if ((role === 'admin' || role === 'editor') && user.is_staff) {
     return '/admin';
   }
   if (role === 'client') {
@@ -55,19 +53,42 @@ export function hubPathForRole(user: AuthMeUser): string {
 }
 
 /**
+ * Resolved home: prefer backend `app_home_path`, else `hubPathFallback`.
+ */
+export function resolveAuthHomeHref(user: AuthMeUser): {
+  href: SpaHubPath;
+  source: 'app_home_path' | 'fallback';
+} {
+  const server = normalizeSpaHomePath(user.app_home_path ?? undefined);
+  if (server) return { href: server, source: 'app_home_path' };
+  return { href: hubPathFallback(user), source: 'fallback' };
+}
+
+/**
+ * Canonical SPA hub for this user (single source for redirects + header home).
+ */
+export function hubPathForRole(user: AuthMeUser): SpaHubPath {
+  const { href } = resolveAuthHomeHref(user);
+  return href;
+}
+
+/**
  * Primary authenticated "home" URL after login or when opening the account hub from the site header.
- * Uses `hubPathForRole` only so redirects stay consistent (no stale/wrong `app_home_path`).
  */
 export function userHomeHref(user: AuthMeUser | null | undefined): string {
   if (!user) return '/login';
-  return hubPathForRole(user);
+  return resolveAuthHomeHref(user).href;
 }
 
 /** Short label for header tooltips / mobile (no "portal" jargon). */
 export function userHomeTitle(user: AuthMeUser | null | undefined): string {
   if (!user) return 'Sign in';
   const role = normalizeRoleKey(user);
-  if ((role === 'super_admin' || role === 'admin' || role === 'editor') && user.is_staff) {
+  if (
+    user.is_superuser ||
+    role === 'super_admin' ||
+    ((role === 'admin' || role === 'editor') && user.is_staff)
+  ) {
     return 'Open admin panel';
   }
   if (role === 'client') return 'Open client portal';
@@ -79,7 +100,12 @@ export function userHomeTitle(user: AuthMeUser | null | undefined): string {
 export function userHomeShortLabel(user: AuthMeUser | null | undefined): string {
   if (!user) return 'Account';
   const role = normalizeRoleKey(user);
-  if ((role === 'super_admin' || role === 'admin' || role === 'editor') && user.is_staff) return 'Admin';
+  if (
+    user.is_superuser ||
+    role === 'super_admin' ||
+    ((role === 'admin' || role === 'editor') && user.is_staff)
+  )
+    return 'Admin';
   if (role === 'client') return 'Client';
   if (role === 'user' || hasLibraryEntitlement(user)) return 'Dashboard';
   return 'Account';

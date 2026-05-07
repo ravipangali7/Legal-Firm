@@ -92,7 +92,16 @@ User = get_user_model()
 
 def _user_me_response(user):
     refresh_user_entitlements(user)
-    return Response(UserMeSerializer(user).data)
+    data = UserMeSerializer(user).data
+    if settings.DEBUG:
+        _LOG.debug(
+            "auth_session role=%s is_staff=%s is_superuser=%s app_home_path=%s",
+            data.get("role"),
+            data.get("is_staff"),
+            data.get("is_superuser"),
+            data.get("app_home_path"),
+        )
+    return Response(data)
 
 
 _LOG = logging.getLogger(__name__)
@@ -725,6 +734,14 @@ def auth_me(request):
     data = UserMeSerializer(user).data
     if request.session.get(IMPERSONATOR_SESSION_KEY):
         data["impersonation"] = {"active": True}
+    if settings.DEBUG and user.is_authenticated:
+        _LOG.debug(
+            "auth_me role=%s is_staff=%s is_superuser=%s app_home_path=%s",
+            data.get("role"),
+            data.get("is_staff"),
+            data.get("is_superuser"),
+            data.get("app_home_path"),
+        )
     return Response(data)
 
 

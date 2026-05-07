@@ -11,8 +11,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LogIn, Mail, Phone, Chrome } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { postAuthGoogle, postAuthLogin, postAuthOtpRequest, postAuthOtpVerify, type AuthMeUser } from '@/lib/api';
-import { hubPathForRole, userHomeHref } from '@/lib/userHomeRoute';
+import {
+  postAuthGoogle,
+  postAuthLogin,
+  postAuthOtpRequest,
+  postAuthOtpVerify,
+  normalizeAuthMeUser,
+  type AuthMeUser,
+} from '@/lib/api';
+import { hubPathForRole, logAuthRedirectDecision, resolveAuthHomeHref } from '@/lib/userHomeRoute';
 import { loadGoogleGsiScript, requestGoogleAccessToken } from '@/lib/googleGsi';
 import { useAuth } from '@/context/AuthContext';
 import { useSiteConfig } from '@/context/SiteConfigContext';
@@ -68,12 +75,31 @@ const Login = () => {
 
   const goAfterAuth = useCallback(
     (me: AuthMeUser) => {
+      const u = normalizeAuthMeUser({ ...me });
       const next = readSafeNextParam(searchParams.toString());
-      if (next && canUserAccessPath(me, next)) {
+      const resolved = resolveAuthHomeHref(u);
+      if (next && canUserAccessPath(u, next)) {
+        logAuthRedirectDecision('post-auth: using safe ?next', {
+          next,
+          resolvedHref: resolved.href,
+          source: resolved.source,
+          app_home_path: u.app_home_path,
+          role: u.role,
+          is_staff: u.is_staff,
+          is_superuser: u.is_superuser,
+        });
         navigate(next, { replace: true });
         return;
       }
-      navigate(userHomeHref(me), { replace: true });
+      logAuthRedirectDecision('post-auth: redirect to home', {
+        href: resolved.href,
+        source: resolved.source,
+        app_home_path: u.app_home_path,
+        role: u.role,
+        is_staff: u.is_staff,
+        is_superuser: u.is_superuser,
+      });
+      navigate(resolved.href, { replace: true });
     },
     [navigate, searchParams]
   );

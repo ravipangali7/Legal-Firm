@@ -62,6 +62,7 @@ const Testimonials = () => {
               align: 'start',
               loop: items.length > 2,
               containScroll: 'trimSnaps',
+              watchDrag: true,
             }}
             setApi={setCarouselApi}
             tabIndex={0}
@@ -97,12 +98,13 @@ const Testimonials = () => {
                         className="w-12 h-12 rounded-full object-cover shrink-0"
                         fallbackKind="card"
                         fillEmpty
+                        draggable={false}
                       />
                       <div className="min-w-0">
-                        <h4 className="font-semibold text-card-foreground text-sm truncate">
+                        <h4 className="font-semibold text-card-foreground text-sm break-words [overflow-wrap:anywhere]">
                           {testimonial.name}
                         </h4>
-                        <p className="text-xs text-muted-foreground line-clamp-2 [overflow-wrap:anywhere]">
+                        <p className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
                           {testimonial.roleTitle}
                         </p>
                       </div>
