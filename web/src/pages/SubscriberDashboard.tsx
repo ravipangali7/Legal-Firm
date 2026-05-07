@@ -21,8 +21,9 @@ import {
   shouldRecommendRenewal,
 } from '@/lib/subscriptionAccess';
 import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
-import type { LucideIcon } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import {
+  type LucideIcon,
   BookOpen,
   FileText,
   Bell,

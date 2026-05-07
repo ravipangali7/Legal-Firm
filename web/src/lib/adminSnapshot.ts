@@ -50,6 +50,18 @@ async function jRecord(path: string, init?: RequestInit): Promise<Record<string,
   return typeof data === 'object' && data !== null && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
 }
 
+/** When `/me` already says the staff user cannot view the Roles module, skip RBAC list GETs (avoids noisy 403s). */
+function shouldFetchStaffRolesMatrix(me: AuthMeUser | null | undefined): boolean {
+  if (!me?.is_staff) return false;
+  if (me.is_superuser) return true;
+  if (String(me.role ?? '').toLowerCase() === 'super_admin') return true;
+  const perms = me.admin_permissions;
+  if (!Array.isArray(perms) || perms.length === 0) return true;
+  const rolesRow = perms.find((r) => String(r.module ?? '').trim().toLowerCase() === 'roles');
+  if (rolesRow != null && !rolesRow.view) return false;
+  return true;
+}
+
 function syntheticPermissionModulesFromMe(me: AuthMeUser | null | undefined): Record<string, unknown>[] {
   const rows = me?.admin_permissions;
   if (!Array.isArray(rows) || !rows.length) return [];
@@ -147,6 +159,7 @@ export async function fetchAdminPanelNotifications(): Promise<Record<string, unk
 
 export async function pullAdminSnapshot(me?: AuthMeUser | null) {
   rolePermissionIndex.clear();
+  const fetchRbacLists = shouldFetchStaffRolesMatrix(me ?? null);
   const [
     rawUsers,
     rawModsApi,
@@ -161,9 +174,9 @@ export async function pullAdminSnapshot(me?: AuthMeUser | null) {
     rawContactMessages,
   ] = await Promise.all([
     jList('/api/admin/users/'),
-    jList('/api/admin/permission-modules/'),
-    jList('/api/admin/roles/'),
-    jList('/api/admin/role-permissions/'),
+    fetchRbacLists ? jList('/api/admin/permission-modules/') : Promise.resolve([]),
+    fetchRbacLists ? jList('/api/admin/roles/') : Promise.resolve([]),
+    fetchRbacLists ? jList('/api/admin/role-permissions/') : Promise.resolve([]),
     jList('/api/admin/transactions/'),
     jList('/api/admin/clients/'),
     jList('/api/admin/projects/'),
