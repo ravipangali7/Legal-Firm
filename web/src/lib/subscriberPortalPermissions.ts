@@ -1,4 +1,4 @@
-import type { AuthMeUser } from '@/lib/api';
+import type { AuthMeAdminPermission, AuthMeUser } from '@/lib/api';
 
 /** Names match Admin Roles permission modules (`seed_roles_permissions.py` / permission-modules API). */
 export const PORTAL_PERM_MODULES = {
@@ -14,14 +14,21 @@ export const PORTAL_PERM_MODULES = {
   projects: 'Projects',
 } as const;
 
-/**
- * Whether the subscriber shell (/client, /dashboard) should expose a module.
- * Uses `portal_permissions` from `/api/auth/me/` (staff reuse admin matrix).
- */
-export function evaluatePortalModuleView(user: AuthMeUser | null | undefined, module: string): boolean {
+type PortalPermKey = keyof Pick<AuthMeAdminPermission, 'view' | 'create' | 'edit' | 'delete'>;
+
+/** Effective RolePermission flag for the user's role (`portal_permissions` from `/api/auth/me/`). */
+export function evaluatePortalPerm(user: AuthMeUser | null | undefined, module: string, perm: PortalPermKey): boolean {
   if (!user) return false;
   const rows = user.portal_permissions;
   if (!Array.isArray(rows)) return true;
   const row = rows.find((r) => String(r.module ?? '').trim() === module);
-  return Boolean(row?.view);
+  return Boolean(row?.[perm]);
+}
+
+/**
+ * Whether the subscriber shell (/client, /dashboard) should expose a module for navigation/view.
+ * Uses `portal_permissions` from `/api/auth/me/` — aligned with Admin → Roles for ``User.role_key``.
+ */
+export function evaluatePortalModuleView(user: AuthMeUser | null | undefined, module: string): boolean {
+  return evaluatePortalPerm(user, module, 'view');
 }

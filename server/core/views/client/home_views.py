@@ -58,6 +58,7 @@ from core.models import (
     Act,
     AppSettings,
     BlogPost,
+    ContactMessage,
     HelpArticle,
     Notice,
     KnowledgeResource,
@@ -68,6 +69,7 @@ from core.models import (
     PricingPageConfig,
     PricingPlan,
     Procedure,
+    Project,
     Summary,
     SummaryCategory,
     Transaction,
@@ -86,6 +88,7 @@ from core.subscription_service import (
     refresh_user_entitlements,
     subscription_checkout_allowed,
 )
+from core.rbac import portal_module_perm
 
 User = get_user_model()
 
@@ -723,6 +726,11 @@ def auth_me(request):
                 {"detail": "Authentication credentials were not provided."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+        if not portal_module_perm(user, "Settings", "edit"):
+            return Response(
+                {"detail": "You do not have permission to change account settings."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         ser = UserSelfUpdateSerializer(user, data=request.data, partial=True)
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -769,6 +777,49 @@ def auth_dashboard(request):
             "billing": MyTransactionSerializer(billing, many=True).data,
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def auth_my_contact_messages(request):
+    """Contact form submissions whose email matches the signed-in user (Support inbox mirror, view-only)."""
+    refresh_user_entitlements(request.user)
+    email = (request.user.email or "").strip()
+    if not email:
+        return Response([])
+    qs = ContactMessage.objects.filter(email__iexact=email).order_by("-created_at")[:100]
+    return Response(ContactMessageDetailSerializer(qs, many=True).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def auth_my_projects(request):
+    """
+    CRM projects for the Client row whose email matches the signed-in user.
+    Managed in Admin → Projects; read-only for the portal.
+    """
+    refresh_user_entitlements(request.user)
+    email = (request.user.email or "").strip()
+    if not email:
+        return Response([])
+    qs = (
+        Project.objects.select_related("client")
+        .filter(client__email__iexact=email)
+        .order_by("-due_date")
+    )
+    data = [
+        {
+            "id": str(p.id),
+            "name": p.name,
+            "type": p.type,
+            "status": p.status,
+            "progress": p.progress,
+            "due_date": p.due_date.isoformat() if p.due_date else None,
+            "client_name": p.client.company,
+        }
+        for p in qs
+    ]
+    return Response(data)
 
 
 @csrf_exempt

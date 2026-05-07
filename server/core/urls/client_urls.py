@@ -48,6 +48,8 @@ urlpatterns = [
     path("auth/stop-impersonate/", home_views.auth_stop_impersonate),
     path("auth/me/", home_views.auth_me),
     path("auth/dashboard/", home_views.auth_dashboard),
+    path("auth/my-contact-messages/", home_views.auth_my_contact_messages),
+    path("auth/my-projects/", home_views.auth_my_projects),
     path("auth/notifications/<uuid:notification_id>/read/", home_views.auth_notification_mark_read),
     path("subscriptions/pending/", home_views.subscriptions_pending),
     path("payments/esewa/initiate/", esewa_views.esewa_payment_initiate),

@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ImageInput from '@/components/admin/cms/ImageInput';
 import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
-import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
+import { evaluatePortalModuleView, evaluatePortalPerm, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
 const emptyProfile: AuthMeProfile = {
   user_type: 'individual',
   pan: '',
@@ -92,12 +93,24 @@ const SubscriberProfile = () => {
     return <Navigate to={hubPath} replace />;
   }
 
+  const canEditProfile = evaluatePortalPerm(user, PORTAL_PERM_MODULES.profile, 'edit');
+
   return (
     <div className="max-w-3xl mx-auto space-y-6 w-full">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">Your profile</h1>
         <p className="text-muted-foreground mt-1">Update how you appear on the site and on invoices.</p>
       </div>
+
+      {!canEditProfile ? (
+        <Alert>
+          <AlertTitle>View only</AlertTitle>
+          <AlertDescription className="text-sm">
+            Your administrator has granted view access to account settings only. Ask a Super Admin to enable edit if you
+            need changes.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -111,6 +124,8 @@ const SubscriberProfile = () => {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               autoComplete="name"
+              readOnly={!canEditProfile}
+              className={!canEditProfile ? 'bg-muted/50' : undefined}
             />
           </div>
           <div className="grid gap-2">
@@ -121,21 +136,38 @@ const SubscriberProfile = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
+              readOnly={!canEditProfile}
+              className={!canEditProfile ? 'bg-muted/50' : undefined}
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="sub-profile-phone">Phone</Label>
-            <Input id="sub-profile-phone" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
+            <Input
+              id="sub-profile-phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              autoComplete="tel"
+              readOnly={!canEditProfile}
+              className={!canEditProfile ? 'bg-muted/50' : undefined}
+            />
           </div>
-          <ImageInput label="Profile photo" value={avatar} onChange={setAvatar} />
+          {canEditProfile ? (
+            <ImageInput label="Profile photo" value={avatar} onChange={setAvatar} />
+          ) : (
+            <div className="grid gap-2">
+              <Label>Profile photo</Label>
+              <p className="text-sm text-muted-foreground">Photo changes require edit permission.</p>
+            </div>
+          )}
           <div className="grid gap-2">
             <Label htmlFor="sub-profile-password">New password</Label>
             <PasswordInput
               id="sub-profile-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Leave blank to keep current password"
+              placeholder={canEditProfile ? 'Leave blank to keep current password' : '—'}
               autoComplete="new-password"
+              disabled={!canEditProfile}
             />
           </div>
         </CardContent>
@@ -151,6 +183,7 @@ const SubscriberProfile = () => {
             <Select
               value={profile.user_type}
               onValueChange={(v: 'individual' | 'business') => setProfile((p) => ({ ...p, user_type: v }))}
+              disabled={!canEditProfile}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -163,11 +196,23 @@ const SubscriberProfile = () => {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="sub-profile-pan">PAN</Label>
-            <Input id="sub-profile-pan" value={profile.pan} onChange={(e) => setProfile((p) => ({ ...p, pan: e.target.value }))} />
+            <Input
+              id="sub-profile-pan"
+              value={profile.pan}
+              onChange={(e) => setProfile((p) => ({ ...p, pan: e.target.value }))}
+              readOnly={!canEditProfile}
+              className={!canEditProfile ? 'bg-muted/50' : undefined}
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="sub-profile-vat">VAT</Label>
-            <Input id="sub-profile-vat" value={profile.vat} onChange={(e) => setProfile((p) => ({ ...p, vat: e.target.value }))} />
+            <Input
+              id="sub-profile-vat"
+              value={profile.vat}
+              onChange={(e) => setProfile((p) => ({ ...p, vat: e.target.value }))}
+              readOnly={!canEditProfile}
+              className={!canEditProfile ? 'bg-muted/50' : undefined}
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="sub-profile-company">Company name</Label>
@@ -175,14 +220,18 @@ const SubscriberProfile = () => {
               id="sub-profile-company"
               value={profile.company_name}
               onChange={(e) => setProfile((p) => ({ ...p, company_name: e.target.value }))}
+              readOnly={!canEditProfile}
+              className={!canEditProfile ? 'bg-muted/50' : undefined}
             />
           </div>
         </CardContent>
       </Card>
 
-      <Button type="button" onClick={save} disabled={saving}>
-        {saving ? 'Saving…' : 'Save changes'}
-      </Button>
+      {canEditProfile ? (
+        <Button type="button" onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </Button>
+      ) : null}
     </div>
   );
 };

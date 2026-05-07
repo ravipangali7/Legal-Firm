@@ -99,14 +99,19 @@ def portal_permissions_for_user(user) -> list[dict[str, bool | str]]:
     """
     Effective PermissionModule matrix for subscriber-shell UI (/client, /dashboard sidebar).
 
-    Staff sessions reuse the admin RolePermission matrix. Customer roles resolve RolePermission
-    rows for ``User.role_key`` so Admin Roles toggles match portal navigation.
+    Always resolves ``RolePermission`` rows for the user's ``role_key`` (same rows edited under
+    Admin → Roles), including when ``is_staff`` is True — so e.g. a Client-role staff account
+    sees the Client portal matrix instead of the admin matrix. Django superusers receive full
+    flags on every module. Admin SPA navigation still uses ``admin_permissions_for_user``.
     """
     if not getattr(user, "is_authenticated", False):
         return []
-    if user.is_staff:
-        return admin_permissions_for_user(user)
     names = list(PermissionModule.objects.order_by("name").values_list("name", flat=True))
+    if getattr(user, "is_superuser", False):
+        return [
+            {"module": n, "view": True, "create": True, "edit": True, "delete": True}
+            for n in names
+        ]
     try:
         role = Role.objects.get(key=user.role_key)
     except Role.DoesNotExist:
@@ -128,6 +133,16 @@ def portal_permissions_for_user(user) -> list[dict[str, bool | str]]:
         }
         for name in names
     ]
+
+
+def portal_module_perm(user, module_name: str, perm: AdminPerm) -> bool:
+    """Whether subscriber-shell RolePermission grants ``perm`` on ``module_name``."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    for row in portal_permissions_for_user(user):
+        if str(row["module"]) == module_name:
+            return bool(row.get(perm, False))
+    return False
 
 
 def admin_permissions_for_user(user) -> list[dict[str, bool | str]]:

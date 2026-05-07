@@ -134,7 +134,7 @@ export interface AuthMeUser {
   is_superuser?: boolean;
   /** Present for `is_staff` users: module CRUD flags for the admin area (`null` when not staff). */
   admin_permissions?: AuthMeAdminPermission[] | null;
-  /** Subscriber hub (/client, /dashboard): effective RolePermission rows for navigation (always set when authenticated). */
+  /** Subscriber hub (/client, /dashboard): RolePermission rows for the user's role (Admin → Roles); drives sidebar and subscriber PATCH rules. */
   portal_permissions?: AuthMeAdminPermission[] | null;
   created_at?: string;
   last_login_at?: string;
@@ -268,6 +268,39 @@ export async function fetchAuthDashboard(): Promise<AuthDashboardPayload> {
   const r = await sessionFetch('/api/auth/dashboard/');
   if (!r.ok) throw new Error(`dashboard ${r.status}`);
   return r.json() as Promise<AuthDashboardPayload>;
+}
+
+export interface AuthMyProjectRow {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  progress: number;
+  due_date: string | null;
+  client_name: string;
+}
+
+export async function fetchAuthMyProjects(): Promise<AuthMyProjectRow[]> {
+  const r = await sessionFetch('/api/auth/my-projects/');
+  if (!r.ok) throw new Error(`my-projects ${r.status}`);
+  return r.json() as Promise<AuthMyProjectRow[]>;
+}
+
+/** Mirror of persisted contact rows visible to the signed-in user by email match. */
+export interface AuthMyContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  created_at: string;
+}
+
+export async function fetchAuthMyContactMessages(): Promise<AuthMyContactMessage[]> {
+  const r = await sessionFetch('/api/auth/my-contact-messages/');
+  if (!r.ok) throw new Error(`my-contact-messages ${r.status}`);
+  return r.json() as Promise<AuthMyContactMessage[]>;
 }
 
 /** POST — mark a subscriber notification as read (updates unread count on `/api/auth/me/`). */

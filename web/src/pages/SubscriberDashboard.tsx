@@ -10,7 +10,7 @@ import {
   roleDisplayLabel,
   subscriberDashboardSubtitle,
 } from '@/lib/userDisplay';
-import { fetchAuthDashboard, type AuthDashboardPayload, type AuthDashboardNotification, type AuthMeUser } from '@/lib/api';
+import { fetchAuthDashboard, fetchAuthMyProjects, type AuthDashboardPayload, type AuthDashboardNotification, type AuthMeUser } from '@/lib/api';
 import {
   canAccessCaseSummaries,
   canAccessLawsLibrary,
@@ -137,6 +137,12 @@ function paymentMethodLabel(method: string): string {
   return method || '—';
 }
 
+function humanizePortalLabel(raw: string): string {
+  const s = (raw || '').replace(/_/g, ' ').trim();
+  if (!s) return '—';
+  return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function notificationTypeBadge(type: string | null | undefined): { label: string; className: string } {
   const t = (type || 'info').toLowerCase();
   if (t === 'system') return { label: 'System', className: 'bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100' };
@@ -227,6 +233,18 @@ const SubscriberDashboard = () => {
       ? tabParam
       : allowedDashTabs[0] ?? 'activity';
   const walletInitialBilling = parseWalletBillingParam(searchParams.get('billing'));
+
+  const projectsPortalOk = Boolean(user && evaluatePortalModuleView(user, PORTAL_PERM_MODULES.projects));
+  const {
+    data: myProjects = [],
+    isLoading: projectsLoading,
+    isError: projectsError,
+  } = useQuery({
+    queryKey: ['auth-my-projects', user?.id],
+    queryFn: fetchAuthMyProjects,
+    enabled: projectsPortalOk,
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -834,10 +852,38 @@ const SubscriberDashboard = () => {
                 <CardTitle className="text-lg">Projects</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Matter and engagement updates from your legal team will appear here when linked to your account. If you
-                  have questions, use Support from the sidebar or your usual firm contact.
+                <p className="text-sm text-muted-foreground mb-4">
+                  Matters assigned to your firm contact in Admin → Clients / Projects (view only).
                 </p>
+                {projectsLoading ? (
+                  <p className="text-sm text-muted-foreground py-4">Loading projects…</p>
+                ) : projectsError ? (
+                  <p className="text-sm text-destructive py-4">Could not load projects.</p>
+                ) : myProjects.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4">No projects linked to your account email yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {myProjects.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-3 last:border-0"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm">{p.name}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {p.client_name} · {humanizePortalLabel(p.type)}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Due {p.due_date ? safeFormatDate(p.due_date) ?? p.due_date : '—'} · Progress {p.progress}%
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="w-fit shrink-0 font-normal">
+                          {humanizePortalLabel(p.status)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

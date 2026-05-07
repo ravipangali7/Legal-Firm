@@ -31,7 +31,6 @@ import {
   LifeBuoy,
   LogOut,
   Menu,
-  PanelLeft,
   Scale,
   Settings,
   Wallet,
@@ -126,13 +125,13 @@ function SidebarNav({
     { to: `${hubPath}?tab=wallet`, label: 'Wallet', icon: Wallet, permModule: PORTAL_PERM_MODULES.wallet },
     { to: `${hubPath}?tab=billing`, label: 'Billing', icon: CreditCard, permModule: PORTAL_PERM_MODULES.billing },
     { to: `${hubPath}/profile`, label: 'Settings', icon: Settings, permModule: PORTAL_PERM_MODULES.profile },
-    { to: '/help', label: 'Help', icon: HelpCircle, permModule: PORTAL_PERM_MODULES.help },
+    { to: `${hubPath}/help`, label: 'Help', icon: HelpCircle, permModule: PORTAL_PERM_MODULES.help },
   ];
   const mainItems = mainItemsAll.filter((item) => !item.permModule || evaluatePortalModuleView(user, item.permModule));
 
   const showBrowseSite = hubPath !== '/client';
   const showSupportNav = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.support);
-  const siteSectionVisible = showBrowseSite || showSupportNav || user.is_staff;
+  const siteSectionVisible = showBrowseSite || showSupportNav;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -202,15 +201,9 @@ function SidebarNav({
             </NavLink>
           ) : null}
           {showSupportNav ? (
-            <NavLink to="/contact" className={linkClass} onClick={onNavigate}>
+            <NavLink to={`${hubPath}/support`} className={linkClass} onClick={onNavigate}>
               <LifeBuoy className="h-4 w-4 shrink-0" />
               Support
-            </NavLink>
-          ) : null}
-          {user.is_staff ? (
-            <NavLink to="/admin" className={linkClass} onClick={onNavigate}>
-              <PanelLeft className="h-4 w-4 shrink-0" />
-              Admin panel
             </NavLink>
           ) : null}
         </>
