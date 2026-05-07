@@ -103,9 +103,9 @@ const SubscriberNotificationDetail = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-6 w-full">
       <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" asChild>
-        <Link to={hubPath}>
+        <Link to={`${hubPath}/notifications`}>
           <ArrowLeft className="h-4 w-4 mr-1" />
-          {hubPath === '/client' ? 'Back to client portal' : 'Back to dashboard'}
+          Back to notifications
         </Link>
       </Button>
 
@@ -120,7 +120,7 @@ const SubscriberNotificationDetail = () => {
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">This alert may have been removed or the link is invalid.</p>
             <Button asChild>
-              <Link to={hubPath}>{hubPath === '/client' ? 'Return to client portal' : 'Return to dashboard'}</Link>
+              <Link to={`${hubPath}/notifications`}>Return to notifications</Link>
             </Button>
           </CardContent>
         </Card>

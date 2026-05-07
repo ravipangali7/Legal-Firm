@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
@@ -33,10 +33,8 @@ import {
   Scale,
   Clock,
   Star,
-  ChevronRight,
   AlertTriangle,
   Wallet,
-  FolderKanban,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -168,7 +166,8 @@ const emptyDash = (label: string) => (
   <p className="text-sm text-muted-foreground py-8 text-center">{label}</p>
 );
 
-const DASH_TABS = new Set(['activity', 'notifications', 'wallet', 'billing', 'projects']);
+/** Tab query values on the hub home page only (notifications/projects use their own routes). */
+const HOME_DASH_TABS = new Set(['activity', 'wallet', 'billing']);
 /** Maps dashboard tab query values to Admin Roles module names (subscriber shell). */
 const DASH_TAB_PERM_MODULE: Record<string, string> = {
   activity: PORTAL_PERM_MODULES.dashboard,
@@ -212,7 +211,7 @@ function catalogStatDisplay(count: number | undefined, isLoading: boolean, hasEr
   return isLoading ? '—' : '0';
 }
 
-const SubscriberDashboard = () => {
+const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications' | 'projects' }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const hubPath = subscriberHubPath(location.pathname);
@@ -224,14 +223,14 @@ const SubscriberDashboard = () => {
   const { user, refreshUser } = useAuth();
 
   const tabParam = normalizeDashboardTabParam(searchParams.get('tab'));
-  const allowedDashTabs = useMemo(
-    () => (['activity', 'notifications', 'wallet', 'billing', 'projects'] as const).filter((t) => dashTabAllowed(user, t)),
+  const allowedHomeTabs = useMemo(
+    () => (['activity', 'wallet', 'billing'] as const).filter((t) => dashTabAllowed(user, t)),
     [user],
   );
   const activeTab =
-    tabParam && DASH_TABS.has(tabParam) && dashTabAllowed(user, tabParam)
+    tabParam && HOME_DASH_TABS.has(tabParam) && dashTabAllowed(user, tabParam)
       ? tabParam
-      : allowedDashTabs[0] ?? 'activity';
+      : allowedHomeTabs[0] ?? 'activity';
   const walletInitialBilling = parseWalletBillingParam(searchParams.get('billing'));
 
   const projectsPortalOk = Boolean(user && evaluatePortalModuleView(user, PORTAL_PERM_MODULES.projects));
@@ -247,13 +246,16 @@ const SubscriberDashboard = () => {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || view !== 'home') return;
     const raw = searchParams.get('tab');
     if (raw == null || !String(raw).trim()) return;
+    const t = normalizeDashboardTabParam(raw);
+    if (t === 'notifications' && dashTabAllowed(user, 'notifications')) return;
+    if (t === 'projects' && dashTabAllowed(user, 'projects')) return;
     const desired =
-      tabParam && DASH_TABS.has(tabParam) && dashTabAllowed(user, tabParam)
+      tabParam && HOME_DASH_TABS.has(tabParam) && dashTabAllowed(user, tabParam)
         ? tabParam
-        : allowedDashTabs[0] ?? 'activity';
+        : allowedHomeTabs[0] ?? 'activity';
     if (tabParam !== desired) {
       setSearchParams(
         (prev) => {
@@ -264,7 +266,24 @@ const SubscriberDashboard = () => {
         { replace: true }
       );
     }
-  }, [user, tabParam, allowedDashTabs, setSearchParams]);
+  }, [user, view, tabParam, allowedHomeTabs, setSearchParams, searchParams]);
+
+  useEffect(() => {
+    if (view !== 'home' || !user) return;
+    const t = normalizeDashboardTabParam(searchParams.get('tab'));
+    if (t === 'notifications' && dashTabAllowed(user, 'notifications')) {
+      const rawQ = searchParams.get(NOTIF_QUEUE_PARAM);
+      const next =
+        rawQ && rawQ.trim()
+          ? `${hubPath}/notifications?${NOTIF_QUEUE_PARAM}=${encodeURIComponent(rawQ.trim())}`
+          : `${hubPath}/notifications`;
+      navigate(next, { replace: true });
+      return;
+    }
+    if (t === 'projects' && dashTabAllowed(user, 'projects')) {
+      navigate(`${hubPath}/projects`, { replace: true });
+    }
+  }, [view, user, hubPath, navigate, searchParams]);
 
   const setActiveTab = (v: string) => {
     setSearchParams(
@@ -285,20 +304,6 @@ const SubscriberDashboard = () => {
         const q = parseNotifQueue(p.get(NOTIF_QUEUE_PARAM)).filter((id) => !idsToRemove.includes(id));
         if (q.length) p.set(NOTIF_QUEUE_PARAM, q.join(','));
         else p.delete(NOTIF_QUEUE_PARAM);
-        return p;
-      },
-      { replace: true }
-    );
-  };
-
-  const enqueueBellNotification = (id: string) => {
-    setSearchParams(
-      (prev) => {
-        const p = new URLSearchParams(prev);
-        p.set('tab', 'notifications');
-        const q = parseNotifQueue(p.get(NOTIF_QUEUE_PARAM));
-        const next = q.includes(id) ? q : [...q, id];
-        if (next.length) p.set(NOTIF_QUEUE_PARAM, next.join(','));
         return p;
       },
       { replace: true }
@@ -440,6 +445,160 @@ const SubscriberDashboard = () => {
     );
   }
 
+  if (view === 'notifications') {
+    if (!dashTabAllowed(user, 'notifications')) {
+      return <Navigate to={hubPath} replace />;
+    }
+    return (
+      <div className="max-w-7xl mx-auto space-y-6 w-full">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Notifications</h1>
+          <p className="text-sm text-muted-foreground mt-1">Read and manage alerts for your account.</p>
+        </div>
+        {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
+        {error ? <p className="text-sm text-destructive">Could not load notifications. Try again later.</p> : null}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Notifications</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!notifications.length ? (
+              emptyDash('No notifications yet.')
+            ) : (
+              <>
+                {queuedNotifications.length > 0 ? (
+                  <div className="space-y-2 pb-3 border-b border-border">
+                    <p className="text-xs font-medium text-muted-foreground">From bell</p>
+                    {queuedNotifications.map((n) => (
+                      <div
+                        key={n.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openNotificationDetailFromTab(n)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            openNotificationDetailFromTab(n);
+                          }
+                        }}
+                        className={cn(
+                          'flex items-start gap-3 rounded-lg border p-3 cursor-pointer text-left transition-colors hover:bg-accent/50',
+                          !n.read ? 'border-primary/25 bg-primary/5' : 'border-border bg-muted/20'
+                        )}
+                      >
+                        <div
+                          className={`h-2 w-2 rounded-full mt-2 shrink-0 ${n.read ? 'bg-muted-foreground/40' : 'bg-primary'}`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{n.title}</p>
+                            <Badge className={cn('h-5 px-1.5 text-[10px]', notificationTypeBadge(n.type).className)}>
+                              {notificationTypeBadge(n.type).label}
+                            </Badge>
+                          </div>
+                          {n.body ? <p className="text-sm text-muted-foreground mt-0.5 line-clamp-3">{n.body}</p> : null}
+                          <p className="text-xs text-muted-foreground mt-1">{safeFormatDistance(n.created_at)}</p>
+                          <p className="text-[11px] text-primary-onBg mt-1.5">Open full message</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  {queuedNotifications.length > 0 ? (
+                    <p className="text-xs font-medium text-muted-foreground">All</p>
+                  ) : null}
+                  {restNotifications.map((n) => (
+                    <div
+                      key={n.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openNotificationDetailFromTab(n)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openNotificationDetailFromTab(n);
+                        }
+                      }}
+                      className="flex items-start gap-3 border-b pb-2 last:border-0 cursor-pointer rounded-md -mx-1 px-1 hover:bg-accent/40 transition-colors text-left"
+                    >
+                      <div
+                        className={`h-2 w-2 rounded-full mt-2 shrink-0 ${n.read ? 'bg-muted-foreground/40' : 'bg-primary'}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{n.title}</p>
+                          <Badge className={cn('h-5 px-1.5 text-[10px]', notificationTypeBadge(n.type).className)}>
+                            {notificationTypeBadge(n.type).label}
+                          </Badge>
+                        </div>
+                        {n.body ? <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p> : null}
+                        <p className="text-xs text-muted-foreground mt-1">{safeFormatDistance(n.created_at)}</p>
+                        <p className="text-[11px] text-primary-onBg mt-1">Open full message</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (view === 'projects') {
+    if (!projectsPortalOk) {
+      return <Navigate to={hubPath} replace />;
+    }
+    return (
+      <div className="max-w-7xl mx-auto space-y-6 w-full">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Matters assigned to your firm contact in Admin → Clients / Projects (view only).
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Projects</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {projectsLoading ? (
+              <p className="text-sm text-muted-foreground py-4">Loading projects…</p>
+            ) : projectsError ? (
+              <p className="text-sm text-destructive py-4">Could not load projects.</p>
+            ) : myProjects.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">No projects linked to your account email yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {myProjects.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-3 last:border-0"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm">{p.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {p.client_name} · {humanizePortalLabel(p.type)}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Due {p.due_date ? safeFormatDate(p.due_date) ?? p.due_date : '—'} · Progress {p.progress}%
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="w-fit shrink-0 font-normal">
+                      {humanizePortalLabel(p.status)}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const dash: AuthDashboardPayload | undefined = data;
   const libraryPortalOk = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.library);
   const planLabel = planTierLabel(user.plan);
@@ -510,10 +669,6 @@ const SubscriberDashboard = () => {
             </div>
             <p className="text-muted-foreground mt-1">{subscriberDashboardSubtitle(user)}</p>
           </div>
-          <Button onClick={() => navigate('/')} variant="outline">
-            <ChevronRight className="h-4 w-4 mr-1" />
-            Browse Site
-          </Button>
         </div>
 
         <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20 overflow-hidden">
@@ -613,25 +768,16 @@ const SubscriberDashboard = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="flex flex-wrap h-auto gap-1">
-            {allowedDashTabs.includes('activity') ? (
+            {allowedHomeTabs.includes('activity') ? (
               <TabsTrigger value="activity">Recent Activity</TabsTrigger>
             ) : null}
-            {allowedDashTabs.includes('notifications') ? (
-              <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            ) : null}
-            {allowedDashTabs.includes('wallet') ? (
+            {allowedHomeTabs.includes('wallet') ? (
               <TabsTrigger value="wallet" className="gap-1">
                 <Wallet className="h-4 w-4" />
                 Wallet
               </TabsTrigger>
             ) : null}
-            {allowedDashTabs.includes('billing') ? <TabsTrigger value="billing">Billing</TabsTrigger> : null}
-            {allowedDashTabs.includes('projects') ? (
-              <TabsTrigger value="projects" className="gap-1">
-                <FolderKanban className="h-4 w-4" />
-                Projects
-              </TabsTrigger>
-            ) : null}
+            {allowedHomeTabs.includes('billing') ? <TabsTrigger value="billing">Billing</TabsTrigger> : null}
           </TabsList>
 
           <TabsContent value="activity">
@@ -653,95 +799,6 @@ const SubscriberDashboard = () => {
                         </div>
                       </div>
                     ))}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="notifications">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Notifications</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {!notifications.length ? (
-                  emptyDash('No notifications yet.')
-                ) : (
-                  <>
-                    {queuedNotifications.length > 0 ? (
-                      <div className="space-y-2 pb-3 border-b border-border">
-                        <p className="text-xs font-medium text-muted-foreground">From bell</p>
-                        {queuedNotifications.map((n) => (
-                          <div
-                            key={n.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => openNotificationDetailFromTab(n)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                openNotificationDetailFromTab(n);
-                              }
-                            }}
-                            className={cn(
-                              'flex items-start gap-3 rounded-lg border p-3 cursor-pointer text-left transition-colors hover:bg-accent/50',
-                              !n.read ? 'border-primary/25 bg-primary/5' : 'border-border bg-muted/20'
-                            )}
-                          >
-                            <div
-                              className={`h-2 w-2 rounded-full mt-2 shrink-0 ${n.read ? 'bg-muted-foreground/40' : 'bg-primary'}`}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-medium">{n.title}</p>
-                                <Badge className={cn('h-5 px-1.5 text-[10px]', notificationTypeBadge(n.type).className)}>
-                                  {notificationTypeBadge(n.type).label}
-                                </Badge>
-                              </div>
-                              {n.body ? <p className="text-sm text-muted-foreground mt-0.5 line-clamp-3">{n.body}</p> : null}
-                              <p className="text-xs text-muted-foreground mt-1">{safeFormatDistance(n.created_at)}</p>
-                              <p className="text-[11px] text-primary-onBg mt-1.5">Open full message</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                    <div className="space-y-2">
-                      {queuedNotifications.length > 0 ? (
-                        <p className="text-xs font-medium text-muted-foreground">All</p>
-                      ) : null}
-                      {restNotifications.map((n) => (
-                        <div
-                          key={n.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => openNotificationDetailFromTab(n)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              openNotificationDetailFromTab(n);
-                            }
-                          }}
-                          className="flex items-start gap-3 border-b pb-2 last:border-0 cursor-pointer rounded-md -mx-1 px-1 hover:bg-accent/40 transition-colors text-left"
-                        >
-                          <div
-                            className={`h-2 w-2 rounded-full mt-2 shrink-0 ${n.read ? 'bg-muted-foreground/40' : 'bg-primary'}`}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium">{n.title}</p>
-                              <Badge className={cn('h-5 px-1.5 text-[10px]', notificationTypeBadge(n.type).className)}>
-                                {notificationTypeBadge(n.type).label}
-                              </Badge>
-                            </div>
-                            {n.body ? <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p> : null}
-                            <p className="text-xs text-muted-foreground mt-1">{safeFormatDistance(n.created_at)}</p>
-                            <p className="text-[11px] text-primary-onBg mt-1">Open full message</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -842,48 +899,6 @@ const SubscriberDashboard = () => {
                         </div>
                       );
                     })}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="projects">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Projects</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Matters assigned to your firm contact in Admin → Clients / Projects (view only).
-                </p>
-                {projectsLoading ? (
-                  <p className="text-sm text-muted-foreground py-4">Loading projects…</p>
-                ) : projectsError ? (
-                  <p className="text-sm text-destructive py-4">Could not load projects.</p>
-                ) : myProjects.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">No projects linked to your account email yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {myProjects.map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-3 last:border-0"
-                      >
-                        <div className="min-w-0">
-                          <div className="font-medium text-sm">{p.name}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {p.client_name} · {humanizePortalLabel(p.type)}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Due {p.due_date ? safeFormatDate(p.due_date) ?? p.due_date : '—'} · Progress {p.progress}%
-                          </div>
-                        </div>
-                        <Badge variant="secondary" className="w-fit shrink-0 font-normal">
-                          {humanizePortalLabel(p.status)}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </CardContent>
             </Card>
           </TabsContent>

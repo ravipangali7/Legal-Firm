@@ -10,30 +10,17 @@ import {
   userInitials,
 } from '@/lib/userDisplay';
 import { fetchAuthDashboard, type AuthDashboardNotification, type AuthMeUser } from '@/lib/api';
-import {
-  canAccessCaseSummaries,
-  canAccessLawsLibrary,
-  canAccessProcedures,
-  canAccessTaxTools,
-} from '@/lib/subscriptionAccess';
 import { subscriberHubHeaderTitle, subscriberHubPath } from '@/lib/subscriberPortalPaths';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
-  BookOpen,
-  Calculator,
-  CreditCard,
-  FileText,
   FolderKanban,
   HelpCircle,
-  Home,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
   Menu,
-  Scale,
   Settings,
-  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -89,8 +76,6 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   end?: boolean;
-  locked?: boolean;
-  lockedHint?: string;
   /** Admin Roles module name; omitted = always shown */
   permModule?: string;
 };
@@ -99,44 +84,31 @@ function SidebarNav({
   hubPath,
   user,
   onNavigate,
-  onLockedNav,
   className,
 }: {
   hubPath: '/dashboard' | '/client';
   user: AuthMeUser;
   onNavigate?: () => void;
-  onLockedNav?: (hint: string) => void;
   className?: string;
 }) {
-  const staffOk = user.is_staff === true;
-  const libraryOk = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.library);
-  const libraryItemsAll: NavItem[] = [
-    { to: '/laws', label: 'Laws library', icon: Scale, permModule: PORTAL_PERM_MODULES.library, locked: !staffOk && !canAccessLawsLibrary(user), lockedHint: 'Subscribe to unlock the laws library.' },
-    { to: '/summaries', label: 'Case summaries', icon: FileText, permModule: PORTAL_PERM_MODULES.library, locked: !staffOk && !canAccessCaseSummaries(user), lockedHint: 'Subscribe to unlock case summaries.' },
-    { to: '/tools', label: 'Tax tools', icon: Calculator, permModule: PORTAL_PERM_MODULES.library, locked: !staffOk && !canAccessTaxTools(user), lockedHint: 'Subscribe to unlock tax tools.' },
-    { to: '/procedures', label: 'Procedures', icon: BookOpen, permModule: PORTAL_PERM_MODULES.library, locked: !staffOk && !canAccessProcedures(user), lockedHint: 'Subscribe to unlock procedures.' },
-  ];
-  const libraryItems = libraryOk ? libraryItemsAll : [];
-
   const mainItemsAll: NavItem[] = [
     { to: hubPath, label: hubPath === '/client' ? 'Client home' : 'Dashboard', icon: LayoutDashboard, end: true, permModule: PORTAL_PERM_MODULES.dashboard },
-    { to: `${hubPath}?tab=notifications`, label: 'Notifications', icon: Bell, permModule: PORTAL_PERM_MODULES.notifications },
-    { to: `${hubPath}?tab=projects`, label: 'Projects', icon: FolderKanban, permModule: PORTAL_PERM_MODULES.projects },
-    { to: `${hubPath}?tab=wallet`, label: 'Wallet', icon: Wallet, permModule: PORTAL_PERM_MODULES.wallet },
-    { to: `${hubPath}?tab=billing`, label: 'Billing', icon: CreditCard, permModule: PORTAL_PERM_MODULES.billing },
+    { to: `${hubPath}/notifications`, label: 'Notifications', icon: Bell, permModule: PORTAL_PERM_MODULES.notifications },
+    { to: `${hubPath}/projects`, label: 'Projects', icon: FolderKanban, permModule: PORTAL_PERM_MODULES.projects },
     { to: `${hubPath}/profile`, label: 'Settings', icon: Settings, permModule: PORTAL_PERM_MODULES.profile },
     { to: `${hubPath}/help`, label: 'Help', icon: HelpCircle, permModule: PORTAL_PERM_MODULES.help },
   ];
   const mainItems = mainItemsAll.filter((item) => !item.permModule || evaluatePortalModuleView(user, item.permModule));
 
-  const showBrowseSite = hubPath !== '/client';
   const showSupportNav = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.support);
-  const siteSectionVisible = showBrowseSite || showSupportNav;
+  const siteSectionVisible = showSupportNav;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
-      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-      isActive ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+      isActive
+        ? 'bg-primary text-primary-foreground shadow-md'
+        : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
     );
 
   return (
@@ -153,53 +125,16 @@ function SidebarNav({
         </>
       ) : null}
 
-      {libraryItems.length ? (
-        <>
-          <p className="mt-4 px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Library</p>
-          {libraryItems.map((item) =>
-            item.locked ? (
-              <button
-                key={item.to}
-                type="button"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground/70 hover:bg-muted/50 text-left w-full"
-                title={item.lockedHint}
-                onClick={() => {
-                  if (item.lockedHint) onLockedNav?.(item.lockedHint);
-                  onNavigate?.();
-                }}
-              >
-                <item.icon className="h-4 w-4 shrink-0 opacity-60" />
-                <span className="flex-1">{item.label}</span>
-                <Badge variant="outline" className="text-[10px] font-normal">
-                  Locked
-                </Badge>
-              </button>
-            ) : (
-              <NavLink key={item.to} to={item.to} className={linkClass} onClick={onNavigate}>
-                <item.icon className="h-4 w-4 shrink-0" />
-                {item.label}
-              </NavLink>
-            ),
-          )}
-        </>
-      ) : null}
-
       {siteSectionVisible ? (
         <>
           <p
             className={cn(
               'px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground',
-              mainItems.length || libraryItems.length ? 'mt-4' : '',
+              mainItems.length ? 'mt-4' : '',
             )}
           >
             Site
           </p>
-          {showBrowseSite ? (
-            <NavLink to="/" className={linkClass} onClick={onNavigate}>
-              <Home className="h-4 w-4 shrink-0" />
-              Browse site
-            </NavLink>
-          ) : null}
           {showSupportNav ? (
             <NavLink to={`${hubPath}/support`} className={linkClass} onClick={onNavigate}>
               <LifeBuoy className="h-4 w-4 shrink-0" />
@@ -214,7 +149,7 @@ function SidebarNav({
 
 /**
  * Shared shell for `/client` and `/dashboard`: persistent sidebar (desktop) + drawer (mobile),
- * unified header, and entitlement-aware library links — mirrors admin layout ergonomics.
+ * unified header — sidebar routing matches the admin panel (dedicated paths per section).
  */
 export default function SubscriberPortalLayout() {
   const navigate = useNavigate();
@@ -240,12 +175,12 @@ export default function SubscriberPortalLayout() {
   const unread = user && typeof user.unread_notifications_count === 'number' ? user.unread_notifications_count : 0;
 
   const enqueueBellNotification = (id: string) => {
-    const params = new URLSearchParams(location.search);
-    params.set('tab', 'notifications');
-    const q = parseNotifQueue(params.get(NOTIF_QUEUE_PARAM));
+    const nextParams = new URLSearchParams();
+    const q = parseNotifQueue(new URLSearchParams(location.search).get(NOTIF_QUEUE_PARAM));
     const next = q.includes(id) ? q : [...q, id];
-    if (next.length) params.set(NOTIF_QUEUE_PARAM, next.join(','));
-    navigate({ pathname: hubPath, search: `?${params.toString()}` }, { replace: true });
+    if (next.length) nextParams.set(NOTIF_QUEUE_PARAM, next.join(','));
+    const search = nextParams.toString() ? `?${nextParams.toString()}` : '';
+    navigate({ pathname: `${hubPath}/notifications`, search }, { replace: true });
     setNotifOpen(false);
     setMobileOpen(false);
   };
@@ -284,13 +219,7 @@ export default function SubscriberPortalLayout() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
-            <SidebarNav
-              hubPath={hubPath}
-              user={user}
-              onLockedNav={(hint) =>
-                toast({ title: 'Not included in your package', description: hint })
-              }
-            />
+            <SidebarNav hubPath={hubPath} user={user} />
           </div>
         </aside>
 
@@ -310,15 +239,7 @@ export default function SubscriberPortalLayout() {
                       <span className="font-semibold text-sm truncate">{subscriberHubHeaderTitle(location.pathname, user)}</span>
                     </div>
                     <div className="overflow-y-auto flex-1">
-                      <SidebarNav
-                        hubPath={hubPath}
-                        user={user}
-                        onNavigate={() => setMobileOpen(false)}
-                        onLockedNav={(hint) => {
-                          toast({ title: 'Not included in your package', description: hint });
-                          setMobileOpen(false);
-                        }}
-                      />
+                      <SidebarNav hubPath={hubPath} user={user} onNavigate={() => setMobileOpen(false)} />
                     </div>
                   </SheetContent>
                 </Sheet>
@@ -356,7 +277,7 @@ export default function SubscriberPortalLayout() {
                       <div className="p-3 border-b border-border">
                         <h4 className="text-sm font-semibold">Notifications</h4>
                         <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
-                          Tap an item to queue it on the Notifications tab. Open the full message from that tab.
+                          Tap an item to queue it on your Notifications page. Open the full message from there.
                         </p>
                       </div>
                       <div className="max-h-[min(22rem,calc(100vh-12rem))] overflow-y-auto">
@@ -404,8 +325,8 @@ export default function SubscriberPortalLayout() {
                       </div>
                       <div className="p-2 border-t border-border">
                         <Button variant="ghost" size="sm" className="w-full text-primary-onBg h-9 text-xs" asChild>
-                          <Link to={`${hubPath}?tab=notifications`} onClick={() => setNotifOpen(false)}>
-                            {hubPath === '/client' ? 'View on client portal' : 'View on dashboard'}
+                          <Link to={`${hubPath}/notifications`} onClick={() => setNotifOpen(false)}>
+                            Open notifications
                           </Link>
                         </Button>
                       </div>

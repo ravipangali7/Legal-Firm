@@ -216,7 +216,9 @@ const AppRoutes = () => {
             }
           >
             <Route index element={<SubscriberDashboard />} />
+            <Route path="notifications" element={<SubscriberDashboard view="notifications" />} />
             <Route path="notifications/:id" element={<SubscriberNotificationDetail />} />
+            <Route path="projects" element={<SubscriberDashboard view="projects" />} />
             <Route path="profile" element={<SubscriberProfile />} />
             <Route path="help" element={<SubscriberHelpPortal />} />
             <Route path="support" element={<SubscriberSupportPortal />} />
@@ -232,7 +234,9 @@ const AppRoutes = () => {
             }
           >
             <Route index element={<SubscriberDashboard />} />
+            <Route path="notifications" element={<SubscriberDashboard view="notifications" />} />
             <Route path="notifications/:id" element={<SubscriberNotificationDetail />} />
+            <Route path="projects" element={<SubscriberDashboard view="projects" />} />
             <Route path="profile" element={<SubscriberProfile />} />
             <Route path="help" element={<SubscriberHelpPortal />} />
             <Route path="support" element={<SubscriberSupportPortal />} />
