@@ -12,6 +12,16 @@ class Command(BaseCommand):
         qs = User.objects.select_related("role").all()
         n = 0
         for user in qs:
+            role_key = user.role.key if user.role_id else ""
+            if role_key == "super_admin":
+                user.is_staff = True
+                user.is_superuser = True
+            elif role_key in ("admin", "editor"):
+                user.is_staff = True
+                user.is_superuser = False
+            elif role_key in ("client", "user"):
+                user.is_staff = False
+                user.is_superuser = False
             user.save(update_fields=["is_staff", "is_superuser"])
             n += 1
         self.stdout.write(self.style.SUCCESS(f"Updated staff flags for {n} user(s)."))
