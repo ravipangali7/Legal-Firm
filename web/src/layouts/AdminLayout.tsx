@@ -7,7 +7,7 @@ import { useAdminStore } from '@/store/adminStore';
 import { useAuth } from '@/context/AuthContext';
 import { adminModuleForPathname } from '@/lib/adminModuleMap';
 import { adminLandingHref } from '@/lib/adminLandingPath';
-import { evaluateAdminModulePerm } from '@/lib/adminPermissionUtil';
+import { canViewAdminClientsList, evaluateAdminModulePerm } from '@/lib/adminPermissionUtil';
 
 function AdminOutletGuard() {
   const { pathname } = useLocation();
@@ -23,7 +23,11 @@ function AdminOutletGuard() {
     if (p === '/admin') return <Outlet />;
     return <Navigate to="/admin" replace />;
   }
-  if (!evaluateAdminModulePerm(user, roles, mod, 'view')) {
+  const allowed =
+    mod === 'Clients'
+      ? canViewAdminClientsList(user, roles)
+      : evaluateAdminModulePerm(user, roles, mod, 'view');
+  if (!allowed) {
     const fallback = adminLandingHref(user, roles);
     return <Navigate to={fallback} replace />;
   }

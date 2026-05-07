@@ -83,7 +83,7 @@ from core.sms import send_user_suspension_sms
 from core.staff_notifications import fan_out_broadcast_in_app, sync_broadcast_metadata_to_recipients
 from core.project_notifications import notify_client_assigned_to_project
 from core.subscription_service import revoke_user_subscription_entitlements
-from core.rbac import require_admin_perm
+from core.rbac import require_admin_perm, require_clients_list_or_users_edit
 from core.views.knowledge_resource_pdf import resolve_knowledge_resource_pdf
 
 User = get_user_model()
@@ -457,7 +457,10 @@ def admin_transaction_detail(request, txn_id):
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def admin_clients(request):
-    if err := require_admin_perm(request, "Clients", "view" if request.method == "GET" else "create"):
+    if request.method == "GET":
+        if err := require_clients_list_or_users_edit(request):
+            return err
+    elif err := require_admin_perm(request, "Clients", "create"):
         return err
     if request.method == "GET":
         qs = Client.objects.order_by("company")
@@ -473,9 +476,13 @@ def admin_clients(request):
 @api_view(["GET", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def admin_client_detail(request, client_id):
-    perm = "view" if request.method == "GET" else ("edit" if request.method == "PATCH" else "delete")
-    if err := require_admin_perm(request, "Clients", perm):
-        return err
+    if request.method == "GET":
+        if err := require_clients_list_or_users_edit(request):
+            return err
+    else:
+        perm = "edit" if request.method == "PATCH" else "delete"
+        if err := require_admin_perm(request, "Clients", perm):
+            return err
     try:
         cid = uuid.UUID(str(client_id))
     except ValueError:

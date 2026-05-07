@@ -405,35 +405,25 @@ const AdminUsers = () => {
                   {accountTypeDisplayLine(u)}
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 min-w-[9rem] justify-between gap-1 capitalize font-normal"
-                        aria-label={`Change role, currently ${u.role.replace('_', ' ')}`}
-                        disabled={!canEditUsers || roleBusyId === u.id}
-                      >
-                        <span>{u.role.replace('_', ' ')}</span>
-                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
+                  <Select
+                    value={u.role}
+                    onValueChange={(role) => void applyRoleFromRow(u, role as UserRole)}
+                    disabled={!canEditUsers || roleBusyId === u.id}
+                  >
+                    <SelectTrigger
+                      className="h-7 w-[9.5rem] capitalize font-normal"
+                      aria-label={`Change role, currently ${u.role.replace('_', ' ')}`}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
                       {USER_TABLE_ROLES.map((role) => (
-                        <DropdownMenuItem
-                          key={role}
-                          disabled={u.role === role}
-                          className="capitalize"
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            void applyRoleFromRow(u, role);
-                          }}
-                        >
+                        <SelectItem key={role} value={role} className="capitalize">
                           {role.replace('_', ' ')}
-                        </DropdownMenuItem>
+                        </SelectItem>
                       ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell>
                   <span className="text-xs text-muted-foreground">

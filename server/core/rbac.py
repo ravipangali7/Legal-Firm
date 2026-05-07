@@ -8,7 +8,8 @@ Endpoint → PermissionModule mapping (enforced in `x_views` / `dashboard_views`
 - Roles: admin_permission_modules, admin_permission_module_detail, admin_roles, admin_role_detail,
          admin_role_permissions, admin_role_permission_detail
 - Transactions: admin_transactions, admin_transaction_detail
-- Clients: admin_clients, admin_client_detail
+- Clients: admin_clients (GET also allowed when user has Users edit — see ``require_clients_list_or_users_edit``),
+         admin_client_detail
 - Projects: admin_projects, admin_project_detail
 - Pricing Plans: admin_pricing_plans, admin_pricing_plan_detail
 - Settings: admin_app_settings, admin_app_settings_test_mail
@@ -197,6 +198,22 @@ def user_has_admin_perm(user, module_name: str, perm: AdminPerm) -> bool:
     if not m:
         return False
     return bool(m.get(perm))
+
+
+def require_clients_list_or_users_edit(request):
+    """
+    Allow listing CRM clients when staff can view the Clients module **or** edit Users
+    (user-role → client sync must be visible in the admin snapshot / Clients page).
+    """
+    u = request.user
+    if not u.is_authenticated or not u.is_staff:
+        return Response({"detail": "Staff authentication required."}, status=status.HTTP_403_FORBIDDEN)
+    if user_has_admin_perm(u, "Clients", "view") or user_has_admin_perm(u, "Users", "edit"):
+        return None
+    return Response(
+        {"detail": "Missing permission: view on Clients (or edit on Users)."},
+        status=status.HTTP_403_FORBIDDEN,
+    )
 
 
 def require_admin_perm(request, module_name: str, perm: AdminPerm):

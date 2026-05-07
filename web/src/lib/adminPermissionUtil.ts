@@ -31,3 +31,15 @@ export function evaluateAdminModulePerm(
   }
   return false;
 }
+
+/**
+ * Clients list + synced CRM rows from “promote user to client” are needed when staff can edit users.
+ * Without this, `/admin/clients` redirects away and the snapshot never loads client rows even though
+ * the API creates them.
+ */
+export function canViewAdminClientsList(user: AuthMeUser | null | undefined, roles: RoleRow[]): boolean {
+  return (
+    evaluateAdminModulePerm(user, roles, 'Clients', 'view') ||
+    evaluateAdminModulePerm(user, roles, 'Users', 'edit')
+  );
+}

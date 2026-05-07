@@ -13,7 +13,7 @@ import fallbackSidebarLogo from '@/assets/logo.png';
 import { useAdminStore } from '@/store/adminStore';
 import { CmsImage } from '@/components/CmsImage';
 import { useAuth } from '@/context/AuthContext';
-import { evaluateAdminModulePerm } from '@/lib/adminPermissionUtil';
+import { canViewAdminClientsList, evaluateAdminModulePerm } from '@/lib/adminPermissionUtil';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -159,7 +159,12 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: AdminSidebarProps) => {
   };
 
   const filteredNavItems = useMemo(
-    () => SIDEBAR_NAV_ITEMS.filter((item) => evaluateAdminModulePerm(authUser, roles, item.module, 'view')),
+    () =>
+      SIDEBAR_NAV_ITEMS.filter((item) =>
+        item.href === '/admin/clients'
+          ? canViewAdminClientsList(authUser, roles)
+          : evaluateAdminModulePerm(authUser, roles, item.module, 'view')
+      ),
     [authUser, roles]
   );
 
