@@ -18,9 +18,9 @@ function CenteredLoading({ label }: { label: string }) {
 }
 
 /**
- * After `ProtectedRoute` confirms staff: sends clients/subscribers away from `/admin`,
- * verifies RBAC (role hub + sidebar permissions), then hands off staff to the external
- * admin SPA when configured (`VITE_ADMIN_PORTAL_ORIGIN`, default prod: legalfirm.360winx.com).
+ * After `ProtectedRoute` confirms staff: keeps URL on `/admin…` inside this SPA (same pattern
+ * as `/client` and `/dashboard`), sends wrong hubs away via `roleHubRedirectTo`, and checks RBAC.
+ * Opt-in remote admin: set `VITE_ADMIN_PORTAL_ORIGIN` to hand off cross-origin once checks pass.
  */
 export default function AdminPortalRoleGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();

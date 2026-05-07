@@ -78,24 +78,46 @@ const AdminHeader = ({ sidebarCollapsed, onMobileMenuToggle, currentRole }: Admi
   const { user: authUser, logout } = useAuth();
   const { notifications, markNotificationRead, markAllNotificationsRead, users } = useAdminStore();
 
-  const displayUser = useMemo(() => {
-    if (authUser?.is_staff) {
-      const selfRow = users.find((u) => u.id === authUser.id);
-      if (selfRow) return selfRow;
+  /** Admin list row for the signed-in staff user, once the snapshot hydrates (optional). */
+  const staffSelfRow = useMemo(
+    () => (authUser?.is_staff ? users.find((u) => u.id === authUser.id) : undefined),
+    [users, authUser?.id, authUser?.is_staff],
+  );
+
+  /**
+   * Always show the current session identity for staff — never substitute another admin with the same role label.
+   */
+  const signedInProfileName = useMemo(() => {
+    if (!authUser?.is_staff) {
+      const row = users.find((u) => u.role === currentRole) ?? users[0];
+      return row?.name ?? 'Admin';
     }
-    return users.find((u) => u.role === currentRole) ?? users[0];
-  }, [users, currentRole, authUser?.id, authUser?.is_staff]);
+    return (
+      staffSelfRow?.name ||
+      authUser.full_name?.trim() ||
+      authUser.email?.trim() ||
+      'Account'
+    );
+  }, [authUser, staffSelfRow, users, currentRole]);
 
   /** Raw media path / URL for `CmsAvatarImage` (same precedence as before). */
   const headerAvatarRaw = useMemo(() => {
-    const fromRow = displayUser?.avatar?.trim();
-    if (fromRow) return displayUser?.avatar ?? '';
-    if (authUser?.is_staff && displayUser && authUser.id === displayUser.id) {
+    const fromRow = staffSelfRow?.avatar?.trim();
+    if (fromRow) return staffSelfRow!.avatar!;
+    if (authUser?.is_staff) {
       const fromMe = authUser.avatar?.trim();
-      if (fromMe) return authUser.avatar;
+      if (fromMe) return authUser.avatar!;
     }
-    return '';
-  }, [displayUser, authUser?.is_staff, authUser?.id, authUser?.avatar]);
+    const fallbackRow = users.find((u) => u.role === currentRole) ?? users[0];
+    const fromFb = fallbackRow?.avatar?.trim();
+    return fromFb ? fallbackRow.avatar! : '';
+  }, [
+    staffSelfRow,
+    authUser?.is_staff,
+    authUser?.avatar,
+    users,
+    currentRole,
+  ]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const roleInfo = roleLabels[currentRole];
@@ -223,8 +245,9 @@ const AdminHeader = ({ sidebarCollapsed, onMobileMenuToggle, currentRole }: Admi
               <Avatar className="h-8 w-8 shrink-0">
                 {headerAvatarRaw ? <CmsAvatarImage src={headerAvatarRaw} alt="" /> : null}
                 <AvatarFallback className="bg-primary/10 text-primary-onBg font-semibold text-xs">
-                  {(displayUser?.name ?? 'Admin')
+                  {signedInProfileName
                     .split(' ')
+                    .filter(Boolean)
                     .map((n) => n[0])
                     .join('')
                     .slice(0, 2)
@@ -232,7 +255,7 @@ const AdminHeader = ({ sidebarCollapsed, onMobileMenuToggle, currentRole }: Admi
                 </AvatarFallback>
               </Avatar>
               <div className="hidden lg:flex flex-col items-start min-w-0">
-                <span className="text-sm font-medium truncate max-w-[9rem]">{displayUser?.name ?? 'Admin'}</span>
+                <span className="text-sm font-medium truncate max-w-[9rem]">{signedInProfileName}</span>
                 <Badge
                   variant="outline"
                   className={cn('text-[10px] px-1.5 py-0 h-4 font-normal shrink-0', roleInfo.color)}

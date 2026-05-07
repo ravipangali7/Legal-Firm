@@ -1,14 +1,11 @@
-const DEFAULT_ADMIN_PORTAL_ORIGIN = 'https://legalfirm.360winx.com';
-
 /**
- * Absolute origin for the dedicated admin SPA. In development, omit or set blank to stay in-app.
- * In production defaults to LEGALFIRM admin host when unset.
+ * Absolute origin for a separate admin SPA, if you deliberately host it elsewhere.
+ * When unset or empty (default): staff admin stays on this SPA at `/admin` like `/client` and `/dashboard`.
  */
 export function getAdminPortalOrigin(): string | null {
   const raw = import.meta.env.VITE_ADMIN_PORTAL_ORIGIN as string | undefined;
-  if (raw === '') return null;
-  if (raw?.trim()) return raw.trim().replace(/\/+$/, '');
-  return import.meta.env.PROD ? DEFAULT_ADMIN_PORTAL_ORIGIN.replace(/\/+$/, '') : null;
+  if (raw === '' || raw == null || !raw.trim()) return null;
+  return raw.trim().replace(/\/+$/, '');
 }
 
 export function absoluteAdminPortalUrl(pathname: string, search: string): string {
