@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import os
 import uuid
 
-from django.conf import settings
 from django.contrib.auth import login
-from django.http import FileResponse
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMessage, get_connection
 from django.core.validators import validate_email
@@ -87,6 +84,7 @@ from core.staff_notifications import fan_out_broadcast_in_app, sync_broadcast_me
 from core.project_notifications import notify_client_assigned_to_project
 from core.subscription_service import revoke_user_subscription_entitlements
 from core.rbac import require_admin_perm
+from core.views.knowledge_resource_pdf import resolve_knowledge_resource_pdf
 
 User = get_user_model()
 
@@ -1514,26 +1512,9 @@ def admin_knowledge_resources(request):
 
 def _admin_knowledge_resource_pdf_response(obj: KnowledgeResource):
     """Inline PDF for flipbook preview (does not increment download_count)."""
-    if obj.pdf_file:
-        try:
-            return FileResponse(
-                obj.pdf_file.open("rb"),
-                as_attachment=False,
-                content_type="application/pdf",
-            )
-        except (OSError, ValueError):
-            pass
-    href = (obj.download_href or "").strip()
-    if href.startswith("/media/"):
-        rel = href[len("/media/") :].lstrip("/")
-        abs_path = os.path.normpath(os.path.join(settings.MEDIA_ROOT, rel))
-        media_root = os.path.normpath(settings.MEDIA_ROOT)
-        if abs_path.startswith(media_root) and os.path.isfile(abs_path):
-            return FileResponse(
-                open(abs_path, "rb"),
-                as_attachment=False,
-                content_type="application/pdf",
-            )
+    resolved = resolve_knowledge_resource_pdf(obj, inline=True, attachment_filename="document.pdf")
+    if resolved is not None:
+        return resolved
     return Response({"detail": "PDF is not available for this resource."}, status=status.HTTP_404_NOT_FOUND)
 
 

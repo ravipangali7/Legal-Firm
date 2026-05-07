@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import uuid
 from datetime import timedelta
 from decimal import Decimal
@@ -11,7 +10,6 @@ from secrets import randbelow
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
-from django.http import FileResponse, HttpResponseRedirect
 from django.db import DatabaseError
 from django.db.models import F, Q
 from django.utils import timezone
@@ -25,6 +23,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.impersonation import IMPERSONATOR_SESSION_KEY
+from core.views.knowledge_resource_pdf import resolve_knowledge_resource_pdf
 from core.phone_auth import find_user_by_phone_digits, normalize_phone_digits
 from core.api_serializers import (
     ActDetailSerializer,
@@ -263,31 +262,9 @@ def public_knowledge_resource_download(request, resource_id: uuid.UUID):
     base = slugify(obj.title)[:120] or "document"
     attachment_name = f"{base}.pdf"
 
-    if obj.pdf_file:
-        try:
-            return FileResponse(
-                obj.pdf_file.open("rb"),
-                as_attachment=True,
-                filename=attachment_name,
-                content_type="application/pdf",
-            )
-        except (OSError, ValueError):
-            pass
-
-    href = (obj.download_href or "").strip()
-    if href.startswith("/media/"):
-        rel = href[len("/media/") :].lstrip("/")
-        abs_path = os.path.normpath(os.path.join(settings.MEDIA_ROOT, rel))
-        media_root = os.path.normpath(settings.MEDIA_ROOT)
-        if abs_path.startswith(media_root) and os.path.isfile(abs_path):
-            return FileResponse(
-                open(abs_path, "rb"),
-                as_attachment=True,
-                filename=os.path.basename(abs_path) or attachment_name,
-                content_type="application/pdf",
-            )
-    if href.startswith(("http://", "https://")):
-        return HttpResponseRedirect(href)
+    resolved = resolve_knowledge_resource_pdf(obj, inline=False, attachment_filename=attachment_name)
+    if resolved is not None:
+        return resolved
     return Response({"detail": "Download is not available for this resource."}, status=status.HTTP_404_NOT_FOUND)
 
 
