@@ -21,6 +21,7 @@ import {
   shouldRecommendRenewal,
 } from '@/lib/subscriptionAccess';
 import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
+import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
 import { useToast } from '@/hooks/use-toast';
 import {
   type LucideIcon,
@@ -161,6 +162,19 @@ const emptyDash = (label: string) => (
 );
 
 const DASH_TABS = new Set(['activity', 'notifications', 'wallet', 'billing']);
+/** Maps dashboard tab query values to Admin Roles module names (subscriber shell). */
+const DASH_TAB_PERM_MODULE: Record<string, string> = {
+  activity: PORTAL_PERM_MODULES.dashboard,
+  notifications: PORTAL_PERM_MODULES.notifications,
+  wallet: PORTAL_PERM_MODULES.wallet,
+  billing: PORTAL_PERM_MODULES.billing,
+};
+
+function dashTabAllowed(user: AuthMeUser | null | undefined, tab: string): boolean {
+  if (!user) return false;
+  const mod = DASH_TAB_PERM_MODULE[tab];
+  return mod ? evaluatePortalModuleView(user, mod) : false;
+}
 /** Bell â†’ dashboard tab: notification ids queued for the Notifications tab (comma-separated in URL). */
 const NOTIF_QUEUE_PARAM = 'notif_queue';
 
@@ -202,8 +216,35 @@ const SubscriberDashboard = () => {
   const { user, refreshUser } = useAuth();
 
   const tabParam = normalizeDashboardTabParam(searchParams.get('tab'));
-  const activeTab = tabParam && DASH_TABS.has(tabParam) ? tabParam : 'activity';
+  const allowedDashTabs = useMemo(
+    () => (['activity', 'notifications', 'wallet', 'billing'] as const).filter((t) => dashTabAllowed(user, t)),
+    [user]
+  );
+  const activeTab =
+    tabParam && DASH_TABS.has(tabParam) && dashTabAllowed(user, tabParam)
+      ? tabParam
+      : allowedDashTabs[0] ?? 'activity';
   const walletInitialBilling = parseWalletBillingParam(searchParams.get('billing'));
+
+  useEffect(() => {
+    if (!user) return;
+    const raw = searchParams.get('tab');
+    if (raw == null || !String(raw).trim()) return;
+    const desired =
+      tabParam && DASH_TABS.has(tabParam) && dashTabAllowed(user, tabParam)
+        ? tabParam
+        : allowedDashTabs[0] ?? 'activity';
+    if (tabParam !== desired) {
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.set('tab', desired);
+          return p;
+        },
+        { replace: true }
+      );
+    }
+  }, [user, tabParam, allowedDashTabs, setSearchParams]);
 
   const setActiveTab = (v: string) => {
     setSearchParams(
@@ -342,26 +383,34 @@ const SubscriberDashboard = () => {
 
   const unreadForStats =
     user && typeof user.unread_notifications_count === 'number' ? user.unread_notifications_count : 0;
-  const statCards = useMemo(
-    () => [
-      {
-        icon: BookOpen as LucideIcon,
-        label: 'Laws Available',
-        value: catalogStatDisplay(data?.laws_count, isLoading, Boolean(error)),
-      },
-      {
-        icon: FileText as LucideIcon,
-        label: 'Case Summaries',
-        value: catalogStatDisplay(data?.case_summaries_count, isLoading, Boolean(error)),
-      },
-      {
+  const statCards = useMemo(() => {
+    if (!user) return [];
+    const libOk = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.library);
+    const notifOk = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.notifications);
+    const cards: { icon: LucideIcon; label: string; value: string }[] = [];
+    if (libOk) {
+      cards.push(
+        {
+          icon: BookOpen as LucideIcon,
+          label: 'Laws Available',
+          value: catalogStatDisplay(data?.laws_count, isLoading, Boolean(error)),
+        },
+        {
+          icon: FileText as LucideIcon,
+          label: 'Case Summaries',
+          value: catalogStatDisplay(data?.case_summaries_count, isLoading, Boolean(error)),
+        }
+      );
+    }
+    if (notifOk) {
+      cards.push({
         icon: Bell as LucideIcon,
         label: 'Unread alerts',
         value: String(unreadForStats),
-      },
-    ],
-    [data?.laws_count, data?.case_summaries_count, isLoading, error, unreadForStats]
-  );
+      });
+    }
+    return cards;
+  }, [user, data?.laws_count, data?.case_summaries_count, isLoading, error, unreadForStats]);
 
   if (!user) {
     return (
@@ -372,6 +421,7 @@ const SubscriberDashboard = () => {
   }
 
   const dash: AuthDashboardPayload | undefined = data;
+  const libraryPortalOk = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.library);
   const planLabel = planTierLabel(user.plan);
   const hasLibraryAccess = hasLibraryEntitlement(user);
   const premiumActive = hasPremiumBillingActive(user);
@@ -489,41 +539,43 @@ const SubscriberDashboard = () => {
         </Card>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {quickLinks.map((q) => {
-            const allowed = user.is_staff || q.canAccess(user);
-            const inner = (
-              <Card className="hover:shadow-md transition-all hover:-translate-y-0.5 duration-200 h-full text-left w-full">
-                <CardContent className="p-5 flex items-center gap-4">
-                  <div className={`p-3 rounded-xl ${q.color}`}>
-                    <q.icon className="h-5 w-5" />
-                  </div>
-                  <span className="font-medium text-sm">{q.label}</span>
-                </CardContent>
-              </Card>
-            );
-            if (allowed) {
-              return (
-                <Link key={q.label} to={q.href}>
-                  {inner}
-                </Link>
-              );
-            }
-            return (
-              <button
-                key={q.label}
-                type="button"
-                className="block w-full cursor-pointer"
-                onClick={() =>
-                  toast({
-                    title: 'Not included in your package',
-                    description: q.lockedHint,
-                  })
+          {libraryPortalOk
+            ? quickLinks.map((q) => {
+                const allowed = user.is_staff || q.canAccess(user);
+                const inner = (
+                  <Card className="hover:shadow-md transition-all hover:-translate-y-0.5 duration-200 h-full text-left w-full">
+                    <CardContent className="p-5 flex items-center gap-4">
+                      <div className={`p-3 rounded-xl ${q.color}`}>
+                        <q.icon className="h-5 w-5" />
+                      </div>
+                      <span className="font-medium text-sm">{q.label}</span>
+                    </CardContent>
+                  </Card>
+                );
+                if (allowed) {
+                  return (
+                    <Link key={q.label} to={q.href}>
+                      {inner}
+                    </Link>
+                  );
                 }
-              >
-                {inner}
-              </button>
-            );
-          })}
+                return (
+                  <button
+                    key={q.label}
+                    type="button"
+                    className="block w-full cursor-pointer"
+                    onClick={() =>
+                      toast({
+                        title: 'Not included in your package',
+                        description: q.lockedHint,
+                      })
+                    }
+                  >
+                    {inner}
+                  </button>
+                );
+              })
+            : null}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -541,13 +593,19 @@ const SubscriberDashboard = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="flex flex-wrap h-auto gap-1">
-            <TabsTrigger value="activity">Recent Activity</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="wallet" className="gap-1">
-              <Wallet className="h-4 w-4" />
-              Wallet
-            </TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
+            {allowedDashTabs.includes('activity') ? (
+              <TabsTrigger value="activity">Recent Activity</TabsTrigger>
+            ) : null}
+            {allowedDashTabs.includes('notifications') ? (
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            ) : null}
+            {allowedDashTabs.includes('wallet') ? (
+              <TabsTrigger value="wallet" className="gap-1">
+                <Wallet className="h-4 w-4" />
+                Wallet
+              </TabsTrigger>
+            ) : null}
+            {allowedDashTabs.includes('billing') ? <TabsTrigger value="billing">Billing</TabsTrigger> : null}
           </TabsList>
 
           <TabsContent value="activity">

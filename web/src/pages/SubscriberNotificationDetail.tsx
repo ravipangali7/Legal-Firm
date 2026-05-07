@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEffect, useRef } from 'react';
 import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
+import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
 
 function safeFormatDistance(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -93,6 +94,10 @@ const SubscriberNotificationDetail = () => {
         Loading…
       </div>
     );
+  }
+
+  if (!evaluatePortalModuleView(user, PORTAL_PERM_MODULES.notifications)) {
+    return <Navigate to={hubPath} replace />;
   }
 
   return (

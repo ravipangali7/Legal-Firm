@@ -95,6 +95,41 @@ def effective_admin_role_key(user) -> str:
     return "user"
 
 
+def portal_permissions_for_user(user) -> list[dict[str, bool | str]]:
+    """
+    Effective PermissionModule matrix for subscriber-shell UI (/client, /dashboard sidebar).
+
+    Staff sessions reuse the admin RolePermission matrix. Customer roles resolve RolePermission
+    rows for ``User.role_key`` so Admin Roles toggles match portal navigation.
+    """
+    if not getattr(user, "is_authenticated", False):
+        return []
+    if user.is_staff:
+        return admin_permissions_for_user(user)
+    names = list(PermissionModule.objects.order_by("name").values_list("name", flat=True))
+    try:
+        role = Role.objects.get(key=user.role_key)
+    except Role.DoesNotExist:
+        return [
+            {"module": n, "view": False, "create": False, "edit": False, "delete": False}
+            for n in names
+        ]
+    rp_by_mod_name = {
+        rp.module.name: rp
+        for rp in RolePermission.objects.filter(role=role).select_related("module")
+    }
+    return [
+        {
+            "module": name,
+            "view": bool(rp_by_mod_name[name].can_view) if name in rp_by_mod_name else False,
+            "create": bool(rp_by_mod_name[name].can_create) if name in rp_by_mod_name else False,
+            "edit": bool(rp_by_mod_name[name].can_edit) if name in rp_by_mod_name else False,
+            "delete": bool(rp_by_mod_name[name].can_delete) if name in rp_by_mod_name else False,
+        }
+        for name in names
+    ]
+
+
 def admin_permissions_for_user(user) -> list[dict[str, bool | str]]:
     """One row per PermissionModule. Empty list when not staff (e.g. impersonated client session)."""
     if not user.is_authenticated or not user.is_staff:

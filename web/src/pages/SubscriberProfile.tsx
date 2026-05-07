@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { patchAuthMe, type AuthMeProfile } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ImageInput from '@/components/admin/cms/ImageInput';
-
+import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
+import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
 const emptyProfile: AuthMeProfile = {
   user_type: 'individual',
   pan: '',
@@ -19,6 +21,8 @@ const emptyProfile: AuthMeProfile = {
 
 const SubscriberProfile = () => {
   const { toast } = useToast();
+  const location = useLocation();
+  const hubPath = subscriberHubPath(location.pathname);
   const { user, refreshUser } = useAuth();
   const [saving, setSaving] = useState(false);
 
@@ -82,6 +86,10 @@ const SubscriberProfile = () => {
         Loading…
       </div>
     );
+  }
+
+  if (!evaluatePortalModuleView(user, PORTAL_PERM_MODULES.profile)) {
+    return <Navigate to={hubPath} replace />;
   }
 
   return (

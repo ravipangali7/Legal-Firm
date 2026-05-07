@@ -134,6 +134,8 @@ export interface AuthMeUser {
   is_superuser?: boolean;
   /** Present for `is_staff` users: module CRUD flags for the admin area (`null` when not staff). */
   admin_permissions?: AuthMeAdminPermission[] | null;
+  /** Subscriber hub (/client, /dashboard): effective RolePermission rows for navigation (always set when authenticated). */
+  portal_permissions?: AuthMeAdminPermission[] | null;
   created_at?: string;
   last_login_at?: string;
   /** When the current package was requested (ISO 8601); set when a payment is verified. */

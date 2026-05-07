@@ -54,6 +54,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
+import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
 
 const NOTIF_QUEUE_PARAM = 'notif_queue';
 
@@ -89,6 +90,8 @@ type NavItem = {
   end?: boolean;
   locked?: boolean;
   lockedHint?: string;
+  /** Admin Roles module name; omitted = always shown */
+  permModule?: string;
 };
 
 function SidebarNav({
@@ -105,20 +108,23 @@ function SidebarNav({
   className?: string;
 }) {
   const staffOk = user.is_staff === true;
-  const libraryItems: NavItem[] = [
-    { to: '/laws', label: 'Laws library', icon: Scale, locked: !staffOk && !canAccessLawsLibrary(user), lockedHint: 'Subscribe to unlock the laws library.' },
-    { to: '/summaries', label: 'Case summaries', icon: FileText, locked: !staffOk && !canAccessCaseSummaries(user), lockedHint: 'Subscribe to unlock case summaries.' },
-    { to: '/tools', label: 'Tax tools', icon: Calculator, locked: !staffOk && !canAccessTaxTools(user), lockedHint: 'Subscribe to unlock tax tools.' },
-    { to: '/procedures', label: 'Procedures', icon: BookOpen, locked: !staffOk && !canAccessProcedures(user), lockedHint: 'Subscribe to unlock procedures.' },
+  const libraryOk = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.library);
+  const libraryItemsAll: NavItem[] = [
+    { to: '/laws', label: 'Laws library', icon: Scale, permModule: PORTAL_PERM_MODULES.library, locked: !staffOk && !canAccessLawsLibrary(user), lockedHint: 'Subscribe to unlock the laws library.' },
+    { to: '/summaries', label: 'Case summaries', icon: FileText, permModule: PORTAL_PERM_MODULES.library, locked: !staffOk && !canAccessCaseSummaries(user), lockedHint: 'Subscribe to unlock case summaries.' },
+    { to: '/tools', label: 'Tax tools', icon: Calculator, permModule: PORTAL_PERM_MODULES.library, locked: !staffOk && !canAccessTaxTools(user), lockedHint: 'Subscribe to unlock tax tools.' },
+    { to: '/procedures', label: 'Procedures', icon: BookOpen, permModule: PORTAL_PERM_MODULES.library, locked: !staffOk && !canAccessProcedures(user), lockedHint: 'Subscribe to unlock procedures.' },
   ];
+  const libraryItems = libraryOk ? libraryItemsAll : [];
 
-  const mainItems: NavItem[] = [
-    { to: hubPath, label: hubPath === '/client' ? 'Client home' : 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: `${hubPath}?tab=notifications`, label: 'Notifications', icon: Bell },
-    { to: `${hubPath}?tab=wallet`, label: 'Wallet', icon: Wallet },
-    { to: `${hubPath}?tab=billing`, label: 'Billing', icon: CreditCard },
-    { to: `${hubPath}/profile`, label: 'Profile', icon: User },
+  const mainItemsAll: NavItem[] = [
+    { to: hubPath, label: hubPath === '/client' ? 'Client home' : 'Dashboard', icon: LayoutDashboard, end: true, permModule: PORTAL_PERM_MODULES.dashboard },
+    { to: `${hubPath}?tab=notifications`, label: 'Notifications', icon: Bell, permModule: PORTAL_PERM_MODULES.notifications },
+    { to: `${hubPath}?tab=wallet`, label: 'Wallet', icon: Wallet, permModule: PORTAL_PERM_MODULES.wallet },
+    { to: `${hubPath}?tab=billing`, label: 'Billing', icon: CreditCard, permModule: PORTAL_PERM_MODULES.billing },
+    { to: `${hubPath}/profile`, label: 'Profile', icon: User, permModule: PORTAL_PERM_MODULES.profile },
   ];
+  const mainItems = mainItemsAll.filter((item) => !item.permModule || evaluatePortalModuleView(user, item.permModule));
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -128,50 +134,62 @@ function SidebarNav({
 
   return (
     <nav className={cn('flex flex-col gap-1 p-3', className)} aria-label="Portal navigation">
-      <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overview</p>
-      {mainItems.map((item) => (
-        <NavLink key={item.to} to={item.to} end={item.end} className={linkClass} onClick={onNavigate}>
-          <item.icon className="h-4 w-4 shrink-0" />
-          {item.label}
-        </NavLink>
-      ))}
+      {mainItems.length ? (
+        <>
+          <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overview</p>
+          {mainItems.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end} className={linkClass} onClick={onNavigate}>
+              <item.icon className="h-4 w-4 shrink-0" />
+              {item.label}
+            </NavLink>
+          ))}
+        </>
+      ) : null}
 
-      <p className="mt-4 px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Library</p>
-      {libraryItems.map((item) =>
-        item.locked ? (
-          <button
-            key={item.to}
-            type="button"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground/70 hover:bg-muted/50 text-left w-full"
-            title={item.lockedHint}
-            onClick={() => {
-              if (item.lockedHint) onLockedNav?.(item.lockedHint);
-              onNavigate?.();
-            }}
-          >
-            <item.icon className="h-4 w-4 shrink-0 opacity-60" />
-            <span className="flex-1">{item.label}</span>
-            <Badge variant="outline" className="text-[10px] font-normal">
-              Locked
-            </Badge>
-          </button>
-        ) : (
-          <NavLink key={item.to} to={item.to} className={linkClass} onClick={onNavigate}>
-            <item.icon className="h-4 w-4 shrink-0" />
-            {item.label}
-          </NavLink>
-        ),
-      )}
+      {libraryItems.length ? (
+        <>
+          <p className="mt-4 px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Library</p>
+          {libraryItems.map((item) =>
+            item.locked ? (
+              <button
+                key={item.to}
+                type="button"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground/70 hover:bg-muted/50 text-left w-full"
+                title={item.lockedHint}
+                onClick={() => {
+                  if (item.lockedHint) onLockedNav?.(item.lockedHint);
+                  onNavigate?.();
+                }}
+              >
+                <item.icon className="h-4 w-4 shrink-0 opacity-60" />
+                <span className="flex-1">{item.label}</span>
+                <Badge variant="outline" className="text-[10px] font-normal">
+                  Locked
+                </Badge>
+              </button>
+            ) : (
+              <NavLink key={item.to} to={item.to} className={linkClass} onClick={onNavigate}>
+                <item.icon className="h-4 w-4 shrink-0" />
+                {item.label}
+              </NavLink>
+            ),
+          )}
+        </>
+      ) : null}
 
-      <p className="mt-4 px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Site</p>
+      <p className={cn('px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground', mainItems.length || libraryItems.length ? 'mt-4' : '')}>
+        Site
+      </p>
       <NavLink to="/" className={linkClass} onClick={onNavigate}>
         <Home className="h-4 w-4 shrink-0" />
         Browse site
       </NavLink>
-      <NavLink to="/contact" className={linkClass} onClick={onNavigate}>
-        <LifeBuoy className="h-4 w-4 shrink-0" />
-        Contact
-      </NavLink>
+      {evaluatePortalModuleView(user, PORTAL_PERM_MODULES.support) ? (
+        <NavLink to="/contact" className={linkClass} onClick={onNavigate}>
+          <LifeBuoy className="h-4 w-4 shrink-0" />
+          Contact
+        </NavLink>
+      ) : null}
       {user.is_staff ? (
         <NavLink to="/admin" className={linkClass} onClick={onNavigate}>
           <PanelLeft className="h-4 w-4 shrink-0" />
@@ -196,6 +214,8 @@ export default function SubscriberPortalLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const hubPath = subscriberHubPath(location.pathname) as '/dashboard' | '/client';
+  const showNotifBell = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.notifications);
+  const showProfileShortcut = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.profile);
 
   const { data } = useQuery({
     queryKey: ['auth-dashboard', user?.id],
@@ -308,91 +328,106 @@ export default function SubscriberPortalLayout() {
 
               <div className="flex items-center gap-1 sm:gap-3 shrink-0">
                 <SiteThemeToggle />
-                <Popover open={notifOpen} onOpenChange={setNotifOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" type="button">
-                      <Bell className="h-5 w-5" />
-                      {unread > 0 ? (
-                        <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-0.5 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
-                          {unread > 9 ? '9+' : unread}
-                        </span>
-                      ) : null}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-0 text-popover-foreground bg-popover border-border">
-                    <div className="p-3 border-b border-border">
-                      <h4 className="text-sm font-semibold">Notifications</h4>
-                      <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
-                        Tap an item to queue it on the Notifications tab. Open the full message from that tab.
-                      </p>
-                    </div>
-                    <div className="max-h-[min(22rem,calc(100vh-12rem))] overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <p className="px-3 py-4 text-xs text-muted-foreground text-center">No notifications yet.</p>
-                      ) : (
-                        notifications.map((n: AuthDashboardNotification) => (
-                          <div
-                            key={n.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => enqueueBellNotification(n.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                enqueueBellNotification(n.id);
-                              }
-                            }}
-                            className={cn(
-                              'flex items-start gap-3 p-3 mx-1 mb-1 rounded-md border border-transparent hover:bg-accent/50 transition-colors cursor-pointer text-left',
-                              !n.read && 'bg-primary/5',
-                            )}
-                          >
-                            <div
-                              className={cn(
-                                'h-2 w-2 rounded-full mt-2 shrink-0',
-                                n.read ? 'bg-muted-foreground/50' : 'bg-primary',
-                              )}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className={cn('text-sm', !n.read && 'font-medium')}>{n.title}</p>
-                                <Badge className={cn('h-5 px-1.5 text-[10px]', notificationTypeBadge(n.type).className)}>
-                                  {notificationTypeBadge(n.type).label}
-                                </Badge>
-                              </div>
-                              {n.body ? (
-                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
-                              ) : null}
-                              <p className="text-xs text-muted-foreground mt-1">{safeFormatDistance(n.created_at)}</p>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="p-2 border-t border-border">
-                      <Button variant="ghost" size="sm" className="w-full text-primary-onBg h-9 text-xs" asChild>
-                        <Link to={`${hubPath}?tab=notifications`} onClick={() => setNotifOpen(false)}>
-                          {hubPath === '/client' ? 'View on client portal' : 'View on dashboard'}
-                        </Link>
+                {showNotifBell ? (
+                  <Popover open={notifOpen} onOpenChange={setNotifOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" type="button">
+                        <Bell className="h-5 w-5" />
+                        {unread > 0 ? (
+                          <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-0.5 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
+                            {unread > 9 ? '9+' : unread}
+                          </span>
+                        ) : null}
                       </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-0 text-popover-foreground bg-popover border-border">
+                      <div className="p-3 border-b border-border">
+                        <h4 className="text-sm font-semibold">Notifications</h4>
+                        <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                          Tap an item to queue it on the Notifications tab. Open the full message from that tab.
+                        </p>
+                      </div>
+                      <div className="max-h-[min(22rem,calc(100vh-12rem))] overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <p className="px-3 py-4 text-xs text-muted-foreground text-center">No notifications yet.</p>
+                        ) : (
+                          notifications.map((n: AuthDashboardNotification) => (
+                            <div
+                              key={n.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => enqueueBellNotification(n.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  enqueueBellNotification(n.id);
+                                }
+                              }}
+                              className={cn(
+                                'flex items-start gap-3 p-3 mx-1 mb-1 rounded-md border border-transparent hover:bg-accent/50 transition-colors cursor-pointer text-left',
+                                !n.read && 'bg-primary/5',
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  'h-2 w-2 rounded-full mt-2 shrink-0',
+                                  n.read ? 'bg-muted-foreground/50' : 'bg-primary',
+                                )}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className={cn('text-sm', !n.read && 'font-medium')}>{n.title}</p>
+                                  <Badge className={cn('h-5 px-1.5 text-[10px]', notificationTypeBadge(n.type).className)}>
+                                    {notificationTypeBadge(n.type).label}
+                                  </Badge>
+                                </div>
+                                {n.body ? (
+                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
+                                ) : null}
+                                <p className="text-xs text-muted-foreground mt-1">{safeFormatDistance(n.created_at)}</p>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="p-2 border-t border-border">
+                        <Button variant="ghost" size="sm" className="w-full text-primary-onBg h-9 text-xs" asChild>
+                          <Link to={`${hubPath}?tab=notifications`} onClick={() => setNotifOpen(false)}>
+                            {hubPath === '/client' ? 'View on client portal' : 'View on dashboard'}
+                          </Link>
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ) : null}
+                {showProfileShortcut ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`${hubPath}/profile`)}
+                    className="flex items-center gap-2 rounded-lg pr-1 py-0.5 pl-0.5 sm:pl-2 -mr-0.5 text-left hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label="Open profile settings"
+                  >
+                    <div className="hidden sm:flex flex-col items-end max-w-[140px] md:max-w-[180px] mr-0.5">
+                      <span className="text-sm font-medium truncate w-full text-end">{userDisplayName(user)}</span>
+                      <span className="text-xs text-muted-foreground">{roleDisplayLabel(user.role)}</span>
                     </div>
-                  </PopoverContent>
-                </Popover>
-                <button
-                  type="button"
-                  onClick={() => navigate(`${hubPath}/profile`)}
-                  className="flex items-center gap-2 rounded-lg pr-1 py-0.5 pl-0.5 sm:pl-2 -mr-0.5 text-left hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Open profile settings"
-                >
-                  <div className="hidden sm:flex flex-col items-end max-w-[140px] md:max-w-[180px] mr-0.5">
-                    <span className="text-sm font-medium truncate w-full text-end">{userDisplayName(user)}</span>
-                    <span className="text-xs text-muted-foreground">{roleDisplayLabel(user.role)}</span>
+                    <Avatar className="h-9 w-9 ring-2 ring-primary/20 shrink-0">
+                      {user.avatar ? <CmsAvatarImage src={user.avatar} alt="" /> : null}
+                      <AvatarFallback className="bg-primary text-primary-foreground font-bold">{userInitials(user)}</AvatarFallback>
+                    </Avatar>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-lg pr-1 py-0.5 pl-0.5 sm:pl-2 -mr-0.5">
+                    <div className="hidden sm:flex flex-col items-end max-w-[140px] md:max-w-[180px] mr-0.5">
+                      <span className="text-sm font-medium truncate w-full text-end">{userDisplayName(user)}</span>
+                      <span className="text-xs text-muted-foreground">{roleDisplayLabel(user.role)}</span>
+                    </div>
+                    <Avatar className="h-9 w-9 ring-2 ring-primary/20 shrink-0">
+                      {user.avatar ? <CmsAvatarImage src={user.avatar} alt="" /> : null}
+                      <AvatarFallback className="bg-primary text-primary-foreground font-bold">{userInitials(user)}</AvatarFallback>
+                    </Avatar>
                   </div>
-                  <Avatar className="h-9 w-9 ring-2 ring-primary/20 shrink-0">
-                    {user.avatar ? <CmsAvatarImage src={user.avatar} alt="" /> : null}
-                    <AvatarFallback className="bg-primary text-primary-foreground font-bold">{userInitials(user)}</AvatarFallback>
-                  </Avatar>
-                </button>
+                )}
                 <Button variant="ghost" size="sm" type="button" onClick={() => setSignOutOpen(true)}>
                   <LogOut className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Sign out</span>

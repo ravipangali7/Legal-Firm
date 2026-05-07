@@ -77,7 +77,16 @@ def _matrix():
     }
 
     client_perms = _all_false()
-    for m in ("Dashboard", "Projects", "Notifications", "Support", "Settings", "Help"):
+    for m in (
+        "Dashboard",
+        "Projects",
+        "Notifications",
+        "Transactions",
+        "Pricing Plans",
+        "Support",
+        "Settings",
+        "Help",
+    ):
         client_perms[m] = dict(view=True, create=False, edit=False, delete=False)
     client_perms["Support"] = dict(view=True, create=True, edit=False, delete=False)
     client_row = {
@@ -89,7 +98,7 @@ def _matrix():
     }
 
     user_perms = _all_false()
-    for m in ("Dashboard", "Notifications", "Support", "Settings", "Help"):
+    for m in ("Dashboard", "Notifications", "Transactions", "Pricing Plans", "Support", "Settings", "Help"):
         user_perms[m] = dict(view=True, create=False, edit=False, delete=False)
     user_perms["Support"] = dict(view=True, create=True, edit=False, delete=False)
     user_row = {

@@ -664,6 +664,7 @@ class UserMeSerializer(serializers.ModelSerializer):
     renewal_recommended = serializers.SerializerMethodField()
     unread_notifications_count = serializers.SerializerMethodField()
     admin_permissions = serializers.SerializerMethodField()
+    portal_permissions = serializers.SerializerMethodField()
     app_home_path = serializers.SerializerMethodField()
 
     class Meta:
@@ -691,6 +692,7 @@ class UserMeSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_superuser",
             "admin_permissions",
+            "portal_permissions",
             "app_home_path",
         )
 
@@ -730,6 +732,11 @@ class UserMeSerializer(serializers.ModelSerializer):
         if not obj.is_staff:
             return None
         return admin_permissions_for_user(obj)
+
+    def get_portal_permissions(self, obj):
+        from core.rbac import portal_permissions_for_user
+
+        return portal_permissions_for_user(obj)
 
     def get_app_home_path(self, obj):
         from core.rbac import post_auth_app_home_path
