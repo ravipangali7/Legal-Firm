@@ -6,10 +6,27 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .dashboard_events import record_transaction_verified
-from .models import Procedure, ProcedureStep, Transaction
+from .models import Procedure, ProcedureStep, Transaction, User
 from .sms import send_payment_rejection_sms
 from .staff_notifications import notify_super_admins_in_app
 from .subscription_service import apply_refunded_transaction, apply_verified_transaction
+
+
+@receiver(pre_save, sender=User)
+def user_sync_staff_flags(sender, instance: User, **kwargs):
+    """Keep ``is_staff`` / ``is_superuser`` aligned with ``role`` (SPA hub + admin API gates)."""
+    if not instance.role_id:
+        return
+    role_key = instance.role.key
+    if role_key == "super_admin":
+        instance.is_staff = True
+        instance.is_superuser = True
+    elif role_key in ("admin", "editor"):
+        instance.is_staff = True
+        instance.is_superuser = False
+    elif role_key in ("client", "user"):
+        instance.is_staff = False
+        instance.is_superuser = False
 
 
 @receiver(pre_save, sender=Transaction)
