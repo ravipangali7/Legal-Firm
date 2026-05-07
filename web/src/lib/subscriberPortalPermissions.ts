@@ -6,9 +6,12 @@ export const PORTAL_PERM_MODULES = {
   notifications: 'Notifications',
   wallet: 'Pricing Plans',
   billing: 'Transactions',
+  /** Subscriber profile page (`/client/profile`, `/dashboard/profile`) — Admin module "Settings". */
   profile: 'Settings',
   library: 'Legal library',
   support: 'Support',
+  help: 'Help',
+  projects: 'Projects',
 } as const;
 
 /**

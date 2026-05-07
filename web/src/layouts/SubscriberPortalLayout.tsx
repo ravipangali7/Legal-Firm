@@ -24,6 +24,8 @@ import {
   Calculator,
   CreditCard,
   FileText,
+  FolderKanban,
+  HelpCircle,
   Home,
   LayoutDashboard,
   LifeBuoy,
@@ -31,7 +33,7 @@ import {
   Menu,
   PanelLeft,
   Scale,
-  User,
+  Settings,
   Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -120,11 +122,17 @@ function SidebarNav({
   const mainItemsAll: NavItem[] = [
     { to: hubPath, label: hubPath === '/client' ? 'Client home' : 'Dashboard', icon: LayoutDashboard, end: true, permModule: PORTAL_PERM_MODULES.dashboard },
     { to: `${hubPath}?tab=notifications`, label: 'Notifications', icon: Bell, permModule: PORTAL_PERM_MODULES.notifications },
+    { to: `${hubPath}?tab=projects`, label: 'Projects', icon: FolderKanban, permModule: PORTAL_PERM_MODULES.projects },
     { to: `${hubPath}?tab=wallet`, label: 'Wallet', icon: Wallet, permModule: PORTAL_PERM_MODULES.wallet },
     { to: `${hubPath}?tab=billing`, label: 'Billing', icon: CreditCard, permModule: PORTAL_PERM_MODULES.billing },
-    { to: `${hubPath}/profile`, label: 'Profile', icon: User, permModule: PORTAL_PERM_MODULES.profile },
+    { to: `${hubPath}/profile`, label: 'Settings', icon: Settings, permModule: PORTAL_PERM_MODULES.profile },
+    { to: '/help', label: 'Help', icon: HelpCircle, permModule: PORTAL_PERM_MODULES.help },
   ];
   const mainItems = mainItemsAll.filter((item) => !item.permModule || evaluatePortalModuleView(user, item.permModule));
+
+  const showBrowseSite = hubPath !== '/client';
+  const showSupportNav = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.support);
+  const siteSectionVisible = showBrowseSite || showSupportNav || user.is_staff;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -177,24 +185,35 @@ function SidebarNav({
         </>
       ) : null}
 
-      <p className={cn('px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground', mainItems.length || libraryItems.length ? 'mt-4' : '')}>
-        Site
-      </p>
-      <NavLink to="/" className={linkClass} onClick={onNavigate}>
-        <Home className="h-4 w-4 shrink-0" />
-        Browse site
-      </NavLink>
-      {evaluatePortalModuleView(user, PORTAL_PERM_MODULES.support) ? (
-        <NavLink to="/contact" className={linkClass} onClick={onNavigate}>
-          <LifeBuoy className="h-4 w-4 shrink-0" />
-          Contact
-        </NavLink>
-      ) : null}
-      {user.is_staff ? (
-        <NavLink to="/admin" className={linkClass} onClick={onNavigate}>
-          <PanelLeft className="h-4 w-4 shrink-0" />
-          Admin panel
-        </NavLink>
+      {siteSectionVisible ? (
+        <>
+          <p
+            className={cn(
+              'px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground',
+              mainItems.length || libraryItems.length ? 'mt-4' : '',
+            )}
+          >
+            Site
+          </p>
+          {showBrowseSite ? (
+            <NavLink to="/" className={linkClass} onClick={onNavigate}>
+              <Home className="h-4 w-4 shrink-0" />
+              Browse site
+            </NavLink>
+          ) : null}
+          {showSupportNav ? (
+            <NavLink to="/contact" className={linkClass} onClick={onNavigate}>
+              <LifeBuoy className="h-4 w-4 shrink-0" />
+              Support
+            </NavLink>
+          ) : null}
+          {user.is_staff ? (
+            <NavLink to="/admin" className={linkClass} onClick={onNavigate}>
+              <PanelLeft className="h-4 w-4 shrink-0" />
+              Admin panel
+            </NavLink>
+          ) : null}
+        </>
       ) : null}
     </nav>
   );

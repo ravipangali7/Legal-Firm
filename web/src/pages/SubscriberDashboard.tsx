@@ -36,6 +36,7 @@ import {
   ChevronRight,
   AlertTriangle,
   Wallet,
+  FolderKanban,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -161,13 +162,14 @@ const emptyDash = (label: string) => (
   <p className="text-sm text-muted-foreground py-8 text-center">{label}</p>
 );
 
-const DASH_TABS = new Set(['activity', 'notifications', 'wallet', 'billing']);
+const DASH_TABS = new Set(['activity', 'notifications', 'wallet', 'billing', 'projects']);
 /** Maps dashboard tab query values to Admin Roles module names (subscriber shell). */
 const DASH_TAB_PERM_MODULE: Record<string, string> = {
   activity: PORTAL_PERM_MODULES.dashboard,
   notifications: PORTAL_PERM_MODULES.notifications,
   wallet: PORTAL_PERM_MODULES.wallet,
   billing: PORTAL_PERM_MODULES.billing,
+  projects: PORTAL_PERM_MODULES.projects,
 };
 
 function dashTabAllowed(user: AuthMeUser | null | undefined, tab: string): boolean {
@@ -217,8 +219,8 @@ const SubscriberDashboard = () => {
 
   const tabParam = normalizeDashboardTabParam(searchParams.get('tab'));
   const allowedDashTabs = useMemo(
-    () => (['activity', 'notifications', 'wallet', 'billing'] as const).filter((t) => dashTabAllowed(user, t)),
-    [user]
+    () => (['activity', 'notifications', 'wallet', 'billing', 'projects'] as const).filter((t) => dashTabAllowed(user, t)),
+    [user],
   );
   const activeTab =
     tabParam && DASH_TABS.has(tabParam) && dashTabAllowed(user, tabParam)
@@ -606,6 +608,12 @@ const SubscriberDashboard = () => {
               </TabsTrigger>
             ) : null}
             {allowedDashTabs.includes('billing') ? <TabsTrigger value="billing">Billing</TabsTrigger> : null}
+            {allowedDashTabs.includes('projects') ? (
+              <TabsTrigger value="projects" className="gap-1">
+                <FolderKanban className="h-4 w-4" />
+                Projects
+              </TabsTrigger>
+            ) : null}
           </TabsList>
 
           <TabsContent value="activity">
@@ -816,6 +824,20 @@ const SubscriberDashboard = () => {
                         </div>
                       );
                     })}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="projects">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Projects</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Matter and engagement updates from your legal team will appear here when linked to your account. If you
+                  have questions, use Support from the sidebar or your usual firm contact.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
