@@ -39,11 +39,18 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export function roleDisplayLabel(role: string): string {
-  return ROLE_LABELS[role] ?? role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const key = typeof role === 'string' ? role : String(role ?? '');
+  return ROLE_LABELS[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function planTierLabel(plan: string | undefined): string {
-  const p = (plan || 'free').toLowerCase();
+  const raw =
+    plan === undefined || plan === null
+      ? 'free'
+      : typeof plan === 'string'
+        ? plan
+        : String(plan);
+  const p = raw.trim().toLowerCase() || 'free';
   const names: Record<string, string> = {
     free: 'Free',
     basic: 'Basic',

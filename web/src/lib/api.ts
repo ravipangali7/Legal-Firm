@@ -158,11 +158,15 @@ export interface AuthMeUser {
 /** Normalize role + `app_home_path` from any auth endpoint (login, /me, OTP, Google). */
 export function normalizeAuthMeUser(data: AuthMeUser): AuthMeUser {
   const raw = data.role as unknown;
+  let normalizedRole = 'user';
   if (typeof raw === 'object' && raw !== null && 'key' in raw) {
-    data.role = String((raw as { key: string }).key).trim().toLowerCase() || 'user';
+    normalizedRole = String((raw as { key: unknown }).key).trim().toLowerCase() || 'user';
   } else if (typeof raw === 'string') {
-    data.role = raw.trim().toLowerCase() || 'user';
+    normalizedRole = raw.trim().toLowerCase() || 'user';
+  } else if (typeof raw === 'number' || typeof raw === 'boolean') {
+    normalizedRole = String(raw).trim().toLowerCase() || 'user';
   }
+  data.role = normalizedRole;
   const home = normalizeSpaHomePath(data.app_home_path ?? undefined);
   if (home) data.app_home_path = home;
   return data;
