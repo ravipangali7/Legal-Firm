@@ -157,7 +157,7 @@ const CarouselContent = React.forwardRef<
   return (
     <div
       ref={carouselRef}
-      className="overflow-hidden cursor-grab touch-pan-y active:cursor-grabbing"
+      className="overflow-hidden cursor-grab active:cursor-grabbing"
     >
       <div
         ref={ref}
