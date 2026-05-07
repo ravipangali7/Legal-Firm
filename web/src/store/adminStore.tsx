@@ -680,7 +680,7 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const refreshFromApi = useCallback(async () => {
-    const snap = await pullAdminSnapshot();
+    const snap = await pullAdminSnapshot(authUser ?? null);
     setUsers(snap.users);
     setRoles(snap.roles as RoleDef[]);
     setModules(snap.modules);
@@ -693,7 +693,7 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
     setSupportTickets(buildSupportTicketsList(snap.contactMessages ?? [], seedSupportTickets));
     setApiConnected(true);
     await loadPanelNotifications();
-  }, [loadPanelNotifications]);
+  }, [loadPanelNotifications, authUser]);
 
   useEffect(() => {
     if (!authUser?.is_staff || impersonation.active) return;

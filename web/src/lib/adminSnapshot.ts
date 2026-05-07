@@ -2,7 +2,7 @@
  * Load admin UI state from Django `/api/admin/*` and keep maps for permission PATCHes.
  */
 import type { UserRole } from '@/components/admin/AdminSidebar';
-import { sessionFetch } from '@/lib/api';
+import { sessionFetch, type AuthMeUser } from '@/lib/api';
 
 export const rolePermissionIndex = {
   byRoleAndModule: new Map<string, string>(),
@@ -24,6 +24,45 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(detail || `HTTP ${r.status}`);
   }
   return data as T;
+}
+
+/** List GET — forbidden/unauthenticated yields [] so a partial RBAC staff user can still load other admin data. */
+async function jList(path: string, init?: RequestInit): Promise<Record<string, unknown>[]> {
+  const r = await sessionFetch(path, init);
+  if (r.status === 403 || r.status === 401) return [];
+  const data = await r.json().catch(() => []);
+  if (!r.ok) {
+    const detail = typeof (data as { detail?: string }).detail === 'string' ? (data as { detail: string }).detail : JSON.stringify(data);
+    throw new Error(detail || `HTTP ${r.status}`);
+  }
+  return Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+}
+
+/** Single-object GET (e.g. settings) — forbidden yields {} for graceful degradation. */
+async function jRecord(path: string, init?: RequestInit): Promise<Record<string, unknown>> {
+  const r = await sessionFetch(path, init);
+  if (r.status === 403 || r.status === 401) return {};
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const detail = typeof (data as { detail?: string }).detail === 'string' ? (data as { detail: string }).detail : JSON.stringify(data);
+    throw new Error(detail || `HTTP ${r.status}`);
+  }
+  return typeof data === 'object' && data !== null && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
+}
+
+function syntheticPermissionModulesFromMe(me: AuthMeUser | null | undefined): Record<string, unknown>[] {
+  const rows = me?.admin_permissions;
+  if (!Array.isArray(rows) || !rows.length) return [];
+  const seen = new Set<string>();
+  const out: Record<string, unknown>[] = [];
+  let i = 0;
+  for (const row of rows) {
+    const name = String(row.module ?? '').trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    out.push({ id: `__me_perm_mod__${i++}`, name });
+  }
+  return out;
 }
 
 const d10 = (s: string | undefined) => (s || '').slice(0, 10);
@@ -106,11 +145,11 @@ export async function fetchAdminPanelNotifications(): Promise<Record<string, unk
   return raw.notifications ?? [];
 }
 
-export async function pullAdminSnapshot() {
+export async function pullAdminSnapshot(me?: AuthMeUser | null) {
   rolePermissionIndex.clear();
   const [
     rawUsers,
-    rawMods,
+    rawModsApi,
     rawRoles,
     rawRp,
     rawTx,
@@ -121,18 +160,20 @@ export async function pullAdminSnapshot() {
     rawHelpArticles,
     rawContactMessages,
   ] = await Promise.all([
-    j<Record<string, unknown>[]>('/api/admin/users/'),
-    j<Record<string, unknown>[]>('/api/admin/permission-modules/'),
-    j<Record<string, unknown>[]>('/api/admin/roles/'),
-    j<Record<string, unknown>[]>('/api/admin/role-permissions/'),
-    j<Record<string, unknown>[]>('/api/admin/transactions/'),
-    j<Record<string, unknown>[]>('/api/admin/clients/'),
-    j<Record<string, unknown>[]>('/api/admin/projects/'),
-    j<Record<string, unknown>[]>('/api/admin/pricing-plans/'),
-    j<Record<string, unknown>>('/api/admin/settings/'),
-    j<Record<string, unknown>[]>('/api/admin/help-articles/'),
-    j<Record<string, unknown>[]>('/api/admin/contact-messages/'),
+    jList('/api/admin/users/'),
+    jList('/api/admin/permission-modules/'),
+    jList('/api/admin/roles/'),
+    jList('/api/admin/role-permissions/'),
+    jList('/api/admin/transactions/'),
+    jList('/api/admin/clients/'),
+    jList('/api/admin/projects/'),
+    jList('/api/admin/pricing-plans/'),
+    jRecord('/api/admin/settings/'),
+    jList('/api/admin/help-articles/'),
+    jList('/api/admin/contact-messages/'),
   ]);
+  const rawMods =
+    rawModsApi.length > 0 ? rawModsApi : syntheticPermissionModulesFromMe(me ?? null);
 
   const users = rawUsers.map((u) => {
     const rawProf = u.profile;
