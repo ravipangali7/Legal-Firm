@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { normalizeAuthMeUser } from '@/lib/api';
 import { roleHubRedirectTo } from '@/lib/subscriberPortalPaths';
 
 /**
@@ -22,7 +23,7 @@ export default function SubscriberPortalRoleGuard({ children }: { children: Reac
     return null;
   }
 
-  const to = roleHubRedirectTo(user, location.pathname, location.search);
+  const to = roleHubRedirectTo(normalizeAuthMeUser({ ...user }), location.pathname, location.search);
   if (to) {
     return <Navigate to={to} replace />;
   }

@@ -53,15 +53,46 @@ export function hubPathFallback(user: AuthMeUser): SpaHubPath {
 }
 
 /**
- * Resolved home: prefer backend `app_home_path`, else `hubPathFallback`.
+ * Resolved home: prefer backend `app_home_path` when it agrees with the role-derived hub.
+ *
+ * If the API sends a wrong `app_home_path` (e.g. `/account` for an admin), blindly trusting it
+ * breaks `/account` correction — `roleHubRedirectTo` thinks the user is already home. For staff
+ * portals (`/admin`) and client portal (`/client`), always enforce the canonical hub from role.
  */
 export function resolveAuthHomeHref(user: AuthMeUser): {
   href: SpaHubPath;
   source: 'app_home_path' | 'fallback';
 } {
+  const fallback = hubPathFallback(user);
   const server = normalizeSpaHomePath(user.app_home_path ?? undefined);
+
+  if (fallback === '/admin') {
+    if (server === '/admin') return { href: '/admin', source: 'app_home_path' };
+    if (server && server !== '/admin') {
+      logAuthRedirectDecision('reconcile: admin hub overrides contradictory app_home_path', {
+        server,
+        fallback,
+        role: normalizeRoleKey(user),
+        is_staff: user.is_staff,
+      });
+    }
+    return { href: '/admin', source: 'fallback' };
+  }
+
+  if (fallback === '/client') {
+    if (server === '/client') return { href: '/client', source: 'app_home_path' };
+    if (server && server !== '/client') {
+      logAuthRedirectDecision('reconcile: client hub overrides contradictory app_home_path', {
+        server,
+        fallback,
+        role: normalizeRoleKey(user),
+      });
+    }
+    return { href: '/client', source: 'fallback' };
+  }
+
   if (server) return { href: server, source: 'app_home_path' };
-  return { href: hubPathFallback(user), source: 'fallback' };
+  return { href: fallback, source: 'fallback' };
 }
 
 /**
