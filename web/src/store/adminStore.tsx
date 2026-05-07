@@ -899,7 +899,42 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       const { suspension_reason: _sr, password: _pw, ...rest } = patch;
+      const merged: AdminUser | undefined = prev ? { ...prev, ...rest } : undefined;
+      const effectiveRole = merged?.role;
       setUsers((s) => s.map((x) => (x.id === id ? { ...x, ...rest } : x)));
+      if (effectiveRole === 'client' && merged) {
+        const em = (merged.email || '').trim().toLowerCase();
+        if (em) {
+          const company =
+            (merged.profile?.company_name || '').trim() ||
+            merged.name.trim() ||
+            em.split('@')[0] ||
+            'Client';
+          const contact = merged.name.trim() || company;
+          const panVat = (merged.profile?.pan || merged.profile?.vat || '').trim();
+          const typ: Client['type'] = merged.profile?.user_type === 'business' ? 'business' : 'individual';
+          const st: Client['status'] = merged.status === 'active' ? 'active' : 'inactive';
+          setClients((cs) => {
+            const ix = cs.findIndex((c) => c.email.trim().toLowerCase() === em);
+            const base = {
+              company,
+              contact,
+              email: merged.email,
+              phone: merged.phone,
+              type: typ,
+              panVat,
+              status: st,
+            };
+            if (ix >= 0) {
+              const row = cs[ix];
+              return cs.map((c, i) =>
+                i === ix ? { ...row, ...base, joinedAt: row.joinedAt, activeProjects: row.activeProjects } : c
+              );
+            }
+            return [{ id: uid('cl'), ...base, activeProjects: 0, joinedAt: merged.createdAt || today() }, ...cs];
+          });
+        }
+      }
       pushAudit({
         action: 'update',
         entityType: 'User',

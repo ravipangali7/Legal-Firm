@@ -74,6 +74,8 @@ const emptyUser: Omit<AdminUser, 'id' | 'createdAt' | 'lastLogin'> = {
   planBenefitsEnd: null,
 };
 
+const USER_TABLE_ROLES: UserRole[] = ['super_admin', 'admin', 'editor', 'client', 'user'];
+
 const AdminUsers = () => {
   const {
     users,
@@ -113,6 +115,7 @@ const AdminUsers = () => {
   const [editSuspendReason, setEditSuspendReason] = useState('');
   const [revokeTarget, setRevokeTarget] = useState<AdminUser | null>(null);
   const [revokeBusy, setRevokeBusy] = useState(false);
+  const [roleBusyId, setRoleBusyId] = useState<string | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -172,6 +175,26 @@ const AdminUsers = () => {
     setPassword('');
     setPasswordConfirm('');
     setOpen(true);
+  };
+
+  const applyRoleFromRow = async (u: AdminUser, role: UserRole) => {
+    if (!canEditUsers || u.role === role) return;
+    setRoleBusyId(u.id);
+    try {
+      await updateUser(u.id, { role });
+      toast({
+        title: 'Role updated',
+        description: `${u.name} is now ${role.replace('_', ' ')}.`,
+      });
+    } catch (e) {
+      toast({
+        title: 'Could not update role',
+        description: e instanceof Error ? e.message : 'Request failed',
+        variant: 'destructive',
+      });
+    } finally {
+      setRoleBusyId(null);
+    }
   };
 
   const submit = async () => {
@@ -382,9 +405,35 @@ const AdminUsers = () => {
                   {accountTypeDisplayLine(u)}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="capitalize">
-                    {u.role.replace('_', ' ')}
-                  </Badge>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 min-w-[9rem] justify-between gap-1 capitalize font-normal"
+                        aria-label={`Change role, currently ${u.role.replace('_', ' ')}`}
+                        disabled={!canEditUsers || roleBusyId === u.id}
+                      >
+                        <span>{u.role.replace('_', ' ')}</span>
+                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {USER_TABLE_ROLES.map((role) => (
+                        <DropdownMenuItem
+                          key={role}
+                          disabled={u.role === role}
+                          className="capitalize"
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            void applyRoleFromRow(u, role);
+                          }}
+                        >
+                          {role.replace('_', ' ')}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
                 <TableCell>
                   <span className="text-xs text-muted-foreground">

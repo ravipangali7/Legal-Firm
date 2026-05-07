@@ -57,6 +57,8 @@ from .models import (
     UserProfile,
 )
 
+from .sync_user_client import sync_crm_client_for_user
+
 User = get_user_model()
 
 
@@ -1051,6 +1053,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
             vat=vat,
             company_name=company_name,
         )
+        sync_crm_client_for_user(user)
         return user
 
     def update(self, instance, validated_data):
@@ -1092,6 +1095,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
             for k, v in defaults.items():
                 setattr(prof, k, v)
             prof.save()
+        sync_crm_client_for_user(instance)
         return instance
 
     def to_representation(self, instance):
