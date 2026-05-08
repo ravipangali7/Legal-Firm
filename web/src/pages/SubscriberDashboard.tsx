@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -17,7 +17,14 @@ import {
   roleDisplayLabel,
   subscriberDashboardSubtitle,
 } from '@/lib/userDisplay';
-import { fetchAuthDashboard, fetchAuthMyProjects, type AuthDashboardPayload, type AuthDashboardNotification, type AuthMeUser } from '@/lib/api';
+import {
+  fetchAuthDashboard,
+  fetchAuthMyProjects,
+  type AuthDashboardPayload,
+  type AuthDashboardNotification,
+  type AuthMeAdminPermission,
+  type AuthMeUser,
+} from '@/lib/api';
 import {
   canAccessCaseSummaries,
   canAccessLawsLibrary,
@@ -43,7 +50,7 @@ import {
   AlertTriangle,
   Wallet,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -113,6 +120,16 @@ function safeFormatDate(iso: string | null | undefined): string | null {
   }
 }
 
+/** Numeric ISO-style dates for subscription copy (e.g. 2026-05-09). */
+function safeFormatDateNumeric(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  try {
+    return format(parseISO(iso), 'yyyy-MM-dd');
+  } catch {
+    return null;
+  }
+}
+
 function libraryProgressValue(user: AuthMeUser): number {
   if (!hasLibraryEntitlement(user)) return 22;
   if (!user.plan_benefits_end) return 100;
@@ -159,8 +176,8 @@ function inferredSubscriptionStartMsFromEnd(
   }
 }
 
-/** Remaining fraction of the paid subscription window (0–100), plus bar and label color rules. */
-function paidSubscriptionWindowProgress(
+/** Remaining fraction of the subscription / benefits window (0–100), plus bar and label color rules. */
+function subscriptionWindowProgress(
   user: AuthMeUser,
   nowMs: number,
   dash?: AuthDashboardPayload,
@@ -169,7 +186,6 @@ function paidSubscriptionWindowProgress(
   indicatorStyle?: CSSProperties;
   statusTone: 'default' | 'warn' | 'critical';
 } | null {
-  if (!hasPremiumBillingActive(user)) return null;
   const endIso = user.subscription_period_end ?? user.plan_benefits_end ?? null;
   if (!endIso) return null;
   try {
@@ -251,8 +267,13 @@ const emptyDash = (label: string) => (
   <p className="text-sm text-muted-foreground py-8 text-center">{label}</p>
 );
 
-/** Tab query values on the hub home page only (notifications/projects use their own routes). */
-const HOME_DASH_TABS = new Set(['activity', 'wallet', 'billing']);
+/** Static tab query values on the hub home page (plus `m:<module>` rows from portal_permissions). */
+const STATIC_HOME_DASH_TABS = new Set(['activity', 'wallet', 'billing']);
+
+function portalPermissionTabValue(row: AuthMeAdminPermission): string {
+  return `m:${String(row.module ?? '').trim()}`;
+}
+
 /** Maps dashboard tab query values to Admin Roles module names (subscriber shell). */
 const DASH_TAB_PERM_MODULE: Record<string, string> = {
   activity: PORTAL_PERM_MODULES.dashboard,
@@ -280,9 +301,13 @@ function parseNotifQueue(raw: string | null): string[] {
 
 function normalizeDashboardTabParam(raw: string | null): string | null {
   if (raw == null) return null;
-  const normalized = raw.trim().toLowerCase().replace(/\s+/g, ' ');
+  const trimmed = raw.trim();
+  if (/^m:/i.test(trimmed)) {
+    return `m:${trimmed.slice(2)}`;
+  }
+  const normalized = trimmed.toLowerCase().replace(/\s+/g, ' ');
   if (normalized === 'billing portal') return 'billing';
-  return raw.trim().toLowerCase();
+  return trimmed.toLowerCase();
 }
 
 function parseWalletBillingParam(v: string | null): WalletBillingCycle | null {
@@ -307,15 +332,51 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
   const notifSigRef = useRef<string>('');
   const { user, refreshUser } = useAuth();
 
-  const tabParam = normalizeDashboardTabParam(searchParams.get('tab'));
-  const allowedHomeTabs = useMemo(
-    () => (['activity', 'wallet', 'billing'] as const).filter((t) => dashTabAllowed(user, t)),
-    [user],
+  const tabFromUrl = searchParams.get('tab');
+  const portalPermissionRowsForTabs = useMemo(() => {
+    const rows = user?.portal_permissions;
+    if (!Array.isArray(rows) || !rows.length) return [] as AuthMeAdminPermission[];
+    const seen = new Set<string>();
+    const out: AuthMeAdminPermission[] = [];
+    for (const r of rows) {
+      const k = String(r.module ?? '').trim();
+      if (!k || seen.has(k)) continue;
+      seen.add(k);
+      out.push(r);
+    }
+    return out;
+  }, [user]);
+
+  const permissionTabValues = useMemo(
+    () => portalPermissionRowsForTabs.map((r) => portalPermissionTabValue(r)),
+    [portalPermissionRowsForTabs],
   );
-  const activeTab =
-    tabParam && HOME_DASH_TABS.has(tabParam) && dashTabAllowed(user, tabParam)
-      ? tabParam
-      : allowedHomeTabs[0] ?? 'activity';
+
+  const tabParam = useMemo(() => {
+    const n = normalizeDashboardTabParam(tabFromUrl);
+    if (!n || !n.startsWith('m:')) return n;
+    const tl = n.toLowerCase();
+    return permissionTabValues.find((v) => v.toLowerCase() === tl) ?? n;
+  }, [tabFromUrl, permissionTabValues]);
+
+  const allowedHomeTabs = useMemo(() => {
+    const staticTabs = (['activity', 'wallet', 'billing'] as const).filter((t) => dashTabAllowed(user, t));
+    return [...staticTabs, ...permissionTabValues];
+  }, [user, permissionTabValues]);
+
+  const homeTabIsAllowed = useCallback(
+    (t: string | null | undefined): boolean => {
+      if (t == null || !t.trim()) return false;
+      if (t.startsWith('m:')) {
+        const tl = t.toLowerCase();
+        return permissionTabValues.some((v) => v.toLowerCase() === tl);
+      }
+      return STATIC_HOME_DASH_TABS.has(t) && dashTabAllowed(user, t);
+    },
+    [user, permissionTabValues],
+  );
+
+  const activeTab = tabParam && homeTabIsAllowed(tabParam) ? tabParam : allowedHomeTabs[0] ?? 'activity';
   const walletInitialBilling = parseWalletBillingParam(searchParams.get('billing'));
 
   const projectsPortalOk = Boolean(user && evaluatePortalModuleView(user, PORTAL_PERM_MODULES.projects));
@@ -337,10 +398,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
     const t = normalizeDashboardTabParam(raw);
     if (t === 'notifications' && dashTabAllowed(user, 'notifications')) return;
     if (t === 'projects' && dashTabAllowed(user, 'projects')) return;
-    const desired =
-      tabParam && HOME_DASH_TABS.has(tabParam) && dashTabAllowed(user, tabParam)
-        ? tabParam
-        : allowedHomeTabs[0] ?? 'activity';
+    const desired = tabParam && homeTabIsAllowed(tabParam) ? tabParam : allowedHomeTabs[0] ?? 'activity';
     if (tabParam !== desired) {
       setSearchParams(
         (prev) => {
@@ -351,7 +409,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
         { replace: true }
       );
     }
-  }, [user, view, tabParam, allowedHomeTabs, setSearchParams, searchParams]);
+  }, [user, view, tabParam, allowedHomeTabs, setSearchParams, searchParams, homeTabIsAllowed]);
 
   useEffect(() => {
     if (view !== 'home' || !user) return;
@@ -696,7 +754,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
   const hasLibraryAccess = hasLibraryEntitlement(user);
   const premiumActive = hasPremiumBillingActive(user);
   const renewRecommended = shouldRecommendRenewal(user);
-  const paidWindowProgress = paidSubscriptionWindowProgress(user, subscriptionClock, dash);
+  const paidWindowProgress = subscriptionWindowProgress(user, subscriptionClock, dash);
   const rawProgressVal = paidWindowProgress
     ? Math.round(paidWindowProgress.pctRemaining)
     : libraryProgressValue(user);
@@ -707,8 +765,6 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
   const packageEndIso = user.subscription_period_end ?? user.plan_benefits_end ?? null;
 
   const benefitsEndLabel = safeFormatDate(user.plan_benefits_end ?? null);
-  const premiumEndLabel = safeFormatDate(user.subscription_period_end ?? null);
-
   const pendingPackages =
     dash?.billing?.filter((r) => (r.status || '').toLowerCase() === 'pending') ?? [];
   const hasPendingVerification = pendingPackages.length > 0 && !hasLibraryAccess;
@@ -734,19 +790,13 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
       return `Your paid period has ended. Full library access continues from your package until ${benefitsEndLabel}.`;
     }
     if (user.is_staff && hasLibraryAccess && !packageEndIso) {
-      return 'Full library access is included with your staff account. Package dates and the billing-period bar appear when a subscription window is set on your profile.';
-    }
-    if (premiumActive && packageEndIso) {
-      return 'Your subscription is active. Manage billing or change your plan anytime.';
-    }
-    if (premiumActive && premiumEndLabel) {
-      return `Your paid subscription is active through ${premiumEndLabel}. Manage billing or change your plan anytime.`;
+      return '';
     }
     if (premiumActive) {
-      return 'Your subscription is active. Manage billing or change your plan anytime.';
+      return '';
     }
     if (hasLibraryAccess) {
-      return 'You have full library access from your current plan benefits.';
+      return '';
     }
     return '';
   })();
@@ -796,22 +846,16 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
                 ) : null}
               </div>
               <h2 className="text-xl font-bold">{hasLibraryAccess ? 'Full library access' : 'Free account'}</h2>
-              <p className="text-sm text-muted-foreground mt-1">{subscriptionBlurb}</p>
-              {premiumActive && packageEndIso ? (
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 max-w-md rounded-lg border border-primary/15 bg-background/70 px-3 py-2.5 text-left shadow-sm">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Period start</p>
-                    <p className="text-sm font-semibold tabular-nums mt-0.5 truncate">
-                      {safeFormatDate(user.subscription_period_start ?? null) ?? '—'}
-                    </p>
-                  </div>
-                  <div className="min-w-0 border-l border-border pl-3 sm:pl-4">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Period end</p>
-                    <p className="text-sm font-semibold tabular-nums mt-0.5 truncate">
-                      {safeFormatDate(packageEndIso) ?? '—'}
-                    </p>
-                  </div>
-                </div>
+              {hasLibraryAccess ? (
+                <p className="text-sm text-muted-foreground mt-1 tabular-nums">
+                  <span className="font-medium text-foreground">From</span>{' '}
+                  {safeFormatDateNumeric(user.subscription_period_start ?? null) ?? '—'}{' '}
+                  <span className="font-medium text-foreground">to</span>{' '}
+                  {safeFormatDateNumeric(packageEndIso) ?? '—'}
+                </p>
+              ) : null}
+              {subscriptionBlurb ? (
+                <p className="text-sm text-muted-foreground mt-1.5">{subscriptionBlurb}</p>
               ) : null}
             </div>
             <div className="w-full md:w-72">
@@ -832,6 +876,11 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
                 className="h-2"
                 indicatorStyle={paidWindowProgress?.indicatorStyle}
               />
+              {paidWindowProgress ? (
+                <p className="text-xs text-muted-foreground mt-1.5 tabular-nums text-right">
+                  <span className="font-medium text-foreground">{progressVal}%</span> of access period remaining
+                </p>
+              ) : null}
               <div className="mt-3 flex flex-col gap-2">
                 {renewRecommended ? (
                   <Button size="sm" className="w-full" onClick={() => navigate('/pricing')}>
@@ -911,6 +960,15 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
               </TabsTrigger>
             ) : null}
             {allowedHomeTabs.includes('billing') ? <TabsTrigger value="billing">Billing</TabsTrigger> : null}
+            {portalPermissionRowsForTabs.map((row) => {
+              const tv = portalPermissionTabValue(row);
+              if (!allowedHomeTabs.includes(tv)) return null;
+              return (
+                <TabsTrigger key={tv} value={tv} className="max-w-[10.5rem] truncate shrink" title={row.module}>
+                  {row.module}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
           <TabsContent value="activity">
@@ -1035,6 +1093,40 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
               </CardContent>
             </Card>
           </TabsContent>
+
+          {portalPermissionRowsForTabs.map((row) => {
+            const tv = portalPermissionTabValue(row);
+            if (!allowedHomeTabs.includes(tv)) return null;
+            return (
+              <TabsContent key={tv} value={tv}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{row.module}</CardTitle>
+                    <CardDescription>
+                      Permissions for your role (Admin → Roles &amp; Permissions). Wallet, Billing, and other features
+                      follow these flags.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {(
+                        [
+                          ['View', row.view],
+                          ['Create', row.create],
+                          ['Edit', row.edit],
+                          ['Delete', row.delete],
+                        ] as const
+                      ).map(([label, on]) => (
+                        <Badge key={label} variant={on ? 'default' : 'secondary'} className="font-normal">
+                          {label}: {on ? 'On' : 'Off'}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            );
+          })}
         </Tabs>
 
         <Card>
