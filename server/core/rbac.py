@@ -194,6 +194,8 @@ def admin_perm_map(user) -> dict[str, dict[str, bool]]:
 def user_has_admin_perm(user, module_name: str, perm: AdminPerm) -> bool:
     if not user.is_authenticated or not user.is_staff:
         return False
+    if getattr(user, "is_superuser", False):
+        return True
     m = admin_perm_map(user).get(module_name)
     if not m:
         return False

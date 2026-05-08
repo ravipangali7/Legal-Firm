@@ -41,6 +41,8 @@ import SubscriberNotificationDetail from "./pages/SubscriberNotificationDetail";
 import SubscriberProfile from "./pages/SubscriberProfile";
 import SubscriberHelpPortal from "./pages/SubscriberHelpPortal";
 import SubscriberSupportPortal from "./pages/SubscriberSupportPortal";
+import SubscriberPortalAnalytics from "./pages/SubscriberPortalAnalytics";
+import SubscriberPortalDelegatedModule from "./pages/SubscriberPortalDelegatedModule";
 import SubscriberPortalLayout from "./layouts/SubscriberPortalLayout";
 import FreeAccount from "./pages/FreeAccount";
 
@@ -221,6 +223,8 @@ const AppRoutes = () => {
             <Route path="projects" element={<SubscriberDashboard view="projects" />} />
             <Route path="profile" element={<SubscriberProfile />} />
             <Route path="help" element={<SubscriberHelpPortal />} />
+            <Route path="analytics" element={<SubscriberPortalAnalytics />} />
+            <Route path="portal/:slug" element={<SubscriberPortalDelegatedModule />} />
             <Route path="support" element={<SubscriberSupportPortal />} />
           </Route>
           <Route
@@ -239,6 +243,8 @@ const AppRoutes = () => {
             <Route path="projects" element={<SubscriberDashboard view="projects" />} />
             <Route path="profile" element={<SubscriberProfile />} />
             <Route path="help" element={<SubscriberHelpPortal />} />
+            <Route path="analytics" element={<SubscriberPortalAnalytics />} />
+            <Route path="portal/:slug" element={<SubscriberPortalDelegatedModule />} />
             <Route path="support" element={<SubscriberSupportPortal />} />
           </Route>
           <Route

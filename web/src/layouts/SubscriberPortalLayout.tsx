@@ -11,17 +11,7 @@ import {
 } from '@/lib/userDisplay';
 import { fetchAuthDashboard, type AuthDashboardNotification, type AuthMeUser } from '@/lib/api';
 import { subscriberHubHeaderTitle, subscriberHubPath } from '@/lib/subscriberPortalPaths';
-import type { LucideIcon } from 'lucide-react';
-import {
-  Bell,
-  FolderKanban,
-  HelpCircle,
-  LayoutDashboard,
-  LifeBuoy,
-  LogOut,
-  Menu,
-  Settings,
-} from 'lucide-react';
+import { Bell, LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -43,8 +33,41 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
 import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
+import { buildPortalSidebarNav, type BuiltPortalNavItem } from '@/lib/subscriberPortalNav';
 
 const NOTIF_QUEUE_PARAM = 'notif_queue';
+
+function portalNavItemIsActive(
+  pathname: string,
+  search: string,
+  hubPath: '/dashboard' | '/client',
+  item: BuiltPortalNavItem,
+): boolean {
+  if (item.module === 'Dashboard') {
+    if (pathname !== hubPath) return false;
+    const t = new URLSearchParams(search).get('tab');
+    return !t || t === 'activity';
+  }
+  if (item.module === 'Pricing Plans') {
+    return pathname === hubPath && new URLSearchParams(search).get('tab') === 'wallet';
+  }
+  if (item.module === 'Transactions') {
+    return pathname === hubPath && new URLSearchParams(search).get('tab') === 'billing';
+  }
+  try {
+    const url = new URL(item.to, 'http://local');
+    if (pathname !== url.pathname) return false;
+    const want = new URLSearchParams(url.search);
+    if ([...want].length === 0) return true;
+    const have = new URLSearchParams(search);
+    for (const [k, v] of want) {
+      if (have.get(k) !== v) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function parseNotifQueue(raw: string | null): string[] {
   if (raw == null || !String(raw).trim()) return [];
@@ -71,15 +94,6 @@ function notificationTypeBadge(type: string | null | undefined): { label: string
   return { label: 'Info', className: 'bg-blue-100 text-blue-900 dark:bg-blue-900/40 dark:text-blue-100' };
 }
 
-type NavItem = {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  end?: boolean;
-  /** Admin Roles module name; omitted = always shown */
-  permModule?: string;
-};
-
 function SidebarNav({
   hubPath,
   user,
@@ -91,57 +105,56 @@ function SidebarNav({
   onNavigate?: () => void;
   className?: string;
 }) {
-  const mainItemsAll: NavItem[] = [
-    { to: hubPath, label: hubPath === '/client' ? 'Client home' : 'Dashboard', icon: LayoutDashboard, end: true, permModule: PORTAL_PERM_MODULES.dashboard },
-    { to: `${hubPath}/notifications`, label: 'Notifications', icon: Bell, permModule: PORTAL_PERM_MODULES.notifications },
-    { to: `${hubPath}/projects`, label: 'Projects', icon: FolderKanban, permModule: PORTAL_PERM_MODULES.projects },
-    { to: `${hubPath}/profile`, label: 'Settings', icon: Settings, permModule: PORTAL_PERM_MODULES.profile },
-    /** Help docs are readable by every signed-in portal user (published pool from Admin → Help). */
-    { to: `${hubPath}/help`, label: 'Help', icon: HelpCircle },
-  ];
-  const mainItems = mainItemsAll.filter((item) => !item.permModule || evaluatePortalModuleView(user, item.permModule));
+  const location = useLocation();
+  const { overview, site } = buildPortalSidebarNav(user, hubPath);
 
-  const showSupportNav = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.support);
-  const siteSectionVisible = showSupportNav;
-
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
+  const linkClass = (active: boolean) =>
     cn(
       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-      isActive
+      active
         ? 'bg-primary text-primary-foreground shadow-md'
         : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
     );
 
+  const navLinkClass = (item: BuiltPortalNavItem) =>
+    linkClass(portalNavItemIsActive(location.pathname, location.search, hubPath, item));
+
   return (
     <nav className={cn('flex flex-col gap-1 p-3', className)} aria-label="Portal navigation">
-      {mainItems.length ? (
+      {overview.length ? (
         <>
           <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overview</p>
-          {mainItems.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={linkClass} onClick={onNavigate}>
+          {overview.map((item) => (
+            <NavLink
+              key={item.module}
+              to={item.to}
+              end={item.end}
+              className={() => navLinkClass(item)}
+              onClick={onNavigate}
+            >
               <item.icon className="h-4 w-4 shrink-0" />
-              {item.label}
+              {item.module}
             </NavLink>
           ))}
         </>
       ) : null}
 
-      {siteSectionVisible ? (
+      {site.length ? (
         <>
           <p
             className={cn(
               'px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground',
-              mainItems.length ? 'mt-4' : '',
+              overview.length ? 'mt-4' : '',
             )}
           >
             Site
           </p>
-          {showSupportNav ? (
-            <NavLink to={`${hubPath}/support`} className={linkClass} onClick={onNavigate}>
-              <LifeBuoy className="h-4 w-4 shrink-0" />
-              Support
+          {site.map((item) => (
+            <NavLink key={item.module} to={item.to} className={() => navLinkClass(item)} onClick={onNavigate}>
+              <item.icon className="h-4 w-4 shrink-0" />
+              {item.module}
             </NavLink>
-          ) : null}
+          ))}
         </>
       ) : null}
     </nav>

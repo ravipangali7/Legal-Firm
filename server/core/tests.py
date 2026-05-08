@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from core.models import KnowledgeResource, KnowledgeResourceCategory, Role
+from core.models import Client, KnowledgeResource, KnowledgeResourceCategory, Role
 
 User = get_user_model()
 
@@ -73,3 +73,43 @@ class KnowledgeResourceAdminPdfPreviewTests(TestCase):
             response.close()
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+class AdminClientSyncOnRolePatchTests(TestCase):
+    """Client-role admin changes must persist a CRM Client and surface on GET /api/admin/clients/."""
+
+    def setUp(self):
+        api = APIClient()
+        self.client = api
+        for row in (
+            ("super_admin", "Super Admin"),
+            ("admin", "Admin"),
+            ("client", "Client"),
+            ("user", "User"),
+        ):
+            Role.objects.get_or_create(key=row[0], defaults={"name": row[1], "is_system": True})
+        self.actor = User.objects.create_superuser(
+            email=f"crm-sync-actor-{uuid.uuid4().hex[:8]}@test.example",
+            password="secret123",
+            full_name="Actor",
+        )
+        self.client.force_authenticate(user=self.actor)
+
+    def test_patch_user_role_to_client_creates_and_lists_crm_client(self):
+        u = User.objects.create_user(
+            email=f"tgt-{uuid.uuid4().hex[:8]}@test.example",
+            password="pwd123456",
+            full_name="Target User",
+            role="user",
+        )
+        self.assertFalse(Client.objects.filter(email__iexact=u.email).exists())
+        rsp = self.client.patch(f"/api/admin/users/{u.pk}/", {"role": "client"}, format="json")
+        self.assertEqual(rsp.status_code, 200)
+        self.assertEqual(rsp.data.get("role"), "client")  # type: ignore[attr-defined]
+        self.assertTrue(Client.objects.filter(email__iexact=u.email).exists())
+
+        lst = self.client.get("/api/admin/clients/")
+        self.assertEqual(lst.status_code, 200)
+        payload = lst.data if hasattr(lst, "data") else lst.json()
+        emails = [row.get("email") for row in payload]
+        self.assertIn(u.email, emails)
