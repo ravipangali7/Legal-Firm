@@ -5,10 +5,17 @@ from __future__ import annotations
 import calendar
 from decimal import Decimal
 
+from django.core.cache import cache
 from django.db import transaction as db_transaction
 from django.utils import timezone
 
 from .models import AppSettings, Transaction, User, UserProfile
+
+# eSewa wallet checkout: hold intent in cache until payment completes (no DB row until verified).
+# With multiple app workers, set Django CACHES to a shared backend so initiate and success land on the same store.
+ESEWA_SUB_CHECKOUT_SESSION_PREFIX = "lf:esewa_sub_sess:v1:"
+ESEWA_SUB_CHECKOUT_USER_PREFIX = "lf:esewa_sub_user:v1:"
+ESEWA_SUB_CHECKOUT_TTL = 60 * 60 * 2  # 2 hours
 
 
 def _add_calendar_months(start, months: int):
@@ -115,7 +122,64 @@ def subscription_checkout_allowed(user: User) -> tuple[bool, str | None]:
             "You already have a subscription payment awaiting completion or verification. "
             "Finish or cancel that checkout before starting another."
         )
+    if user_has_active_esewa_subscription_checkout_session(user):
+        return False, (
+            "You already have a subscription checkout in progress. "
+            "Finish eSewa payment or wait a few minutes for the session to expire before starting another."
+        )
     return True, None
+
+
+def _esewa_sub_session_key(transaction_uuid: str) -> str:
+    return f"{ESEWA_SUB_CHECKOUT_SESSION_PREFIX}{transaction_uuid}"
+
+
+def _esewa_sub_user_key(user_id) -> str:
+    return f"{ESEWA_SUB_CHECKOUT_USER_PREFIX}{user_id}"
+
+
+def user_has_active_esewa_subscription_checkout_session(user: User) -> bool:
+    """True when this user started eSewa checkout from the wallet and the server-side session is still active."""
+    return cache.get(_esewa_sub_user_key(user.pk)) is not None
+
+
+def put_esewa_subscription_checkout_session(
+    *,
+    transaction_uuid: str,
+    user: User,
+    amount: Decimal,
+    currency: str,
+    billing_cycle: str,
+    plan: str,
+    email: str,
+) -> None:
+    """
+    Remember an in-flight eSewa subscription checkout (no Transaction row yet).
+    Replaces any previous session for the same user so they can restart checkout.
+    """
+    old_uuid = cache.get(_esewa_sub_user_key(user.pk))
+    if old_uuid and str(old_uuid) != str(transaction_uuid):
+        cache.delete(_esewa_sub_session_key(str(old_uuid)))
+    payload = {
+        "user_id": str(user.pk),
+        "amount": format(amount.quantize(Decimal("0.01")), "f"),
+        "currency": currency,
+        "billing_cycle": billing_cycle,
+        "plan": plan,
+        "email": email,
+    }
+    cache.set(_esewa_sub_session_key(transaction_uuid), payload, ESEWA_SUB_CHECKOUT_TTL)
+    cache.set(_esewa_sub_user_key(user.pk), str(transaction_uuid), ESEWA_SUB_CHECKOUT_TTL)
+
+
+def get_esewa_subscription_checkout_session(transaction_uuid: str) -> dict | None:
+    raw = cache.get(_esewa_sub_session_key(transaction_uuid))
+    return raw if isinstance(raw, dict) else None
+
+
+def clear_esewa_subscription_checkout_session(*, transaction_uuid: str, user_id) -> None:
+    cache.delete(_esewa_sub_session_key(transaction_uuid))
+    cache.delete(_esewa_sub_user_key(user_id))
 
 
 def refresh_user_entitlements(user: User) -> bool:
@@ -271,10 +335,12 @@ def create_pending_subscription_txn(
     plan: str,
     email: str | None = None,
     billing_cycle: str | None = None,
+    status: str | None = None,
 ) -> Transaction:
     """Create a pending transaction for staff verification (e.g. wallet / bank proof)."""
     cycle = billing_cycle or Transaction.BillingCycle.MONTHLY
     tier = plan or User.Plan.PREMIUM
+    st = status or Transaction.Status.PENDING
     return Transaction.objects.create(
         invoice=invoice,
         user=user,
@@ -282,7 +348,7 @@ def create_pending_subscription_txn(
         amount=amount,
         currency=currency,
         method=method,
-        status=Transaction.Status.PENDING,
+        status=st,
         txn_code=txn_code,
         plan=tier,
         billing_cycle=cycle,

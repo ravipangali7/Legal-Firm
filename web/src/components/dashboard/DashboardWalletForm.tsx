@@ -114,7 +114,9 @@ const DashboardWalletForm = ({
       });
       toast({
         title: 'Redirecting to eSewa',
-        description: `Invoice ${res.invoice}. Complete payment on eSewa's secure page.`,
+        description: res.invoice?.trim()
+          ? `Invoice ${res.invoice}. Complete payment on eSewa's secure page.`
+          : "Complete payment on eSewa's secure page. Your billing record is created only after eSewa confirms success.",
       });
       onSubmitted?.();
       submitEsewaBrowserForm(res.action, res.fields);

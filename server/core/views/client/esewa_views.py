@@ -29,9 +29,12 @@ from core.models import AppSettings, Transaction, User
 from core.rbac import subscriber_portal_hub_prefix
 from core.serializers import EsewaInitiateSerializer
 from core.subscription_service import (
+    clear_esewa_subscription_checkout_session,
     create_pending_subscription_txn,
     format_esewa_money,
+    get_esewa_subscription_checkout_session,
     next_invoice_number,
+    put_esewa_subscription_checkout_session,
     resolve_subscription_catalog_amount_for_user,
     split_base_tax_total,
     subscription_checkout_allowed,
@@ -131,16 +134,14 @@ def esewa_payment_initiate(request):
     success_path = f"{front}/payment/esewa/success"
     failure_path = f"{front}/payment/esewa/failure"
 
-    txn = create_pending_subscription_txn(
+    put_esewa_subscription_checkout_session(
+        transaction_uuid=transaction_uuid,
         user=request.user,
-        invoice=next_invoice_number(),
         amount=total_amt,
         currency=app.currency or "NPR",
-        method=Transaction.Method.ESEWA,
-        txn_code=transaction_uuid,
-        plan=User.Plan.PREMIUM,
-        email=request.user.email,
         billing_cycle=billing_cycle,
+        plan=User.Plan.PREMIUM,
+        email=request.user.email or "",
     )
 
     # ePay v2 form POST: official parameter names use snake_case (see esewa_integration.md / developer.esewa.com.np Epay-V2).
@@ -163,12 +164,73 @@ def esewa_payment_initiate(request):
             "action": ESEWA_UAT_EPAY_FORM_URL,
             "method": "POST",
             "fields": fields,
-            "transaction_id": str(txn.id),
-            "invoice": txn.invoice,
+            "transaction_id": transaction_uuid,
+            "invoice": None,
             "test_mode": True,
         },
         status=status.HTTP_201_CREATED,
     )
+
+
+def _verify_esewa_complete_payment(
+    *,
+    txn_uuid: str,
+    expected_amount: Decimal,
+    payload: dict | None,
+) -> bool:
+    """True when signed callback (if valid) and eSewa status API agree on COMPLETE and amounts."""
+    if not payload:
+        return False
+
+    product_code, secret = uat_product_code_and_secret()
+    payload_uuid = _txn_uuid_from_payload(payload)
+    if not payload_uuid or payload_uuid != txn_uuid.strip():
+        _LOG.warning("eSewa success: transaction_uuid mismatch (expected %s)", txn_uuid)
+        return False
+
+    sig_ok = verify_epay_response_signature(payload, secret_key=secret)
+    if not sig_ok:
+        _LOG.warning("eSewa success: callback signature did not verify (will rely on status API)")
+
+    status_json = epay_transaction_status(
+        product_code=product_code,
+        total_amount=format_esewa_money(expected_amount),
+        transaction_uuid=txn_uuid.strip(),
+    )
+    api_status = (status_json.get("status") or "").strip().upper() if status_json else ""
+    api_total_raw = None
+    if status_json:
+        api_total_raw = status_json.get("totalamount") if "totalamount" in status_json else status_json.get("total_amount")
+    api_amount_ok = False
+    if api_total_raw is not None:
+        try:
+            api_dec = Decimal(str(api_total_raw).replace(",", "")).quantize(Decimal("0.01"))
+            api_amount_ok = amounts_close(api_dec, expected_amount)
+        except Exception:
+            api_amount_ok = False
+    api_ok = bool(status_json and api_status == "COMPLETE" and api_amount_ok)
+
+    if sig_ok:
+        if _status_from_payload(payload) != "COMPLETE":
+            _LOG.warning("eSewa success: callback status not COMPLETE")
+            return False
+        pcode = _product_code_from_payload(payload)
+        if not pcode or pcode != product_code:
+            _LOG.warning("eSewa success: product_code mismatch")
+            return False
+        total_remote = _total_from_payload(payload)
+        if total_remote is None or not amounts_close(total_remote, expected_amount):
+            _LOG.warning("eSewa success: total_amount mismatch")
+            return False
+        if not api_ok:
+            _LOG.warning("eSewa success: status API did not confirm COMPLETE")
+            return False
+    else:
+        if not api_ok:
+            _LOG.warning("eSewa success: neither signature nor status API verified payment")
+            return False
+
+    return True
 
 
 def _finalize_if_complete(*, txn: Transaction, payload: dict | None) -> bool:
@@ -179,56 +241,12 @@ def _finalize_if_complete(*, txn: Transaction, payload: dict | None) -> bool:
     if txn.status != Transaction.Status.PENDING or txn.method != Transaction.Method.ESEWA:
         return txn.status == Transaction.Status.VERIFIED
 
-    if not payload:
+    if not _verify_esewa_complete_payment(
+        txn_uuid=txn.txn_code.strip(),
+        expected_amount=Decimal(txn.amount),
+        payload=payload,
+    ):
         return False
-
-    product_code, secret = uat_product_code_and_secret()
-    txn_uuid = _txn_uuid_from_payload(payload)
-    if not txn_uuid or txn_uuid != txn.txn_code.strip():
-        _LOG.warning("eSewa success: transaction_uuid mismatch for txn %s", txn.id)
-        return False
-
-    sig_ok = verify_epay_response_signature(payload, secret_key=secret)
-    if not sig_ok:
-        _LOG.warning("eSewa success: callback signature did not verify for txn %s (will rely on status API)", txn.id)
-
-    status_json = epay_transaction_status(
-        product_code=product_code,
-        total_amount=format_esewa_money(Decimal(txn.amount)),
-        transaction_uuid=txn.txn_code.strip(),
-    )
-    api_status = (status_json.get("status") or "").strip().upper() if status_json else ""
-    api_total_raw = None
-    if status_json:
-        api_total_raw = status_json.get("totalamount") if "totalamount" in status_json else status_json.get("total_amount")
-    api_amount_ok = False
-    if api_total_raw is not None:
-        try:
-            api_dec = Decimal(str(api_total_raw).replace(",", "")).quantize(Decimal("0.01"))
-            api_amount_ok = amounts_close(api_dec, Decimal(txn.amount))
-        except Exception:
-            api_amount_ok = False
-    api_ok = bool(status_json and api_status == "COMPLETE" and api_amount_ok)
-
-    if sig_ok:
-        if _status_from_payload(payload) != "COMPLETE":
-            _LOG.warning("eSewa success: callback status not COMPLETE for txn %s", txn.id)
-            return False
-        pcode = _product_code_from_payload(payload)
-        if not pcode or pcode != product_code:
-            _LOG.warning("eSewa success: product_code mismatch for txn %s", txn.id)
-            return False
-        total_remote = _total_from_payload(payload)
-        if total_remote is None or not amounts_close(total_remote, Decimal(txn.amount)):
-            _LOG.warning("eSewa success: total_amount mismatch for txn %s", txn.id)
-            return False
-        if not api_ok:
-            _LOG.warning("eSewa success: status API did not confirm COMPLETE for txn %s", txn.id)
-            return False
-    else:
-        if not api_ok:
-            _LOG.warning("eSewa success: neither signature nor status API verified txn %s", txn.id)
-            return False
 
     with db_transaction.atomic():
         locked = Transaction.objects.select_for_update().get(pk=txn.pk)
@@ -238,6 +256,68 @@ def _finalize_if_complete(*, txn: Transaction, payload: dict | None) -> bool:
         locked.save(update_fields=["status"])
 
     return True
+
+
+def _finalize_from_checkout_session(*, txn_uuid: str, payload: dict | None, session: dict) -> Transaction | None:
+    """
+    First successful eSewa return for a wallet checkout: create a verified Transaction and clear the cache session.
+    Returns the transaction when created or already verified for this uuid; None when verification fails.
+    """
+    try:
+        expected_amount = Decimal(str(session["amount"]).replace(",", "")).quantize(Decimal("0.01"))
+    except Exception:
+        _LOG.warning("eSewa success: bad amount in checkout session for uuid %s", txn_uuid)
+        return None
+
+    if not _verify_esewa_complete_payment(
+        txn_uuid=txn_uuid.strip(),
+        expected_amount=expected_amount,
+        payload=payload,
+    ):
+        return None
+
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+
+    with db_transaction.atomic():
+        try:
+            user = User.objects.select_for_update().get(pk=user_id)
+        except User.DoesNotExist:
+            _LOG.warning("eSewa success: checkout session user missing for uuid %s", txn_uuid)
+            clear_esewa_subscription_checkout_session(transaction_uuid=txn_uuid.strip(), user_id=user_id)
+            return None
+
+        existing = (
+            Transaction.objects.select_for_update()
+            .filter(txn_code__iexact=txn_uuid.strip(), method=Transaction.Method.ESEWA)
+            .first()
+        )
+        if existing:
+            if existing.status == Transaction.Status.VERIFIED:
+                clear_esewa_subscription_checkout_session(transaction_uuid=txn_uuid.strip(), user_id=user_id)
+                return existing
+            if existing.status == Transaction.Status.PENDING:
+                clear_esewa_subscription_checkout_session(transaction_uuid=txn_uuid.strip(), user_id=user_id)
+                existing.status = Transaction.Status.VERIFIED
+                existing.save(update_fields=["status"])
+                return existing
+            return None
+
+        txn = create_pending_subscription_txn(
+            user=user,
+            invoice=next_invoice_number(),
+            amount=expected_amount,
+            currency=session.get("currency") or "NPR",
+            method=Transaction.Method.ESEWA,
+            txn_code=txn_uuid.strip(),
+            plan=session.get("plan") or User.Plan.PREMIUM,
+            email=session.get("email") or user.email,
+            billing_cycle=session.get("billing_cycle"),
+            status=Transaction.Status.VERIFIED,
+        )
+        clear_esewa_subscription_checkout_session(transaction_uuid=txn_uuid.strip(), user_id=user_id)
+        return txn
 
 
 @csrf_exempt
@@ -256,20 +336,35 @@ def esewa_payment_success(request):
     if not txn_uuid:
         return HttpResponseRedirect(f"{front}/dashboard?tab=wallet&esewa=invalid")
 
-    try:
-        txn = Transaction.objects.select_related("user").get(
-            txn_code__iexact=txn_uuid,
-            method=Transaction.Method.ESEWA,
-        )
-    except Transaction.DoesNotExist:
-        _LOG.warning("eSewa success: no transaction for uuid %s", txn_uuid)
-        return HttpResponseRedirect(f"{front}/dashboard?tab=wallet&esewa=unknown")
+    txn_uuid_norm = txn_uuid.strip()
+    txn = (
+        Transaction.objects.select_related("user")
+        .filter(txn_code__iexact=txn_uuid_norm, method=Transaction.Method.ESEWA)
+        .first()
+    )
 
-    ok = _finalize_if_complete(txn=txn, payload=payload)
-    hub = subscriber_portal_hub_prefix(txn.user)
-    if ok:
-        return HttpResponseRedirect(f"{front}{hub}?tab=wallet&esewa=success&invoice={txn.invoice}")
-    return HttpResponseRedirect(f"{front}{hub}?tab=wallet&esewa=unverified")
+    if txn:
+        ok = _finalize_if_complete(txn=txn, payload=payload)
+        hub = subscriber_portal_hub_prefix(txn.user)
+        if ok:
+            return HttpResponseRedirect(f"{front}{hub}?tab=wallet&esewa=success&invoice={txn.invoice}")
+        return HttpResponseRedirect(f"{front}{hub}?tab=wallet&esewa=unverified")
+
+    session = get_esewa_subscription_checkout_session(txn_uuid_norm)
+    if session:
+        done = _finalize_from_checkout_session(txn_uuid=txn_uuid_norm, payload=payload, session=session)
+        if done:
+            hub = subscriber_portal_hub_prefix(done.user)
+            return HttpResponseRedirect(f"{front}{hub}?tab=wallet&esewa=success&invoice={done.invoice}")
+        try:
+            u = User.objects.get(pk=session["user_id"])
+            hub = subscriber_portal_hub_prefix(u)
+        except (User.DoesNotExist, KeyError, ValueError):
+            hub = "/dashboard"
+        return HttpResponseRedirect(f"{front}{hub}?tab=wallet&esewa=unverified")
+
+    _LOG.warning("eSewa success: no transaction or checkout session for uuid %s", txn_uuid)
+    return HttpResponseRedirect(f"{front}/dashboard?tab=wallet&esewa=unknown")
 
 
 @csrf_exempt

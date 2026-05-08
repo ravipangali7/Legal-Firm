@@ -588,8 +588,9 @@ export interface EsewaInitiateResponse {
   action: string;
   method: string;
   fields: Record<string, string>;
+  /** eSewa transaction UUID (no DB row exists until payment completes). */
   transaction_id: string;
-  invoice: string;
+  invoice?: string | null;
   test_mode: boolean;
 }
 
