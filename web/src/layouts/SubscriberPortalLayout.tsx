@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -157,6 +157,13 @@ function SidebarNav({
           ))}
         </>
       ) : null}
+
+      {overview.length === 0 && site.length === 0 ? (
+        <p className="px-3 py-2 text-xs text-muted-foreground leading-snug">
+          No portal links for your role yet. Enable <span className="font-medium text-foreground">view</span> on modules
+          in Admin → Roles & Permissions, then refresh or return to this tab.
+        </p>
+      ) : null}
     </nav>
   );
 }
@@ -169,12 +176,32 @@ export default function SubscriberPortalLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const hubPath = subscriberHubPath(location.pathname) as '/dashboard' | '/client';
+
+  useEffect(() => {
+    void refreshUser({ silent: true });
+  }, [hubPath, refreshUser]);
+
+  useEffect(() => {
+    let debounce: ReturnType<typeof setTimeout> | undefined;
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      window.clearTimeout(debounce);
+      debounce = window.setTimeout(() => {
+        void refreshUser({ silent: true });
+      }, 350);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.clearTimeout(debounce);
+    };
+  }, [refreshUser]);
   const showNotifBell = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.notifications);
   const showProfileShortcut = evaluatePortalModuleView(user, PORTAL_PERM_MODULES.profile);
 

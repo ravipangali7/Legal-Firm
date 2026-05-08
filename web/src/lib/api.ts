@@ -120,6 +120,37 @@ export interface AuthMeAdminPermission {
   delete: boolean;
 }
 
+function coerceAuthPermissionFlag(value: unknown): boolean {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0 || value === null || value === undefined) return false;
+  if (typeof value === 'string') {
+    const s = value.trim().toLowerCase();
+    return s === 'true' || s === '1' || s === 'yes';
+  }
+  return Boolean(value);
+}
+
+/** Coerce permission rows from any auth JSON so `view` etc. are real booleans (sidebar + guards). */
+function normalizeAuthPermissionRows(raw: unknown): AuthMeAdminPermission[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: AuthMeAdminPermission[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'object' || item === null) continue;
+    const o = item as Record<string, unknown>;
+    const mod = o.module ?? o.Module;
+    const name = typeof mod === 'string' ? mod.trim() : String(mod ?? '').trim();
+    if (!name) continue;
+    out.push({
+      module: name,
+      view: coerceAuthPermissionFlag(o.view),
+      create: coerceAuthPermissionFlag(o.create),
+      edit: coerceAuthPermissionFlag(o.edit),
+      delete: coerceAuthPermissionFlag(o.delete),
+    });
+  }
+  return out;
+}
+
 export interface AuthMeUser {
   id: string;
   email: string;
@@ -174,6 +205,22 @@ export function normalizeAuthMeUser(data: AuthMeUser): AuthMeUser {
   data.role = normalizedRole;
   const home = normalizeSpaHomePath(data.app_home_path ?? undefined);
   if (home) data.app_home_path = home;
+
+  const ext = data as AuthMeUser & {
+    portalPermissions?: unknown;
+    adminPermissions?: unknown;
+  };
+  const portalRaw = ext.portal_permissions ?? ext.portalPermissions;
+  if (portalRaw !== undefined && portalRaw !== null) {
+    const rows = normalizeAuthPermissionRows(portalRaw);
+    if (rows !== null) data.portal_permissions = rows;
+  }
+  const adminRaw = ext.admin_permissions ?? ext.adminPermissions;
+  if (adminRaw !== undefined && adminRaw !== null) {
+    const rows = normalizeAuthPermissionRows(adminRaw);
+    if (rows !== null) data.admin_permissions = rows;
+  }
+
   return data;
 }
 
@@ -220,7 +267,10 @@ export interface AuthDashboardPayload {
 }
 
 export async function getAuthMe(): Promise<AuthMeUser | null> {
-  const r = await fetch(apiUrl('/api/auth/me/'), { credentials: 'include' });
+  const r = await fetch(apiUrl('/api/auth/me/'), {
+    credentials: 'include',
+    cache: 'no-store',
+  });
   if (r.status === 401 || r.status === 403) return null;
   if (!r.ok) throw new Error(`me ${r.status}`);
   const data = (await r.json()) as AuthMeUser | null;
