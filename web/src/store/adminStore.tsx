@@ -6,6 +6,8 @@ import {
   useCallback,
   useEffect,
   useRef,
+  type Dispatch,
+  type SetStateAction,
 } from 'react';
 import type { UserRole } from '@/components/admin/AdminSidebar';
 import { useAuth } from '@/context/AuthContext';
@@ -568,6 +570,41 @@ const Ctx = createContext<AdminStore | null>(null);
 const today = () => new Date().toISOString().slice(0, 10);
 const nowIso = () => new Date().toISOString().slice(0, 19);
 const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 8)}`;
+
+/** Mirrors server `sync_crm_client_for_user` in admin UI state (email-keyed CRM row). */
+function upsertClientFromAdminUser(setClients: Dispatch<SetStateAction<Client[]>>, merged: AdminUser) {
+  if (merged.role !== 'client') return;
+  const em = (merged.email || '').trim().toLowerCase();
+  if (!em) return;
+  const company =
+    (merged.profile?.company_name || '').trim() ||
+    merged.name.trim() ||
+    em.split('@')[0] ||
+    'Client';
+  const contact = merged.name.trim() || company;
+  const panVat = (merged.profile?.pan || merged.profile?.vat || '').trim();
+  const typ: Client['type'] = merged.profile?.user_type === 'business' ? 'business' : 'individual';
+  const st: Client['status'] = merged.status === 'active' ? 'active' : 'inactive';
+  setClients((cs) => {
+    const ix = cs.findIndex((c) => (c.email || '').trim().toLowerCase() === em);
+    const base = {
+      company,
+      contact,
+      email: merged.email,
+      phone: merged.phone,
+      type: typ,
+      panVat,
+      status: st,
+    };
+    if (ix >= 0) {
+      const row = cs[ix];
+      return cs.map((c, i) =>
+        i === ix ? { ...row, ...base, joinedAt: row.joinedAt, activeProjects: row.activeProjects } : c
+      );
+    }
+    return [{ id: uid('cl'), ...base, activeProjects: 0, joinedAt: merged.createdAt || today() }, ...cs];
+  });
+}
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 
 const defaultBroadcastDelivery = (): AdminNotificationDelivery => ({
@@ -874,6 +911,14 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
           }
           await adminPost('users/', body);
           await refreshFromApi();
+          if (u.role === 'client') {
+            upsertClientFromAdminUser(setClients, {
+              ...u,
+              id: '',
+              createdAt: today(),
+              lastLogin: today(),
+            } as AdminUser);
+          }
           pushAudit({
             action: 'create',
             entityType: 'User',
@@ -925,6 +970,9 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
         }
         await adminPatch(`users/${id}/`, body);
         await refreshFromApi();
+        if (patch.role === 'client' && prev) {
+          upsertClientFromAdminUser(setClients, { ...prev, ...patch } as AdminUser);
+        }
         pushAudit({
           action: 'update',
           entityType: 'User',
@@ -942,37 +990,7 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
       const effectiveRole = merged?.role;
       setUsers((s) => s.map((x) => (x.id === id ? { ...x, ...rest } : x)));
       if (effectiveRole === 'client' && merged) {
-        const em = (merged.email || '').trim().toLowerCase();
-        if (em) {
-          const company =
-            (merged.profile?.company_name || '').trim() ||
-            merged.name.trim() ||
-            em.split('@')[0] ||
-            'Client';
-          const contact = merged.name.trim() || company;
-          const panVat = (merged.profile?.pan || merged.profile?.vat || '').trim();
-          const typ: Client['type'] = merged.profile?.user_type === 'business' ? 'business' : 'individual';
-          const st: Client['status'] = merged.status === 'active' ? 'active' : 'inactive';
-          setClients((cs) => {
-            const ix = cs.findIndex((c) => c.email.trim().toLowerCase() === em);
-            const base = {
-              company,
-              contact,
-              email: merged.email,
-              phone: merged.phone,
-              type: typ,
-              panVat,
-              status: st,
-            };
-            if (ix >= 0) {
-              const row = cs[ix];
-              return cs.map((c, i) =>
-                i === ix ? { ...row, ...base, joinedAt: row.joinedAt, activeProjects: row.activeProjects } : c
-              );
-            }
-            return [{ id: uid('cl'), ...base, activeProjects: 0, joinedAt: merged.createdAt || today() }, ...cs];
-          });
-        }
+        upsertClientFromAdminUser(setClients, merged);
       }
       pushAudit({
         action: 'update',
