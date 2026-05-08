@@ -245,3 +245,43 @@ def send_payment_rejection_sms(user, invoice: str, reason: str) -> None:
         )
     except Exception:
         _LOG.exception("Failed to write admin panel log for payment rejection SMS")
+
+
+def send_payment_verification_sms(user, invoice: str, *, plan_display: str = "") -> None:
+    """Notify client by SMS when a subscription payment is verified (requires a reachable phone)."""
+    site = AppSettings.load().site_name
+    name = (user.full_name or user.email or "there").strip()
+    inv = (invoice or "").strip()
+    plan_part = f" ({plan_display.strip()})" if (plan_display or "").strip() else ""
+    text = f"Hello {name}, {site}: payment {inv}{plan_part} was verified and your subscription is active."
+    if len(text) > 1500:
+        text = text[:1497] + "..."
+    to = phone_to_e164(user.phone or "")
+    lines = [
+        f"User: {user.full_name or user.email} (id={user.pk})",
+        f"Invoice: {inv}",
+    ]
+    outbound_report: dict = {}
+    if not to:
+        _LOG.warning("Payment verification SMS skipped: user id=%s has no usable phone", user.pk)
+        outbound_report["sms"] = {"status": "skipped", "detail": "no usable phone"}
+        lines.append("SMS · skipped · no usable phone")
+    else:
+        ok = send_sms(to, text)
+        st = "sent" if ok else "failed"
+        outbound_report["sms"] = {
+            "status": st,
+            "to": to,
+            "detail": "" if ok else "SMS send failed or SMS provider not configured",
+        }
+        lines.append(f"SMS · {st} · {to}")
+    try:
+        log_automated_admin_outbound(
+            title=f"[Outbound] Payment verified: {inv or user.email}",
+            body="\n".join(lines),
+            notification_type=AdminBroadcast.NotificationType.SUCCESS,
+            link="/admin/transactions",
+            outbound_report=outbound_report,
+        )
+    except Exception:
+        _LOG.exception("Failed to write admin panel log for payment verification SMS")

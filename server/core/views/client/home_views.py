@@ -89,6 +89,7 @@ from core.subscription_service import (
     subscription_checkout_allowed,
 )
 from core.rbac import portal_module_perm
+from core.sms import phone_to_e164, send_sms
 
 User = get_user_model()
 
@@ -645,8 +646,42 @@ def auth_otp_request(request):
 
     code = f"{randbelow(1_000_000):06d}"
     expires_at = timezone.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
-    OtpVerification.objects.create(phone_digits=digits, code=code, expires_at=expires_at)
-    _LOG.warning("OTP login code for …%s: %s (expires in %s min)", digits[-4:], code, OTP_EXPIRY_MINUTES)
+    otp = OtpVerification.objects.create(phone_digits=digits, code=code, expires_at=expires_at)
+
+    site = AppSettings.load().site_name or "TaxLexis"
+    to_e164 = phone_to_e164((user.phone or "").strip()) or phone_to_e164(digits)
+    if not to_e164:
+        otp.delete()
+        return Response(
+            {"detail": "No valid phone number on file for SMS. Update your phone in your account or contact support."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    sms_body = (
+        f"{site}: your login code is {code}. It expires in {OTP_EXPIRY_MINUTES} minutes. "
+        "Do not share this code."
+    )
+    sms_ok = send_sms(to_e164, sms_body)
+    if not sms_ok and not settings.DEBUG:
+        otp.delete()
+        return Response(
+            {
+                "detail": (
+                    "We could not send the verification SMS. Check SMS provider configuration "
+                    "or try again later."
+                ),
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    if sms_ok:
+        _LOG.info("OTP login SMS sent (…%s)", digits[-4:])
+    else:
+        _LOG.warning(
+            "OTP login SMS failed; DEBUG=true so request still succeeds (…%s)",
+            digits[-4:],
+        )
+
     payload: dict = {"detail": "Verification code sent."}
     if settings.DEBUG:
         payload["debug_otp"] = code

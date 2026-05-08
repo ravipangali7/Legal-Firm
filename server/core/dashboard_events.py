@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .models import Transaction, UserActivityLog, UserInAppNotification
 from .rbac import subscriber_portal_hub_prefix
+from .sms import send_payment_verification_sms
 from .staff_notifications import notify_super_admins_in_app
 
 
@@ -31,3 +32,5 @@ def record_transaction_verified(txn: Transaction) -> None:
         body=f"{who} — invoice {label}{plan_part}.",
         link="/admin/transactions",
     )
+    plan_display = txn.get_plan_display() if txn.plan else ""
+    send_payment_verification_sms(txn.user, label, plan_display=plan_display)
