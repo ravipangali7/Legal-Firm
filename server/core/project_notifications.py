@@ -24,7 +24,7 @@ def standard_project_client_assignment_message(*, project: Project) -> str:
 def notify_client_assigned_to_project(*, client: Client, project: Project) -> None:
     """
     - Email: Client.email via site SMTP (Gmail and others configured in App Settings).
-    - SMS: Client.phone via Twilio when TWILIO_* env vars are set.
+    - SMS: Client.phone via Aakash SMS (Nepal) or Twilio when configured (see Aakash_sms.md, env vars).
     - In-app: first active User with same email as the client (case-insensitive), if any.
 
     The same short message is used for subject/body/title on all channels.
@@ -80,7 +80,11 @@ def notify_client_assigned_to_project(*, client: Client, project: Project) -> No
             sms_text = sms_text[:1497] + "..."
         ok = send_sms(to, sms_text)
         st = "sent" if ok else "failed"
-        outbound_report["sms"] = {"status": st, "to": to, "detail": "" if ok else "Twilio send failed or not configured"}
+        outbound_report["sms"] = {
+            "status": st,
+            "to": to,
+            "detail": "" if ok else "SMS send failed or SMS provider not configured",
+        }
 
     try:
         log_automated_admin_outbound(

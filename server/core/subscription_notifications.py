@@ -24,7 +24,7 @@ def _frontend_base() -> str:
 def notify_package_benefits_ended(user, *, ended_at: datetime) -> None:
     """
     Idempotent per (user, ended_at): caller sets last_notified_plan_benefits_end after this returns.
-    Sends in-app notification, site email (if configured), and SMS (if Twilio configured).
+    Sends in-app notification, site email (if configured), and SMS (Aakash SMS or Twilio when configured).
     """
     site = AppSettings.load().site_name or "TaxLexis"
     hub = subscriber_portal_hub_prefix(user)
@@ -83,7 +83,11 @@ def notify_package_benefits_ended(user, *, ended_at: datetime) -> None:
             sms_text = sms_text[:1497] + "..."
         ok = send_sms(to, sms_text)
         st = "sent" if ok else "failed"
-        outbound_report["sms"] = {"status": st, "to": to, "detail": "" if ok else "Twilio send failed or not configured"}
+        outbound_report["sms"] = {
+            "status": st,
+            "to": to,
+            "detail": "" if ok else "SMS send failed or SMS provider not configured",
+        }
         log_lines.append(f"SMS · {st} · {to}")
 
     try:

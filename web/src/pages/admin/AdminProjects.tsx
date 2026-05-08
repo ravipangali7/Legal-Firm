@@ -273,7 +273,7 @@ const AdminProjects = () => {
                   toast({
                     title: 'Client assigned',
                     description: apiConnected
-                      ? 'The client has been notified by email, SMS (if Twilio is configured), and in-app when their email matches a user account.'
+                      ? 'The client has been notified by email, SMS (if Aakash SMS or Twilio is configured), and in-app when their email matches a user account.'
                       : 'Project updated locally. Connect the API for live email, SMS, and in-app notifications.',
                   });
                   setAssignTarget(null);
