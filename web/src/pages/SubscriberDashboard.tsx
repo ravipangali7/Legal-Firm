@@ -270,8 +270,30 @@ const emptyDash = (label: string) => (
 /** Static tab query values on the hub home page (plus `m:<module>` rows from portal_permissions). */
 const STATIC_HOME_DASH_TABS = new Set(['activity', 'wallet', 'billing']);
 
+/** Modules already represented by Recent Activity / Wallet / Billing tabs (Admin → Roles names). */
+const PORTAL_HOME_CORE_MODULES = new Set<string>([
+  PORTAL_PERM_MODULES.dashboard,
+  PORTAL_PERM_MODULES.wallet,
+  PORTAL_PERM_MODULES.billing,
+]);
+
 function portalPermissionTabValue(row: AuthMeAdminPermission): string {
   return `m:${String(row.module ?? '').trim()}`;
+}
+
+/** Primary link for subscriber-shell modules that are not the core activity/wallet/billing tabs. */
+function portalExtraModuleCta(
+  hubPath: '/dashboard' | '/client',
+  moduleName: string,
+): { label: string; to: string } | null {
+  const m = String(moduleName ?? '').trim();
+  if (m === PORTAL_PERM_MODULES.help) return { label: 'Open help', to: `${hubPath}/help` };
+  if (m === PORTAL_PERM_MODULES.support) return { label: 'Contact support', to: '/contact' };
+  if (m === PORTAL_PERM_MODULES.profile) return { label: 'Account settings', to: `${hubPath}/profile` };
+  if (m === PORTAL_PERM_MODULES.projects) return { label: 'Projects', to: `${hubPath}/projects` };
+  if (m === PORTAL_PERM_MODULES.library) return { label: 'Legal library', to: '/laws' };
+  if (m === PORTAL_PERM_MODULES.notifications) return { label: 'Notifications', to: `${hubPath}/notifications` };
+  return null;
 }
 
 /** Maps dashboard tab query values to Admin Roles module names (subscriber shell). */
@@ -340,7 +362,8 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
     const out: AuthMeAdminPermission[] = [];
     for (const r of rows) {
       const k = String(r.module ?? '').trim();
-      if (!k || seen.has(k)) continue;
+      if (!k || seen.has(k) || PORTAL_HOME_CORE_MODULES.has(k)) continue;
+      if (!r.view) continue;
       seen.add(k);
       out.push(r);
     }
@@ -361,7 +384,10 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
 
   const allowedHomeTabs = useMemo(() => {
     const staticTabs = (['activity', 'wallet', 'billing'] as const).filter((t) => dashTabAllowed(user, t));
-    return [...staticTabs, ...permissionTabValues];
+    const activity = staticTabs.includes('activity') ? (['activity'] as const) : [];
+    const wallet = staticTabs.includes('wallet') ? (['wallet'] as const) : [];
+    const billing = staticTabs.includes('billing') ? (['billing'] as const) : [];
+    return [...activity, ...wallet, ...permissionTabValues, ...billing];
   }, [user, permissionTabValues]);
 
   const homeTabIsAllowed = useCallback(
@@ -959,7 +985,6 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
                 Wallet
               </TabsTrigger>
             ) : null}
-            {allowedHomeTabs.includes('billing') ? <TabsTrigger value="billing">Billing</TabsTrigger> : null}
             {portalPermissionRowsForTabs.map((row) => {
               const tv = portalPermissionTabValue(row);
               if (!allowedHomeTabs.includes(tv)) return null;
@@ -969,6 +994,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
                 </TabsTrigger>
               );
             })}
+            {allowedHomeTabs.includes('billing') ? <TabsTrigger value="billing">Billing</TabsTrigger> : null}
           </TabsList>
 
           <TabsContent value="activity">
@@ -1097,17 +1123,23 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
           {portalPermissionRowsForTabs.map((row) => {
             const tv = portalPermissionTabValue(row);
             if (!allowedHomeTabs.includes(tv)) return null;
+            const cta = portalExtraModuleCta(hubPath, row.module);
             return (
               <TabsContent key={tv} value={tv}>
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">{row.module}</CardTitle>
                     <CardDescription>
-                      Permissions for your role (Admin → Roles &amp; Permissions). Wallet, Billing, and other features
-                      follow these flags.
+                      From your role under Admin → Roles. This tab appears only when your role has view access to this
+                      module.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
+                    {cta ? (
+                      <Button asChild variant="default" size="sm">
+                        <Link to={cta.to}>{cta.label}</Link>
+                      </Button>
+                    ) : null}
                     <div className="flex flex-wrap gap-2">
                       {(
                         [

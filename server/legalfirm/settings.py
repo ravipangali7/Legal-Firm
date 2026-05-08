@@ -59,7 +59,7 @@ PUBLIC_APP_BASE_URL = (os.environ.get("PUBLIC_APP_BASE_URL") or "http://localhos
 SECRET_KEY = 'django-insecure-z%ab9##%#-1me=xe2=xl+euc78+g-e40jw_9@!1-fn#d=5*hom'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 
 ALLOWED_HOSTS = ['*']
@@ -207,4 +207,4 @@ AAKASHSMS_API_URL = os.environ.get(
     "https://sms.aakashsms.com/sms/v3/send",
 ).strip()
 
-PUBLIC_APP_BASE_URL="http://localhost:8080"
+PUBLIC_APP_BASE_URL="https://legalfirm.360winx.com/"
