@@ -198,4 +198,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Google Sign-In (OAuth 2.0 Web client ID). Public; also returned by `/api/public/config/` for the SPA.
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '').strip()
 
+AAKASHSMS_AUTH_TOKEN = os.environ.get(
+    "AAKASHSMS_AUTH_TOKEN",
+    "fb4be2a20ea56292d20fe52d8c65b3a67ededcd2879853f0a57562f5492f9697",
+).strip()
+AAKASHSMS_API_URL = os.environ.get(
+    "AAKASHSMS_API_URL",
+    "https://sms.aakashsms.com/sms/v3/send",
+).strip()
+
 PUBLIC_APP_BASE_URL="http://localhost:8080"

@@ -16,6 +16,25 @@ from core.phone_auth import normalize_phone_digits
 
 _LOG = logging.getLogger(__name__)
 
+_DEFAULT_AAKASH_URL = "https://sms.aakashsms.com/sms/v3/send"
+
+
+def _aakash_credentials() -> tuple[str, str]:
+    """Prefer Django settings (includes KhudraPasal-style defaults in legalfirm.settings), then env."""
+    token = os.environ.get("AAKASHSMS_AUTH_TOKEN", "").strip()
+    api_url = os.environ.get("AAKASHSMS_API_URL", "").strip() or _DEFAULT_AAKASH_URL
+    try:
+        from django.conf import settings as dj_settings
+
+        if getattr(dj_settings, "configured", False):
+            token = (getattr(dj_settings, "AAKASHSMS_AUTH_TOKEN", token) or "").strip()
+            api_url = (
+                getattr(dj_settings, "AAKASHSMS_API_URL", api_url) or ""
+            ).strip() or _DEFAULT_AAKASH_URL
+    except Exception:
+        pass
+    return token, api_url
+
 
 def phone_to_e164(raw: str) -> str | None:
     """Best-effort E.164 for SMS APIs; Nepal local numbers default to +977."""
@@ -119,17 +138,13 @@ def _send_sms_twilio(to_e164: str, body: str) -> bool:
 def send_sms(to_e164: str, body: str) -> bool:
     """
     Send SMS using the first available provider:
-    - Aakash SMS for Nepal (+977) when AAKASHSMS_AUTH_TOKEN is set (see Aakash_sms.md).
+    - Aakash SMS for Nepal (+977) when AAKASHSMS_AUTH_TOKEN is set (see Aakash_sms.md, Django settings).
     - Twilio when TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER are set.
     Otherwise logs and returns False.
     """
-    aakash_token = os.environ.get("AAKASHSMS_AUTH_TOKEN", "").strip()
+    aakash_token, api_url = _aakash_credentials()
     ne_10 = _e164_to_aakash_nepal_10_digit(to_e164)
     if aakash_token and ne_10:
-        api_url = (
-            os.environ.get("AAKASHSMS_API_URL", "").strip()
-            or "https://sms.aakashsms.com/sms/v3/send"
-        )
         if _send_sms_aakash(to_10=ne_10, body=body, auth_token=aakash_token, api_url=api_url):
             return True
         if _send_sms_twilio(to_e164, body):
