@@ -53,6 +53,7 @@ import {
   Star,
   AlertTriangle,
   Wallet,
+  CheckCircle2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -357,6 +358,9 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
   const { toast } = useToast();
   const notifSigRef = useRef<string>('');
   const { user, refreshUser } = useAuth();
+  const [walletPaymentSuccessBanner, setWalletPaymentSuccessBanner] = useState<{
+    invoice: string | null;
+  } | null>(null);
 
   const tabFromUrl = searchParams.get('tab');
   const portalPermissionRowsForTabs = useMemo(() => {
@@ -505,9 +509,12 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
     if (!es) return;
     if (es === 'success') {
       const inv = searchParams.get('invoice');
+      setWalletPaymentSuccessBanner({ invoice: inv });
       toast({
-        title: 'Payment received',
-        description: inv ? `Invoice ${inv} was confirmed via eSewa.` : 'eSewa confirmed your payment.',
+        title: 'Payment Successful',
+        description: inv
+          ? `Invoice ${inv} was verified. Your wallet and subscription are updated.`
+          : 'Your eSewa payment was verified successfully.',
       });
     } else if (es === 'cancelled') {
       toast({ title: 'Payment cancelled', description: 'You can try again from the Wallet tab when ready.' });
@@ -532,6 +539,12 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
 
   const notifications = data?.notifications ?? [];
   const billing = data?.billing ?? [];
+
+  const successBannerBillingRow = useMemo(() => {
+    const inv = walletPaymentSuccessBanner?.invoice;
+    if (!inv?.trim()) return null;
+    return billing.find((r) => String(r.invoice).trim() === inv.trim()) ?? null;
+  }, [billing, walletPaymentSuccessBanner?.invoice]);
   const notifQueueRaw = searchParams.get(NOTIF_QUEUE_PARAM);
   const queuedIds = useMemo(() => parseNotifQueue(notifQueueRaw), [notifQueueRaw]);
   const queuedNotifications = useMemo(
@@ -987,6 +1000,66 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
         ) : null}
         {error ? (
           <p className="text-sm text-destructive">Could not load dashboard data. Refresh the page or try again later.</p>
+        ) : null}
+
+        {walletPaymentSuccessBanner ? (
+          <Alert className="border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/60 dark:bg-emerald-950/30">
+            <CheckCircle2 className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+            <AlertTitle className="text-emerald-950 dark:text-emerald-100">Payment Successful</AlertTitle>
+            <AlertDescription className="text-sm mt-2 space-y-2 text-emerald-900/90 dark:text-emerald-100/90">
+              <p>
+                {walletPaymentSuccessBanner.invoice ? (
+                  <>
+                    Your eSewa payment completed successfully. Invoice{' '}
+                    <span className="font-mono font-medium">{walletPaymentSuccessBanner.invoice}</span> was confirmed on
+                    our servers.
+                  </>
+                ) : (
+                  <>Your eSewa payment completed successfully and was confirmed on our servers.</>
+                )}
+              </p>
+              {successBannerBillingRow ? (
+                <p>
+                  {String(successBannerBillingRow.status).toLowerCase() === 'verified' ? (
+                    <>
+                      This transaction is recorded as <strong>verified</strong> in your billing history.
+                      {successBannerBillingRow.package_validity_summary ? (
+                        <> {successBannerBillingRow.package_validity_summary}</>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      Billing is updating; this invoice should appear as <strong>verified</strong> in the Billing tab
+                      within a few seconds.
+                    </>
+                  )}
+                </p>
+              ) : isLoading ? (
+                <p>Loading your updated billing details…</p>
+              ) : walletPaymentSuccessBanner.invoice ? (
+                <p>
+                  If invoice <span className="font-mono">{walletPaymentSuccessBanner.invoice}</span> does not show as
+                  verified shortly, refresh the page or open the Billing tab.
+                </p>
+              ) : (
+                <p>Open the Billing tab to see your latest invoice status.</p>
+              )}
+              {allowedHomeTabs.includes('wallet') ? (
+                <p className="text-xs text-emerald-800/80 dark:text-emerald-200/80">
+                  See the Wallet tab for subscription options and the Billing tab for all invoices.
+                </p>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-1 border-emerald-300 bg-white/80 hover:bg-white dark:border-emerald-800 dark:bg-emerald-950/50"
+                onClick={() => setWalletPaymentSuccessBanner(null)}
+              >
+                Dismiss
+              </Button>
+            </AlertDescription>
+          </Alert>
         ) : null}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
