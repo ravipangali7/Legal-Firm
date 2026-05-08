@@ -34,7 +34,11 @@ import {
   hasPremiumBillingActive,
   shouldRecommendRenewal,
 } from '@/lib/subscriptionAccess';
-import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
+import {
+  isPortalCustomerAccount,
+  isPortalStaffShellSession,
+  subscriberHubPath,
+} from '@/lib/subscriberPortalPaths';
 import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -131,7 +135,7 @@ function safeFormatDateNumeric(iso: string | null | undefined): string | null {
 }
 
 function libraryProgressValue(user: AuthMeUser): number {
-  if (!hasLibraryEntitlement(user)) return 22;
+  if (!hasLibraryEntitlement(user)) return 0;
   if (!user.plan_benefits_end) return 100;
   try {
     const endMs = parseISO(user.plan_benefits_end).getTime();
@@ -146,7 +150,7 @@ function libraryProgressValue(user: AuthMeUser): number {
     const remaining = (endMs - now) / span;
     return Math.max(10, Math.min(100, Math.round(remaining * 100)));
   } catch {
-    return hasLibraryEntitlement(user) ? 100 : 22;
+    return hasLibraryEntitlement(user) ? 100 : 0;
   }
 }
 
@@ -781,9 +785,11 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
   const premiumActive = hasPremiumBillingActive(user);
   const renewRecommended = shouldRecommendRenewal(user);
   const paidWindowProgress = subscriptionWindowProgress(user, subscriptionClock, dash);
-  const rawProgressVal = paidWindowProgress
-    ? Math.round(paidWindowProgress.pctRemaining)
-    : libraryProgressValue(user);
+  const rawProgressVal = !hasLibraryAccess
+    ? 0
+    : paidWindowProgress
+      ? Math.round(paidWindowProgress.pctRemaining)
+      : libraryProgressValue(user);
   const progressVal = Number.isFinite(rawProgressVal)
     ? Math.min(100, Math.max(0, rawProgressVal))
     : 0;
@@ -801,7 +807,10 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
   const hadVerifiedSubscription =
     (dash?.billing ?? []).some((r) => (r.status || '').toLowerCase() === 'verified') ?? false;
   const packageEndedShowRenewal =
-    !user.is_staff && !hasLibraryAccess && hadVerifiedSubscription && (user.plan || 'free').toLowerCase() === 'free';
+    isPortalCustomerAccount(user) &&
+    !hasLibraryAccess &&
+    hadVerifiedSubscription &&
+    (user.plan || 'free').toLowerCase() === 'free';
 
   const subscriptionBlurb = (() => {
     if (hasPendingVerification) {
@@ -815,7 +824,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
     if (renewRecommended && benefitsEndLabel) {
       return `Your paid period has ended. Full library access continues from your package until ${benefitsEndLabel}.`;
     }
-    if (user.is_staff && hasLibraryAccess && !packageEndIso) {
+    if (isPortalStaffShellSession(user) && hasLibraryAccess && !packageEndIso) {
       return '';
     }
     if (premiumActive) {
@@ -865,7 +874,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
                     Renew available
                   </Badge>
                 ) : null}
-                {user.is_staff ? (
+                {isPortalStaffShellSession(user) ? (
                   <Badge variant="outline" className="text-xs">
                     Staff
                   </Badge>
@@ -890,19 +899,25 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
                 <span
                   className={cn(
                     'font-medium',
-                    paidWindowProgress?.statusTone === 'critical' && 'text-red-600 dark:text-red-400',
-                    paidWindowProgress?.statusTone === 'warn' && 'text-amber-600 dark:text-amber-400',
+                    hasLibraryAccess &&
+                      paidWindowProgress?.statusTone === 'critical' &&
+                      'text-red-600 dark:text-red-400',
+                    hasLibraryAccess &&
+                      paidWindowProgress?.statusTone === 'warn' &&
+                      'text-amber-600 dark:text-amber-400',
                   )}
                 >
-                  {hasLibraryAccess ? 'Active' : 'Limited'}
+                  {hasLibraryAccess ? 'Active' : 'No access'}
                 </span>
               </div>
               <Progress
                 value={progressVal}
                 className="h-2"
-                indicatorStyle={paidWindowProgress?.indicatorStyle}
+                indicatorStyle={
+                  hasLibraryAccess ? paidWindowProgress?.indicatorStyle : undefined
+                }
               />
-              {paidWindowProgress ? (
+              {hasLibraryAccess && paidWindowProgress ? (
                 <p className="text-xs text-muted-foreground mt-1.5 tabular-nums text-right">
                   <span className="font-medium text-foreground">{progressVal}%</span> of access period remaining
                 </p>
@@ -924,7 +939,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {libraryPortalOk
             ? quickLinks.map((q) => {
-                const allowed = user.is_staff || q.canAccess(user);
+                const allowed = q.canAccess(user);
                 const inner = (
                   <Card className="hover:shadow-md transition-all hover:-translate-y-0.5 duration-200 h-full text-left w-full">
                     <CardContent className="p-5 flex items-center gap-4">

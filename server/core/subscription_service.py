@@ -54,9 +54,7 @@ def package_validity_customer_summary(billing_cycle: str) -> str:
 
 
 def premium_billing_active(user: User) -> bool:
-    """True while the paid renewal period is in effect (staff always True)."""
-    if user.is_staff:
-        return True
+    """True while the paid renewal period is in effect."""
     now = timezone.now()
     if user.subscription_period_end is None:
         return bool(user.subscribed)
@@ -68,8 +66,6 @@ def library_entitlement_active(user: User) -> bool:
     True while the user may use premium library features (active subscription window).
     Pending package purchases do not grant library access until the payment is verified.
     """
-    if user.is_staff:
-        return True
     now = timezone.now()
     if user.plan_benefits_end is not None:
         return now <= user.plan_benefits_end
@@ -81,8 +77,6 @@ def library_entitlement_active(user: User) -> bool:
 
 def renewal_recommended(user: User) -> bool:
     """Paid window lapsed but package benefits still active — prompt renew."""
-    if user.is_staff:
-        return False
     return (not premium_billing_active(user)) and library_entitlement_active(user)
 
 
@@ -116,8 +110,6 @@ def user_has_pending_subscription_payment(user: User) -> bool:
 def subscription_checkout_allowed(user: User) -> tuple[bool, str | None]:
     """Whether the user may start a new subscription checkout (eSewa)."""
     refresh_user_entitlements(user)
-    if user.is_staff:
-        return True, None
     if user_has_pending_subscription_payment(user):
         return False, (
             "You already have a subscription payment awaiting completion or verification. "
@@ -131,8 +123,6 @@ def refresh_user_entitlements(user: User) -> bool:
     Sync `subscribed` with the paid window and downgrade when benefits end.
     Returns True if the user row was saved.
     """
-    if user.is_staff:
-        return False
     now = timezone.now()
     changed = False
 

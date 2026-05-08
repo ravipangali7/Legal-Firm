@@ -3,7 +3,6 @@ import type { AuthMeUser } from '@/lib/api';
 /** Premium library (acts, summaries, procedures, practice areas, cases, tools) — active subscription only. */
 export function canAccessPremiumContent(user: AuthMeUser | null | undefined): boolean {
   if (!user) return false;
-  if (user.is_staff) return true;
   return hasLibraryEntitlement(user);
 }
 
@@ -27,7 +26,6 @@ export function canAccessProcedures(user: AuthMeUser | null | undefined): boolea
 /** Full library / premium content access (includes post-paid benefits window). */
 export function hasLibraryEntitlement(user: AuthMeUser | null | undefined): boolean {
   if (!user) return false;
-  if (user.is_staff) return true;
   if (typeof user.library_entitlement_active === 'boolean') return user.library_entitlement_active;
   const ben = user.plan_benefits_end;
   if (ben) {
@@ -63,7 +61,6 @@ function readPremiumBillingFlag(user: AuthMeUser): boolean | undefined {
 /** Paid renewal window (premium billing) — when false but entitlement true, show Renew. */
 export function hasPremiumBillingActive(user: AuthMeUser | null | undefined): boolean {
   if (!user) return false;
-  if (user.is_staff) return true;
   const explicit = readPremiumBillingFlag(user);
   if (explicit !== undefined) return explicit;
   const end = user.subscription_period_end;
@@ -78,7 +75,7 @@ export function hasPremiumBillingActive(user: AuthMeUser | null | undefined): bo
 }
 
 export function shouldRecommendRenewal(user: AuthMeUser | null | undefined): boolean {
-  if (!user || user.is_staff) return false;
+  if (!user) return false;
   if (typeof user.renewal_recommended === 'boolean') return user.renewal_recommended;
   return false;
 }
