@@ -48,11 +48,32 @@ export function hasLibraryEntitlement(user: AuthMeUser | null | undefined): bool
   return Boolean(user.subscribed);
 }
 
+function readPremiumBillingFlag(user: AuthMeUser): boolean | undefined {
+  const v = user.premium_billing_active as unknown;
+  if (typeof v === 'boolean') return v;
+  if (v === 'true' || v === 1 || v === '1') return true;
+  if (v === 'false' || v === 0 || v === '0' || v === '') return false;
+  const camel = (user as AuthMeUser & { premiumBillingActive?: unknown }).premiumBillingActive;
+  if (typeof camel === 'boolean') return camel;
+  if (camel === 'true' || camel === 1 || camel === '1') return true;
+  if (camel === 'false' || camel === 0 || camel === '0') return false;
+  return undefined;
+}
+
 /** Paid renewal window (premium billing) — when false but entitlement true, show Renew. */
 export function hasPremiumBillingActive(user: AuthMeUser | null | undefined): boolean {
   if (!user) return false;
   if (user.is_staff) return true;
-  if (typeof user.premium_billing_active === 'boolean') return user.premium_billing_active;
+  const explicit = readPremiumBillingFlag(user);
+  if (explicit !== undefined) return explicit;
+  const end = user.subscription_period_end;
+  if (end) {
+    try {
+      return Date.now() <= new Date(end).getTime();
+    } catch {
+      return Boolean(user.subscribed);
+    }
+  }
   return Boolean(user.subscribed);
 }
 

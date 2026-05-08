@@ -221,6 +221,31 @@ export function normalizeAuthMeUser(data: AuthMeUser): AuthMeUser {
     if (rows !== null) data.admin_permissions = rows;
   }
 
+  const row = data as AuthMeUser & Record<string, unknown>;
+  const copyIfMissing = (snake: keyof AuthMeUser, camel: string) => {
+    const cur = row[snake as string];
+    const alt = row[camel];
+    if ((cur === undefined || cur === null || cur === '') && alt != null && alt !== '') {
+      (data as Record<string, unknown>)[snake as string] = alt as string;
+    }
+  };
+  copyIfMissing('subscription_period_start', 'subscriptionPeriodStart');
+  copyIfMissing('subscription_period_end', 'subscriptionPeriodEnd');
+  copyIfMissing('plan_benefits_end', 'planBenefitsEnd');
+
+  const coerceAuthBool = (v: unknown): boolean | undefined => {
+    if (typeof v === 'boolean') return v;
+    if (v === 'true' || v === 1 || v === '1') return true;
+    if (v === 'false' || v === 0 || v === '0' || v === '') return false;
+    return undefined;
+  };
+  const lib = coerceAuthBool(data.library_entitlement_active) ?? coerceAuthBool(row.libraryEntitlementActive);
+  if (lib !== undefined) data.library_entitlement_active = lib;
+  const prem = coerceAuthBool(data.premium_billing_active) ?? coerceAuthBool(row.premiumBillingActive);
+  if (prem !== undefined) data.premium_billing_active = prem;
+  const ren = coerceAuthBool(data.renewal_recommended) ?? coerceAuthBool(row.renewalRecommended);
+  if (ren !== undefined) data.renewal_recommended = ren;
+
   return data;
 }
 

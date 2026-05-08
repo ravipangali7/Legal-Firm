@@ -11,6 +11,7 @@ import {
 } from '@/lib/userDisplay';
 import { fetchAuthDashboard, type AuthDashboardNotification, type AuthMeUser } from '@/lib/api';
 import {
+  isPortalCustomerAccount,
   isPortalStaffShellSession,
   subscriberHubHeaderTitle,
   subscriberHubPath,
@@ -173,8 +174,8 @@ function SidebarNav({
 }
 
 /**
- * Shared shell for `/client` and `/dashboard`: persistent sidebar (desktop) + drawer (mobile),
- * unified header — sidebar routing matches the admin panel (dedicated paths per section).
+ * Shared shell for `/client` and `/dashboard`: optional sidebar for staff; member/client accounts
+ * use a single-column layout (no left rail).
  */
 export default function SubscriberPortalLayout() {
   const navigate = useNavigate();
@@ -238,6 +239,8 @@ export default function SubscriberPortalLayout() {
     );
   }
 
+  const showPortalSidebar = !isPortalCustomerAccount(user);
+
   return (
     <div className="min-h-screen bg-background">
       {isPortalStaffShellSession(user) ? (
@@ -255,41 +258,51 @@ export default function SubscriberPortalLayout() {
       ) : null}
 
       <div className="flex min-h-[calc(100vh-theme(spacing.0))]">
-        <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r bg-card/40">
-          <div className="flex h-14 items-center gap-2 border-b px-4">
-            <img src={logo} alt="" className="h-8 w-8 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold leading-tight truncate">{subscriberHubHeaderTitle(location.pathname, user)}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{firstGreetingName(user)}</p>
+        {showPortalSidebar ? (
+          <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r bg-card/40">
+            <div className="flex h-14 items-center gap-2 border-b px-4">
+              <img src={logo} alt="" className="h-8 w-8 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-tight truncate">{subscriberHubHeaderTitle(location.pathname, user)}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{firstGreetingName(user)}</p>
+              </div>
             </div>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            <SidebarNav hubPath={hubPath} user={user} />
-          </div>
-        </aside>
+            <div className="flex-1 overflow-y-auto">
+              <SidebarNav hubPath={hubPath} user={user} />
+            </div>
+          </aside>
+        ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="border-b bg-card sticky top-0 z-30 shadow-sm">
             <div className="flex max-w-[1600px] mx-auto items-center justify-between gap-2 px-3 sm:px-4 py-3">
               <div className="flex items-center gap-2 min-w-0">
-                <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="lg:hidden shrink-0" type="button" aria-label="Open menu">
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-72 p-0 flex flex-col">
-                    <div className="flex h-14 items-center gap-2 border-b px-4 shrink-0">
-                      <img src={logo} alt="" className="h-8 w-8 shrink-0" />
-                      <span className="font-semibold text-sm truncate">{subscriberHubHeaderTitle(location.pathname, user)}</span>
-                    </div>
-                    <div className="overflow-y-auto flex-1">
-                      <SidebarNav hubPath={hubPath} user={user} onNavigate={() => setMobileOpen(false)} />
-                    </div>
-                  </SheetContent>
-                </Sheet>
+                {showPortalSidebar ? (
+                  <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon" className="lg:hidden shrink-0" type="button" aria-label="Open menu">
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-72 p-0 flex flex-col">
+                      <div className="flex h-14 items-center gap-2 border-b px-4 shrink-0">
+                        <img src={logo} alt="" className="h-8 w-8 shrink-0" />
+                        <span className="font-semibold text-sm truncate">{subscriberHubHeaderTitle(location.pathname, user)}</span>
+                      </div>
+                      <div className="overflow-y-auto flex-1">
+                        <SidebarNav hubPath={hubPath} user={user} onNavigate={() => setMobileOpen(false)} />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                ) : null}
 
-                <Link to={hubPath} className="hidden sm:flex items-center gap-2 min-w-0 lg:hidden">
+                <Link
+                  to={hubPath}
+                  className={cn(
+                    'flex items-center gap-2 min-w-0',
+                    showPortalSidebar ? 'hidden sm:flex lg:hidden' : 'flex',
+                  )}
+                >
                   <img src={logo} alt="" className="h-8 w-8 shrink-0" />
                   <div className="flex flex-col min-w-0 leading-tight">
                     <span className="font-bold text-base truncate">{subscriberHubHeaderTitle(location.pathname, user)}</span>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -138,7 +138,8 @@ function latestVerifiedSubscriptionBillingCycle(dash: AuthDashboardPayload | und
   const verified = dash.billing.filter((r) => (r.status || '').toLowerCase() === 'verified');
   if (!verified.length) return null;
   verified.sort((a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime());
-  const c = verified[0].billing_cycle;
+  const row = verified[0] as { billing_cycle?: string } & Record<string, unknown>;
+  const c = row.billing_cycle ?? row.billingCycle;
   return typeof c === 'string' && c.trim() ? c : null;
 }
 
@@ -165,11 +166,11 @@ function paidSubscriptionWindowProgress(
   dash?: AuthDashboardPayload,
 ): {
   pctRemaining: number;
-  indicatorClass: string | undefined;
+  indicatorStyle?: CSSProperties;
   statusTone: 'default' | 'warn' | 'critical';
 } | null {
   if (!hasPremiumBillingActive(user)) return null;
-  const endIso = user.subscription_period_end;
+  const endIso = user.subscription_period_end ?? user.plan_benefits_end ?? null;
   if (!endIso) return null;
   try {
     const endMs = parseISO(endIso).getTime();
@@ -181,6 +182,9 @@ function paidSubscriptionWindowProgress(
       const cycle = latestVerifiedSubscriptionBillingCycle(dash);
       startMs = inferredSubscriptionStartMsFromEnd(endIso, cycle);
     }
+    if (startMs == null || !Number.isFinite(startMs) || endMs <= startMs) {
+      startMs = inferredSubscriptionStartMsFromEnd(endIso, 'monthly');
+    }
     if (startMs == null || !Number.isFinite(startMs) || endMs <= startMs) return null;
     const span = endMs - startMs;
     const remainingMs = endMs - nowMs;
@@ -190,18 +194,18 @@ function paidSubscriptionWindowProgress(
     if (daysLeft <= 10) {
       return {
         pctRemaining,
-        indicatorClass: '!bg-red-600 dark:!bg-red-500',
+        indicatorStyle: { backgroundColor: 'rgb(220 38 38)' },
         statusTone: 'critical',
       };
     }
     if (remainingMs <= span * 0.5) {
       return {
         pctRemaining,
-        indicatorClass: '!bg-amber-500 dark:!bg-amber-400',
+        indicatorStyle: { backgroundColor: 'rgb(234 179 8)' },
         statusTone: 'warn',
       };
     }
-    return { pctRemaining, indicatorClass: undefined, statusTone: 'default' };
+    return { pctRemaining, indicatorStyle: undefined, statusTone: 'default' };
   } catch {
     return null;
   }
@@ -489,7 +493,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
 
   const [subscriptionClock, setSubscriptionClock] = useState(() => Date.now());
   useEffect(() => {
-    const id = window.setInterval(() => setSubscriptionClock(Date.now()), 60_000);
+    const id = window.setInterval(() => setSubscriptionClock(Date.now()), 15_000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -693,9 +697,14 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
   const premiumActive = hasPremiumBillingActive(user);
   const renewRecommended = shouldRecommendRenewal(user);
   const paidWindowProgress = paidSubscriptionWindowProgress(user, subscriptionClock, dash);
-  const progressVal = paidWindowProgress
+  const rawProgressVal = paidWindowProgress
     ? Math.round(paidWindowProgress.pctRemaining)
     : libraryProgressValue(user);
+  const progressVal = Number.isFinite(rawProgressVal)
+    ? Math.min(100, Math.max(0, rawProgressVal))
+    : 0;
+
+  const packageEndIso = user.subscription_period_end ?? user.plan_benefits_end ?? null;
 
   const benefitsEndLabel = safeFormatDate(user.plan_benefits_end ?? null);
   const premiumEndLabel = safeFormatDate(user.subscription_period_end ?? null);
@@ -724,10 +733,10 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
     if (renewRecommended && benefitsEndLabel) {
       return `Your paid period has ended. Full library access continues from your package until ${benefitsEndLabel}.`;
     }
-    if (user.is_staff && hasLibraryAccess && !user.subscription_period_end) {
+    if (user.is_staff && hasLibraryAccess && !packageEndIso) {
       return 'Full library access is included with your staff account. Package dates and the billing-period bar appear when a subscription window is set on your profile.';
     }
-    if (premiumActive && user.subscription_period_end) {
+    if (premiumActive && packageEndIso) {
       return 'Your subscription is active. Manage billing or change your plan anytime.';
     }
     if (premiumActive && premiumEndLabel) {
@@ -788,7 +797,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
               </div>
               <h2 className="text-xl font-bold">{hasLibraryAccess ? 'Full library access' : 'Free account'}</h2>
               <p className="text-sm text-muted-foreground mt-1">{subscriptionBlurb}</p>
-              {premiumActive && user.subscription_period_end ? (
+              {premiumActive && packageEndIso ? (
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 max-w-md rounded-lg border border-primary/15 bg-background/70 px-3 py-2.5 text-left shadow-sm">
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Period start</p>
@@ -799,7 +808,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
                   <div className="min-w-0 border-l border-border pl-3 sm:pl-4">
                     <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Period end</p>
                     <p className="text-sm font-semibold tabular-nums mt-0.5 truncate">
-                      {safeFormatDate(user.subscription_period_end) ?? '—'}
+                      {safeFormatDate(packageEndIso) ?? '—'}
                     </p>
                   </div>
                 </div>
@@ -821,7 +830,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
               <Progress
                 value={progressVal}
                 className="h-2"
-                indicatorClassName={paidWindowProgress?.indicatorClass}
+                indicatorStyle={paidWindowProgress?.indicatorStyle}
               />
               <div className="mt-3 flex flex-col gap-2">
                 {renewRecommended ? (
