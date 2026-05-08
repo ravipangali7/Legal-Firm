@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import { differenceInCalendarDays, format, formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { useSiteConfig } from '@/context/SiteConfigContext';
 import {
@@ -123,6 +123,48 @@ function libraryProgressValue(user: AuthMeUser): number {
     return Math.max(10, Math.min(100, Math.round(remaining * 100)));
   } catch {
     return hasLibraryEntitlement(user) ? 100 : 22;
+  }
+}
+
+/** Remaining fraction of the paid subscription window (0–100), plus bar and label color rules. */
+function paidSubscriptionWindowProgress(
+  user: AuthMeUser,
+  nowMs: number,
+): {
+  pctRemaining: number;
+  indicatorClass: string | undefined;
+  statusTone: 'default' | 'warn' | 'critical';
+} | null {
+  if (user.is_staff || !hasPremiumBillingActive(user)) return null;
+  const startIso = user.subscription_period_start;
+  const endIso = user.subscription_period_end;
+  if (!startIso || !endIso) return null;
+  try {
+    const startMs = parseISO(startIso).getTime();
+    const endMs = parseISO(endIso).getTime();
+    if (!(Number.isFinite(startMs) && Number.isFinite(endMs)) || endMs <= startMs) return null;
+    const span = endMs - startMs;
+    const remainingMs = endMs - nowMs;
+    const pctRemaining = Math.max(0, Math.min(100, (remainingMs / span) * 100));
+    const endDate = parseISO(endIso);
+    const daysLeft = differenceInCalendarDays(endDate, new Date(nowMs));
+    if (daysLeft <= 10) {
+      return {
+        pctRemaining,
+        indicatorClass: '!bg-red-600 dark:!bg-red-500',
+        statusTone: 'critical',
+      };
+    }
+    if (remainingMs <= span * 0.5) {
+      return {
+        pctRemaining,
+        indicatorClass: '!bg-amber-500 dark:!bg-amber-400',
+        statusTone: 'warn',
+      };
+    }
+    return { pctRemaining, indicatorClass: undefined, statusTone: 'default' };
+  } catch {
+    return null;
   }
 }
 
@@ -406,6 +448,12 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
     void refreshUser({ silent: true });
   }, [billingSig, user, refreshUser]);
 
+  const [subscriptionClock, setSubscriptionClock] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setSubscriptionClock(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const unreadForStats =
     user && typeof user.unread_notifications_count === 'number' ? user.unread_notifications_count : 0;
   const statCards = useMemo(() => {
@@ -605,7 +653,10 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
   const hasLibraryAccess = hasLibraryEntitlement(user);
   const premiumActive = hasPremiumBillingActive(user);
   const renewRecommended = shouldRecommendRenewal(user);
-  const progressVal = libraryProgressValue(user);
+  const paidWindowProgress = paidSubscriptionWindowProgress(user, subscriptionClock);
+  const progressVal = paidWindowProgress
+    ? Math.round(paidWindowProgress.pctRemaining)
+    : libraryProgressValue(user);
 
   const benefitsEndLabel = safeFormatDate(user.plan_benefits_end ?? null);
   const premiumEndLabel = safeFormatDate(user.subscription_period_end ?? null);
@@ -633,6 +684,9 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
     }
     if (renewRecommended && benefitsEndLabel) {
       return `Your paid period has ended. Full library access continues from your package until ${benefitsEndLabel}.`;
+    }
+    if (premiumActive && !user.is_staff && user.subscription_period_end) {
+      return 'Your subscription is active. Manage billing or change your plan anytime.';
     }
     if (premiumActive && premiumEndLabel) {
       return `Your paid subscription is active through ${premiumEndLabel}. Manage billing or change your plan anytime.`;
@@ -692,13 +746,41 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
               </div>
               <h2 className="text-xl font-bold">{hasLibraryAccess ? 'Full library access' : 'Free account'}</h2>
               <p className="text-sm text-muted-foreground mt-1">{subscriptionBlurb}</p>
+              {premiumActive && !user.is_staff && user.subscription_period_end ? (
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 max-w-md rounded-lg border border-primary/15 bg-background/70 px-3 py-2.5 text-left shadow-sm">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Period start</p>
+                    <p className="text-sm font-semibold tabular-nums mt-0.5 truncate">
+                      {safeFormatDate(user.subscription_period_start ?? null) ?? '—'}
+                    </p>
+                  </div>
+                  <div className="min-w-0 border-l border-border pl-3 sm:pl-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Period end</p>
+                    <p className="text-sm font-semibold tabular-nums mt-0.5 truncate">
+                      {safeFormatDate(user.subscription_period_end) ?? '—'}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
             <div className="w-full md:w-72">
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-muted-foreground">Library access</span>
-                <span className="font-medium">{hasLibraryAccess ? 'Active' : 'Limited'}</span>
+                <span
+                  className={cn(
+                    'font-medium',
+                    paidWindowProgress?.statusTone === 'critical' && 'text-red-600 dark:text-red-400',
+                    paidWindowProgress?.statusTone === 'warn' && 'text-amber-600 dark:text-amber-400',
+                  )}
+                >
+                  {hasLibraryAccess ? 'Active' : 'Limited'}
+                </span>
               </div>
-              <Progress value={progressVal} className="h-2" />
+              <Progress
+                value={progressVal}
+                className="h-2"
+                indicatorClassName={paidWindowProgress?.indicatorClass}
+              />
               <div className="mt-3 flex flex-col gap-2">
                 {renewRecommended ? (
                   <Button size="sm" className="w-full" onClick={() => navigate('/pricing')}>
