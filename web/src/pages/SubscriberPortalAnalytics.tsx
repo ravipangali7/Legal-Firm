@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { BarChart3, BookOpen, Bell, FileText } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchAuthDashboard } from '@/lib/api';
-import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
+import { isPortalStaffShellSession, subscriberHubPath } from '@/lib/subscriberPortalPaths';
 import { evaluatePortalModuleView } from '@/lib/subscriberPortalPermissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -86,7 +86,7 @@ export default function SubscriberPortalAnalytics() {
         </Card>
       </div>
 
-      {user.is_staff ? (
+      {isPortalStaffShellSession(user) ? (
         <p className="text-xs text-muted-foreground">
           For full firm analytics, administrators use the{' '}
           <Link to="/admin/analytics" className="text-primary underline-offset-4 hover:underline">

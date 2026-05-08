@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { differenceInCalendarDays, format, formatDistanceToNow, parseISO } from 'date-fns';
+import {
+  differenceInCalendarDays,
+  format,
+  formatDistanceToNow,
+  parseISO,
+  subMonths,
+  subYears,
+} from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { useSiteConfig } from '@/context/SiteConfigContext';
 import {
@@ -126,23 +133,55 @@ function libraryProgressValue(user: AuthMeUser): number {
   }
 }
 
+function latestVerifiedSubscriptionBillingCycle(dash: AuthDashboardPayload | undefined): string | null {
+  if (!dash?.billing?.length) return null;
+  const verified = dash.billing.filter((r) => (r.status || '').toLowerCase() === 'verified');
+  if (!verified.length) return null;
+  verified.sort((a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime());
+  const c = verified[0].billing_cycle;
+  return typeof c === 'string' && c.trim() ? c : null;
+}
+
+/** When `subscription_period_start` is missing, approximate window length from the last verified package. */
+function inferredSubscriptionStartMsFromEnd(
+  endIso: string,
+  billingCycle: string | null | undefined,
+): number | null {
+  try {
+    const end = parseISO(endIso);
+    const c = (billingCycle || 'monthly').toLowerCase();
+    if (c.includes('year')) return subYears(end, 1).getTime();
+    if (c.includes('six')) return subMonths(end, 6).getTime();
+    return subMonths(end, 1).getTime();
+  } catch {
+    return null;
+  }
+}
+
 /** Remaining fraction of the paid subscription window (0–100), plus bar and label color rules. */
 function paidSubscriptionWindowProgress(
   user: AuthMeUser,
   nowMs: number,
+  dash?: AuthDashboardPayload,
 ): {
   pctRemaining: number;
   indicatorClass: string | undefined;
   statusTone: 'default' | 'warn' | 'critical';
 } | null {
-  if (user.is_staff || !hasPremiumBillingActive(user)) return null;
-  const startIso = user.subscription_period_start;
+  if (!hasPremiumBillingActive(user)) return null;
   const endIso = user.subscription_period_end;
-  if (!startIso || !endIso) return null;
+  if (!endIso) return null;
   try {
-    const startMs = parseISO(startIso).getTime();
     const endMs = parseISO(endIso).getTime();
-    if (!(Number.isFinite(startMs) && Number.isFinite(endMs)) || endMs <= startMs) return null;
+    if (!Number.isFinite(endMs)) return null;
+    let startMs: number | null = null;
+    if (user.subscription_period_start) {
+      startMs = parseISO(user.subscription_period_start).getTime();
+    } else {
+      const cycle = latestVerifiedSubscriptionBillingCycle(dash);
+      startMs = inferredSubscriptionStartMsFromEnd(endIso, cycle);
+    }
+    if (startMs == null || !Number.isFinite(startMs) || endMs <= startMs) return null;
     const span = endMs - startMs;
     const remainingMs = endMs - nowMs;
     const pctRemaining = Math.max(0, Math.min(100, (remainingMs / span) * 100));
@@ -653,7 +692,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
   const hasLibraryAccess = hasLibraryEntitlement(user);
   const premiumActive = hasPremiumBillingActive(user);
   const renewRecommended = shouldRecommendRenewal(user);
-  const paidWindowProgress = paidSubscriptionWindowProgress(user, subscriptionClock);
+  const paidWindowProgress = paidSubscriptionWindowProgress(user, subscriptionClock, dash);
   const progressVal = paidWindowProgress
     ? Math.round(paidWindowProgress.pctRemaining)
     : libraryProgressValue(user);
@@ -685,7 +724,10 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
     if (renewRecommended && benefitsEndLabel) {
       return `Your paid period has ended. Full library access continues from your package until ${benefitsEndLabel}.`;
     }
-    if (premiumActive && !user.is_staff && user.subscription_period_end) {
+    if (user.is_staff && hasLibraryAccess && !user.subscription_period_end) {
+      return 'Full library access is included with your staff account. Package dates and the billing-period bar appear when a subscription window is set on your profile.';
+    }
+    if (premiumActive && user.subscription_period_end) {
       return 'Your subscription is active. Manage billing or change your plan anytime.';
     }
     if (premiumActive && premiumEndLabel) {
@@ -746,7 +788,7 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
               </div>
               <h2 className="text-xl font-bold">{hasLibraryAccess ? 'Full library access' : 'Free account'}</h2>
               <p className="text-sm text-muted-foreground mt-1">{subscriptionBlurb}</p>
-              {premiumActive && !user.is_staff && user.subscription_period_end ? (
+              {premiumActive && user.subscription_period_end ? (
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 max-w-md rounded-lg border border-primary/15 bg-background/70 px-3 py-2.5 text-left shadow-sm">
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Period start</p>

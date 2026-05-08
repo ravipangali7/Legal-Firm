@@ -1,6 +1,6 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
+import { isPortalStaffShellSession, subscriberHubPath } from '@/lib/subscriberPortalPaths';
 import { evaluatePortalModuleView } from '@/lib/subscriberPortalPermissions';
 import { resolvePortalModuleFromSlug, STAFF_ADMIN_PATH } from '@/lib/subscriberPortalNav';
 import type { PortalPermissionModuleName } from '@/lib/subscriberPortalNav';
@@ -34,8 +34,7 @@ export default function SubscriberPortalDelegatedModule() {
   }
 
   const staffJump =
-    (user.is_staff || user.is_superuser) &&
-    STAFF_ADMIN_PATH[moduleName as PortalPermissionModuleName];
+    isPortalStaffShellSession(user) && STAFF_ADMIN_PATH[moduleName as PortalPermissionModuleName];
   if (staffJump) {
     return <Navigate to={staffJump} replace />;
   }

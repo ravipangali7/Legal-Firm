@@ -1,4 +1,5 @@
 import type { AuthMeUser } from '@/lib/api';
+import { isPortalStaffShellSession } from '@/lib/subscriberPortalPaths';
 import { hasLibraryEntitlement, hasPremiumBillingActive, shouldRecommendRenewal } from '@/lib/subscriptionAccess';
 
 export function userDisplayName(user: AuthMeUser): string {
@@ -70,7 +71,7 @@ export function accountTypeDisplayLine(user: { profile?: { user_type?: string } 
 
 /** Subtitle under the main welcome on /dashboard — varies by role and subscription. */
 export function subscriberDashboardSubtitle(user: AuthMeUser): string {
-  if (user.is_staff) {
+  if (isPortalStaffShellSession(user)) {
     return "You're signed in with a staff account. Open Admin for site management, or keep using the library here.";
   }
   if (!hasLibraryEntitlement(user)) {

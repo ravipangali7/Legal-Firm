@@ -10,7 +10,11 @@ import {
   userInitials,
 } from '@/lib/userDisplay';
 import { fetchAuthDashboard, type AuthDashboardNotification, type AuthMeUser } from '@/lib/api';
-import { subscriberHubHeaderTitle, subscriberHubPath } from '@/lib/subscriberPortalPaths';
+import {
+  isPortalStaffShellSession,
+  subscriberHubHeaderTitle,
+  subscriberHubPath,
+} from '@/lib/subscriberPortalPaths';
 import { Bell, LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -236,7 +240,7 @@ export default function SubscriberPortalLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      {user.is_staff ? (
+      {isPortalStaffShellSession(user) ? (
         <div className="border-b border-primary/20 bg-primary/5">
           <div className="max-w-[1600px] mx-auto px-4 py-2.5 text-sm text-muted-foreground flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center sm:text-left sm:justify-start">
             <span>
@@ -292,7 +296,7 @@ export default function SubscriberPortalLayout() {
                     <span className="text-[11px] text-muted-foreground truncate">
                       {hubPath === '/client'
                         ? `${roleDisplayLabel(user.role)} · ${accountTypeDisplayLine(user)}`
-                        : user.is_staff
+                        : isPortalStaffShellSession(user)
                           ? `${roleDisplayLabel(user.role)} · ${accountTypeDisplayLine(user)}`
                           : accountTypeDisplayLine(user)}
                     </span>

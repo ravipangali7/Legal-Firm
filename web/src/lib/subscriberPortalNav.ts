@@ -17,6 +17,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import type { AuthMeUser } from '@/lib/api';
+import { isPortalStaffShellSession } from '@/lib/subscriberPortalPaths';
 
 /** Canonical permission module names (Admin → Roles); keep aligned with `seed_roles_permissions.py` / `adminStore.tsx`. */
 export const PORTAL_PERMISSION_MODULE_NAMES = [
@@ -112,7 +113,7 @@ function staffDestination(module: PortalPermissionModuleName): string | undefine
  * Resolve sidebar target for a permission module. Labels come from the caller (`module` field on each item).
  */
 export function portalNavTarget(module: string, hub: Hub, user: AuthMeUser): { to: string; end?: boolean } {
-  if (user.is_staff || user.is_superuser) {
+  if (isPortalStaffShellSession(user)) {
     const jump = staffDestination(module as PortalPermissionModuleName);
     if (jump) return { to: jump };
   }

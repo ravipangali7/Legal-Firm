@@ -1,7 +1,22 @@
 import type { AuthMeUser } from '@/lib/api';
-import { hubPathForRole } from '@/lib/userHomeRoute';
+import { hubPathForRole, normalizeRoleKey } from '@/lib/userHomeRoute';
 
 export type SubscriberHubPath = '/dashboard' | '/client';
+
+/**
+ * Member (`user`) and `client` accounts use the subscriber hub as customers only.
+ * (`is_staff` may still be true in the database for every user — do not use it alone for staff UX.)
+ */
+export function isPortalCustomerAccount(user: AuthMeUser): boolean {
+  const r = normalizeRoleKey(user);
+  return r === 'user' || r === 'client';
+}
+
+/** Editorial staff in the subscriber shell: admin shortcuts + staff banner (not customer roles). */
+export function isPortalStaffShellSession(user: AuthMeUser): boolean {
+  if (isPortalCustomerAccount(user)) return false;
+  return Boolean(user.is_superuser || user.is_staff);
+}
 
 /** Hub for subscriber-style pages (`/dashboard` vs `/client`). */
 export function subscriberHubPath(pathname: string): SubscriberHubPath {
@@ -10,7 +25,7 @@ export function subscriberHubPath(pathname: string): SubscriberHubPath {
 
 export function subscriberHubHeaderTitle(pathname: string, user: AuthMeUser): string {
   if (subscriberHubPath(pathname) === '/client') return 'Client portal';
-  if (user.is_staff) return 'Customer view';
+  if (isPortalStaffShellSession(user)) return 'Customer view';
   return 'Dashboard';
 }
 
