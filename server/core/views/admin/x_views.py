@@ -421,11 +421,6 @@ def admin_transaction_detail(request, txn_id):
         to_rejected = new_status == Transaction.Status.REJECTED
 
         if "status" in patch and new_status != prev_status:
-            if from_pending and (to_verified or to_rejected) and not _is_super_admin_actor(request.user):
-                return Response(
-                    {"detail": "Only a Super Admin may verify or reject pending subscription payments."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
             if from_pending and to_rejected:
                 reason = (patch.get("rejection_reason") or "").strip()
                 if len(reason) < 3:

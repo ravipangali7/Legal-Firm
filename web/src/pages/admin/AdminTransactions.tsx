@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/AuthContext';
 import { useAdminModulePerm } from '@/hooks/useAdminModulePerm';
 import { useAdminStore, type Transaction } from '@/store/adminStore';
 
@@ -41,7 +40,6 @@ const empty: Omit<Transaction, 'id' | 'createdAt'> = {
 
 const AdminTransactions = () => {
   const { transactions, addTransaction, updateTransaction, deleteTransaction, apiConnected } = useAdminStore();
-  const { user: authUser } = useAuth();
   const canEditTransactions = useAdminModulePerm('Transactions', 'edit');
   const canDeleteTransactions = useAdminModulePerm('Transactions', 'delete');
   const { toast } = useToast();
@@ -54,10 +52,6 @@ const AdminTransactions = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [statusConfirm, setStatusConfirm] = useState<{ tx: Transaction; nextStatus: Transaction['status'] } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-
-  const canVerifyPendingPayments = Boolean(
-    (authUser?.is_superuser || authUser?.role === 'super_admin') && canEditTransactions
-  );
 
   /** Defer opening the alert until after Select/Dropdown portals finish closing; otherwise the same pointer event can dismiss the dialog immediately (Radix dismissable-layer). */
   const openStatusConfirm = useCallback((tx: Transaction, nextStatus: Transaction['status']) => {
@@ -190,14 +184,12 @@ const AdminTransactions = () => {
         <Card className="p-4"><div className="text-xs text-muted-foreground">Rejected</div><div className="text-2xl font-bold mt-1">{totals.rejected}</div></Card>
       </div>
 
-      {apiConnected && (!canEditTransactions || !canVerifyPendingPayments) ? (
+      {apiConnected && !canEditTransactions ? (
         <Alert>
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle>Transaction changes</AlertTitle>
           <AlertDescription className="text-sm">
-            {canEditTransactions
-              ? 'Only a Super Admin (Django superuser or Super Admin role) can verify or reject pending subscription payments. Refunds on verified payments still require Transactions → Edit.'
-              : 'You do not have permission to edit transactions. Pending verification, refunds, and edits are disabled.'}
+            You do not have permission to edit transactions. Pending verification, refunds, and edits are disabled.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -253,19 +245,6 @@ const AdminTransactions = () => {
                         toast({ title: 'No permission', description: 'You cannot change transaction status.', variant: 'destructive' });
                         return;
                       }
-                      if (
-                        apiConnected &&
-                        !canVerifyPendingPayments &&
-                        t.status === 'pending' &&
-                        (next === 'verified' || next === 'rejected')
-                      ) {
-                        toast({
-                          title: 'Super Admin only',
-                          description: 'Only a Super Admin can verify or reject pending subscription payments.',
-                          variant: 'destructive',
-                        });
-                        return;
-                      }
                       openStatusConfirm(t, next);
                     }}
                   >
@@ -291,7 +270,7 @@ const AdminTransactions = () => {
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      {t.status === 'pending' && (!apiConnected || canVerifyPendingPayments) && canEditTransactions ? (
+                      {t.status === 'pending' && canEditTransactions ? (
                         <>
                           <DropdownMenuItem onClick={() => openStatusConfirm(t, 'verified')}>
                             <CheckCircle2 className="h-4 w-4 mr-2" />
