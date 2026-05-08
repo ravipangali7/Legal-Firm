@@ -1047,12 +1047,13 @@ export async function fetchPublicHelpArticles(category?: string | null): Promise
   return r.json();
 }
 
-/** Published help for signed-in portal users (session cookie; same payload as `fetchPublicHelpArticles`). Not gated on portal Help RBAC. */
+/**
+ * Published help for the subscriber shell (`/client/help`, `/dashboard/help`).
+ * Uses `/api/public/help-articles/` — same payload as `auth_help_articles` when that route is deployed.
+ * The public list avoids a failing first hop when the API build on the server has no `/api/auth/help-articles/`.
+ */
 export async function fetchAuthHelpArticles(category?: string | null): Promise<PublicHelpArticle[]> {
-  const q = category?.trim() ? `?category=${encodeURIComponent(category.trim())}` : '';
-  const r = await sessionFetch(`/api/auth/help-articles/${q}`);
-  if (!r.ok) throw new Error(`help-articles ${r.status}`);
-  return r.json();
+  return fetchPublicHelpArticles(category);
 }
 
 export async function fetchPublicBlogPost(id: string): Promise<BlogPostPublicDetail | null> {

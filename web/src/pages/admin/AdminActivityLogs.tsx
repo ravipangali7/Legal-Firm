@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminStore, type ActivityLogEntry } from '@/store/adminStore';
 
@@ -28,6 +27,32 @@ function formatWhen(iso: string) {
   const d = new Date(normalized);
   if (Number.isNaN(d.getTime())) return iso;
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(d);
+}
+
+/** Turn stored metadata (object or legacy JSON string) into a value we can pretty-print. */
+function metadataForDisplay(meta: ActivityLogEntry['metadata']): unknown {
+  if (meta == null) return null;
+  if (typeof meta === 'string') {
+    try {
+      return JSON.parse(meta) as unknown;
+    } catch {
+      return meta;
+    }
+  }
+  return meta;
+}
+
+function prettyMetadata(meta: ActivityLogEntry['metadata']): string | null {
+  const value = metadataForDisplay(meta);
+  if (value == null) return null;
+  if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0) {
+    return null;
+  }
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
 }
 
 function logMatchesQuery(e: ActivityLogEntry, q: string) {
@@ -66,14 +91,7 @@ const AdminActivityLogs = () => {
     return activityLogs.filter((e) => logMatchesQuery(e, q));
   }, [activityLogs, search]);
 
-  const metadataPretty = useMemo(() => {
-    if (!view?.metadata || Object.keys(view.metadata).length === 0) return null;
-    try {
-      return JSON.stringify(view.metadata, null, 2);
-    } catch {
-      return String(view.metadata);
-    }
-  }, [view]);
+  const metadataPretty = useMemo(() => (view ? prettyMetadata(view.metadata) : null), [view]);
 
   const openAdd = () => {
     setEditing(null);
@@ -257,8 +275,8 @@ const AdminActivityLogs = () => {
       </Dialog>
 
       <Dialog open={!!view} onOpenChange={(o) => !o && setView(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="p-6 pb-0 space-y-3 shrink-0">
+        <DialogContent className="flex h-fit max-h-[90vh] w-[calc(100vw-2rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+          <DialogHeader className="shrink-0 space-y-3 p-6 pb-4 pr-14">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="default" className="text-sm">
                 {view?.action}
@@ -282,9 +300,9 @@ const AdminActivityLogs = () => {
               {view && formatWhen(view.createdAt)}
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 min-h-0 px-6 pb-6">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6">
             {view && (
-              <div className="space-y-4 pr-3">
+              <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Card>
                     <CardHeader className="pb-2 flex flex-row items-center gap-2 space-y-0">
@@ -372,7 +390,7 @@ const AdminActivityLogs = () => {
                             <CardTitle className="text-sm font-medium">Structured metadata</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <pre className="text-xs font-mono bg-muted/80 rounded-md p-3 overflow-x-auto max-h-[320px] overflow-y-auto whitespace-pre">
+                            <pre className="max-h-[min(50vh,28rem)] overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/80 p-3 font-mono text-xs">
                               {metadataPretty}
                             </pre>
                           </CardContent>
@@ -383,7 +401,7 @@ const AdminActivityLogs = () => {
                 )}
               </div>
             )}
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -1,5 +1,24 @@
 import type { ActivityLogEntry } from '@/lib/adminActivityTypes';
 
+function normalizeStoredMetadata(raw: unknown): Record<string, unknown> | undefined {
+  if (raw == null) return undefined;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+      return { raw: parsed };
+    } catch {
+      return { _text: raw };
+    }
+  }
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  return { value: raw as unknown };
+}
+
 const KEY = 'legalfirm_admin_activity_logs_v2';
 const MAX = 500;
 
@@ -31,10 +50,7 @@ export function loadAdminActivityLogs(): ActivityLogEntry[] | null {
         impersonating: typeof o.impersonating === 'boolean' ? o.impersonating : undefined,
         apiConnected: typeof o.apiConnected === 'boolean' ? o.apiConnected : undefined,
         userAgent: typeof o.userAgent === 'string' ? o.userAgent : undefined,
-        metadata:
-          o.metadata && typeof o.metadata === 'object' && !Array.isArray(o.metadata)
-            ? (o.metadata as Record<string, unknown>)
-            : undefined,
+        metadata: normalizeStoredMetadata(o.metadata),
       });
     }
     return out;
