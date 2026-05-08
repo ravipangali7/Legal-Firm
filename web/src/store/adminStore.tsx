@@ -291,7 +291,9 @@ const seedRoles: RoleDef[] = [
       if (m === 'Support') {
         return { module: m, view: true, create: true, edit: false, delete: false };
       }
-      if (['Dashboard', 'Projects', 'Notifications', 'Settings', 'Help'].includes(m)) {
+      if (
+        ['Dashboard', 'Projects', 'Notifications', 'Transactions', 'Pricing Plans', 'Settings', 'Help'].includes(m)
+      ) {
         return { module: m, view: true, create: false, edit: false, delete: false };
       }
       return { module: m, view: false, create: false, edit: false, delete: false };
@@ -307,7 +309,9 @@ const seedRoles: RoleDef[] = [
       if (m === 'Support') {
         return { module: m, view: true, create: true, edit: false, delete: false };
       }
-      if (['Dashboard', 'Notifications', 'Settings', 'Help'].includes(m)) {
+      if (
+        ['Dashboard', 'Notifications', 'Transactions', 'Pricing Plans', 'Settings', 'Help'].includes(m)
+      ) {
         return { module: m, view: true, create: false, edit: false, delete: false };
       }
       return { module: m, view: false, create: false, edit: false, delete: false };
@@ -970,6 +974,9 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
         }
         await adminPatch(`users/${id}/`, body);
         await refreshFromApi();
+        if (authUserRef.current?.id === id) {
+          void refreshUser({ silent: true });
+        }
         if (patch.role === 'client' && prev) {
           upsertClientFromAdminUser(setClients, { ...prev, ...patch } as AdminUser);
         }

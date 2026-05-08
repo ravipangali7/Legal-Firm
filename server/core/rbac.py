@@ -42,6 +42,56 @@ KNOWN_ROLE_KEYS = frozenset({"super_admin", "admin", "editor", "client", "user"}
 AdminPerm = Literal["view", "create", "edit", "delete"]
 
 
+def _default_subscriber_portal_matrix(role_key: str, module_names: list[str]) -> list[dict[str, bool | str]]:
+    """
+    Fallback subscriber-shell matrix when ``RolePermission`` rows were never seeded for this role
+    (e.g. deployments that ran migrations creating :class:`~core.Role` rows but omitted
+    ``python manage.py seed_roles_permissions``).
+
+    Mirrors ``seed_roles_permissions._matrix()`` for ``client`` and ``user``.
+    Unknown module names default to deny-all.
+    """
+    if role_key not in ("client", "user"):
+        return [
+            {"module": n, "view": False, "create": False, "edit": False, "delete": False}
+            for n in module_names
+        ]
+
+    if role_key == "client":
+        view_ok = {
+            "Dashboard",
+            "Projects",
+            "Notifications",
+            "Transactions",
+            "Pricing Plans",
+            "Support",
+            "Settings",
+            "Help",
+        }
+    else:
+        view_ok = {
+            "Dashboard",
+            "Notifications",
+            "Transactions",
+            "Pricing Plans",
+            "Support",
+            "Settings",
+            "Help",
+        }
+
+    out: list[dict[str, bool | str]] = []
+    for name in module_names:
+        if name == "Support":
+            out.append(
+                {"module": name, "view": True, "create": True, "edit": False, "delete": False}
+            )
+        elif name in view_ok:
+            out.append({"module": name, "view": True, "create": False, "edit": False, "delete": False})
+        else:
+            out.append({"module": name, "view": False, "create": False, "edit": False, "delete": False})
+    return out
+
+
 def post_auth_app_home_path(user) -> str:
     """
     Primary SPA path after login (mirrors web `userHomeHref`).
@@ -104,6 +154,10 @@ def portal_permissions_for_user(user) -> list[dict[str, bool | str]]:
     Admin → Roles), including when ``is_staff`` is True — so e.g. a Client-role staff account
     sees the Client portal matrix instead of the admin matrix. Django superusers receive full
     flags on every module. Admin SPA navigation still uses ``admin_permissions_for_user``.
+
+    If the ``client`` or ``user`` role exists but has no ``RolePermission`` rows yet (some
+    installs create roles via migrations without running ``seed_roles_permissions``), a built-in
+    default portal matrix matching that seed command is returned instead of an all-deny grid.
     """
     if not getattr(user, "is_authenticated", False):
         return []
@@ -120,9 +174,14 @@ def portal_permissions_for_user(user) -> list[dict[str, bool | str]]:
             {"module": n, "view": False, "create": False, "edit": False, "delete": False}
             for n in names
         ]
+
+    rp_qs = RolePermission.objects.filter(role=role).select_related("module")
+    if not rp_qs.exists() and role.key in ("client", "user"):
+        return _default_subscriber_portal_matrix(role.key, names)
+
     rp_by_mod_name = {
         rp.module.name: rp
-        for rp in RolePermission.objects.filter(role=role).select_related("module")
+        for rp in rp_qs
     }
     return [
         {
