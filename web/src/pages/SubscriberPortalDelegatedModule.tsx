@@ -2,7 +2,7 @@ import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
 import { evaluatePortalModuleView } from '@/lib/subscriberPortalPermissions';
-import { portalModuleFromSlug, STAFF_ADMIN_PATH } from '@/lib/subscriberPortalNav';
+import { resolvePortalModuleFromSlug, STAFF_ADMIN_PATH } from '@/lib/subscriberPortalNav';
 import type { PortalPermissionModuleName } from '@/lib/subscriberPortalNav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ export default function SubscriberPortalDelegatedModule() {
   const { user } = useAuth();
   const hubPath = subscriberHubPath(location.pathname);
 
-  const moduleName = slug ? portalModuleFromSlug(slug) : null;
+  const moduleName = slug ? resolvePortalModuleFromSlug(user, slug) : null;
 
   if (!user) {
     return (

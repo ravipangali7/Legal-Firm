@@ -71,6 +71,26 @@ export function portalModuleFromSlug(slug: string): string | null {
   return null;
 }
 
+/**
+ * Resolve `/client|dashboard/portal/:slug` to a permission module label.
+ * Known modules use the canonical list first; custom Admin → Roles modules match via slug against the current user's matrix.
+ */
+export function resolvePortalModuleFromSlug(user: AuthMeUser | null | undefined, slug: string): string | null {
+  const s = slug.trim().toLowerCase();
+  if (!s) return null;
+  const canonical = portalModuleFromSlug(slug);
+  if (canonical) return canonical;
+  const rows = user?.portal_permissions;
+  if (!Array.isArray(rows)) return null;
+  const hits: string[] = [];
+  for (const r of rows) {
+    const name = String(r.module ?? '').trim();
+    if (!name) continue;
+    if (portalModuleSlug(name) === s) hits.push(name);
+  }
+  return hits[0] ?? null;
+}
+
 type Hub = '/dashboard' | '/client';
 
 /** Admin SPA paths for staff viewing portal sidebar links (same modules as Roles screen). */
@@ -91,9 +111,9 @@ function staffDestination(module: PortalPermissionModuleName): string | undefine
 /**
  * Resolve sidebar target for a permission module. Labels come from the caller (`module` field on each item).
  */
-export function portalNavTarget(module: PortalPermissionModuleName, hub: Hub, user: AuthMeUser): { to: string; end?: boolean } {
+export function portalNavTarget(module: string, hub: Hub, user: AuthMeUser): { to: string; end?: boolean } {
   if (user.is_staff || user.is_superuser) {
-    const jump = staffDestination(module);
+    const jump = staffDestination(module as PortalPermissionModuleName);
     if (jump) return { to: jump };
   }
 
@@ -123,7 +143,7 @@ export function portalNavTarget(module: PortalPermissionModuleName, hub: Hub, us
   }
 }
 
-function iconForModule(module: PortalPermissionModuleName): LucideIcon {
+function iconForModule(module: string): LucideIcon {
   switch (module) {
     case 'Dashboard':
       return LayoutDashboard;
@@ -160,12 +180,8 @@ function iconForModule(module: PortalPermissionModuleName): LucideIcon {
   }
 }
 
-function sectionForModule(module: PortalPermissionModuleName): PortalNavSection {
+function sectionForModule(module: string): PortalNavSection {
   return module === 'Support' ? 'site' : 'overview';
-}
-
-function isPortalPermissionModuleName(s: string): s is PortalPermissionModuleName {
-  return MODULE_ORDER.has(s);
 }
 
 /**
@@ -190,7 +206,7 @@ export function buildPortalSidebarNav(user: AuthMeUser, hub: Hub): { overview: B
 
   for (const row of sorted) {
     const name = String(row.module ?? '').trim();
-    if (!name || !isPortalPermissionModuleName(name)) continue;
+    if (!name) continue;
 
     const { to, end } = portalNavTarget(name, hub, user);
     const item: BuiltPortalNavItem = {
