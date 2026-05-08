@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,20 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpArticleProse } from '@/components/HelpArticleProse';
 import { fetchAuthHelpArticles, type PublicHelpArticle } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
-import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
 
 /** Help articles published by admins — shown inside /client and /dashboard shells (view-only). */
 export default function SubscriberHelpPortal() {
-  const location = useLocation();
-  const hubPath = subscriberHubPath(location.pathname);
   const { user } = useAuth();
-  const canViewHelp = Boolean(user) && evaluatePortalModuleView(user, PORTAL_PERM_MODULES.help);
 
   const { data: articles = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['auth-help-articles'],
     queryFn: () => fetchAuthHelpArticles(),
-    enabled: canViewHelp,
+    enabled: Boolean(user),
     staleTime: 60_000,
   });
 
@@ -41,10 +35,6 @@ export default function SubscriberHelpPortal() {
     return (
       <div className="min-h-[40vh] flex items-center justify-center text-muted-foreground text-sm">Loading…</div>
     );
-  }
-
-  if (!evaluatePortalModuleView(user, PORTAL_PERM_MODULES.help)) {
-    return <Navigate to={hubPath} replace />;
   }
 
   if (isLoading) {

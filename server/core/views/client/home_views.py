@@ -761,13 +761,11 @@ def auth_help_articles(request):
 
     Uses the session cookie like other /api/auth/* routes so the portal does not rely on
     anonymous cross-origin fetches to /api/public/help-articles/.
+
+    Any authenticated subscriber may read published articles (same payload as the public list).
+    RBAC ``Help`` module controls Admin → Help editing, not reading docs in the portal.
     """
     refresh_user_entitlements(request.user)
-    if not portal_module_perm(request.user, "Help", "view"):
-        return Response(
-            {"detail": "You do not have permission to view help articles."},
-            status=status.HTTP_403_FORBIDDEN,
-        )
     qs = HelpArticle.objects.filter(published=True).order_by("sort_order", "title")
     cat = (request.query_params.get("category") or "").strip()
     if cat:

@@ -55,17 +55,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refreshUser();
   }, [refreshUser]);
 
-  useEffect(() => {
-    const intervalMs = 15000;
-    const tick = () => {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-      void refreshUser({ silent: true });
-    };
-    const id = window.setInterval(tick, intervalMs);
-    return () => window.clearInterval(id);
-  }, [refreshUser]);
-
   const value = useMemo(
     () => ({ user, loading, refreshUser, logout }),
     [user, loading, refreshUser, logout]

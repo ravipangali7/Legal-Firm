@@ -1047,7 +1047,7 @@ export async function fetchPublicHelpArticles(category?: string | null): Promise
   return r.json();
 }
 
-/** Published help for signed-in portal users (session cookie; same payload as `fetchPublicHelpArticles`). */
+/** Published help for signed-in portal users (session cookie; same payload as `fetchPublicHelpArticles`). Not gated on portal Help RBAC. */
 export async function fetchAuthHelpArticles(category?: string | null): Promise<PublicHelpArticle[]> {
   const q = category?.trim() ? `?category=${encodeURIComponent(category.trim())}` : '';
   const r = await sessionFetch(`/api/auth/help-articles/${q}`);

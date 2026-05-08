@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import { HtmlPreview } from '@/components/HtmlPreview';
-import { looksLikeHtml } from '@/lib/summaryHtml';
+import { looksLikeHtml, unwrapEntityEncodedHtmlIfNeeded } from '@/lib/summaryHtml';
 import { cn } from '@/lib/utils';
 
 function renderLine(line: string, lineKey: number, tone: 'default' | 'muted') {
@@ -34,15 +34,16 @@ type HelpArticleProseProps = {
 
 /** Renders help body with line breaks and `**inline bold**` segments (typography via `prose`). */
 export function HelpArticleProse({ content, className, tone = 'default' }: HelpArticleProseProps) {
-  if (looksLikeHtml(content || '')) {
+  const body = unwrapEntityEncodedHtmlIfNeeded(content ?? '');
+  if (looksLikeHtml(body)) {
     return (
       <HtmlPreview
-        content={content || ''}
+        content={body}
         className={cn(tone === 'muted' && 'text-muted-foreground [&_strong]:text-foreground', className)}
       />
     );
   }
-  const lines = (content || '').split('\n');
+  const lines = body.split('\n');
   return (
     <div className={cn('prose prose-sm dark:prose-invert max-w-none', className)}>
       {lines.map((line, li) =>

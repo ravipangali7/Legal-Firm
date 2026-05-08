@@ -96,7 +96,8 @@ function SidebarNav({
     { to: `${hubPath}/notifications`, label: 'Notifications', icon: Bell, permModule: PORTAL_PERM_MODULES.notifications },
     { to: `${hubPath}/projects`, label: 'Projects', icon: FolderKanban, permModule: PORTAL_PERM_MODULES.projects },
     { to: `${hubPath}/profile`, label: 'Settings', icon: Settings, permModule: PORTAL_PERM_MODULES.profile },
-    { to: `${hubPath}/help`, label: 'Help', icon: HelpCircle, permModule: PORTAL_PERM_MODULES.help },
+    /** Help docs are readable by every signed-in portal user (published pool from Admin → Help). */
+    { to: `${hubPath}/help`, label: 'Help', icon: HelpCircle },
   ];
   const mainItems = mainItemsAll.filter((item) => !item.permModule || evaluatePortalModuleView(user, item.permModule));
 

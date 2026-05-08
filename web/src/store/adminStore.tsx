@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+} from 'react';
 import type { UserRole } from '@/components/admin/AdminSidebar';
 import { useAuth } from '@/context/AuthContext';
 import { effectiveSidebarRole } from '@/lib/adminSidebarRole';
@@ -651,6 +659,9 @@ function applyTxnStatusToUsers(users: AdminUser[], t: Transaction, newStatus: Tr
 
 export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
   const { user: authUser, loading: authLoading, refreshUser } = useAuth();
+  /** Stable for `refreshFromApi` — `/me` returns a new object often; avoids re-running snapshot effects. */
+  const authUserRef = useRef(authUser);
+  authUserRef.current = authUser;
   const [apiConnected, setApiConnected] = useState(false);
   const [adminSnapshotLoaded, setAdminSnapshotLoaded] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('super_admin');
@@ -693,7 +704,7 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const refreshFromApi = useCallback(async () => {
-    const snap = await pullAdminSnapshot(authUser ?? null);
+    const snap = await pullAdminSnapshot(authUserRef.current ?? null);
     setUsers(snap.users);
     setRoles(snap.roles as RoleDef[]);
     setModules(snap.modules);
@@ -706,7 +717,7 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
     setSupportTickets(buildSupportTicketsList(snap.contactMessages ?? [], seedSupportTickets));
     setApiConnected(true);
     await loadPanelNotifications();
-  }, [loadPanelNotifications, authUser]);
+  }, [loadPanelNotifications]);
 
   useEffect(() => {
     if (!authUser?.is_staff || impersonation.active) return;
@@ -761,18 +772,6 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
       cancelled = true;
     };
   }, [authLoading, authUser?.id, authUser?.is_staff, refreshFromApi]);
-
-  useEffect(() => {
-    if (authLoading || !authUser?.is_staff || impersonation.active) return;
-    const intervalMs = 10000;
-    const tick = () => {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-      void refreshFromApi();
-    };
-    const id = window.setInterval(tick, intervalMs);
-    return () => window.clearInterval(id);
-  }, [authLoading, authUser?.is_staff, impersonation.active, refreshFromApi]);
 
   useEffect(() => {
     if (authLoading) return;
