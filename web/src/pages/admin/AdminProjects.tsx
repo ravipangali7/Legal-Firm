@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
-import { useAdminStore, type Project, type Client, type AdminUser } from '@/store/adminStore';
+import { useAdminStore, type Project, type AdminUser, resolveClientFromProjectPicker } from '@/store/adminStore';
 
 const empty: Omit<Project, 'id' | 'progress'> = {
   name: '', client: '', type: '', status: 'planning', dueDate: '', team: [],
@@ -21,13 +21,17 @@ const empty: Omit<Project, 'id' | 'progress'> = {
 
 type ProjectClientOption = { key: string; value: string; label: string; disabled?: boolean };
 
-/** CRM rows for accounts with the Client role, plus optional CRM-only row when editing/assigning an existing project. */
-function buildProjectClientSelectOptions(
-  users: AdminUser[],
-  clients: Client[],
-  hintCompany: string | null | undefined,
-  snapshotReady: boolean
-): ProjectClientOption[] {
+function projectPickerInitialClientId(clients: Parameters<typeof resolveClientFromProjectPicker>[0], projectClientLabel: string): string {
+  const t = (projectClientLabel || '').trim();
+  if (!t) return '';
+  const byCompany = clients.find((c) => c.company === t);
+  if (byCompany) return byCompany.id;
+  const resolved = resolveClientFromProjectPicker(clients, t);
+  return resolved?.id ?? '';
+}
+
+/** Every CRM client row (same source as /admin/clients), plus disabled hints for Client-role logins missing a CRM row. */
+function buildProjectClientSelectOptions(users: AdminUser[], clients: Client[], snapshotReady: boolean): ProjectClientOption[] {
   if (!snapshotReady) return [];
 
   const out: ProjectClientOption[] = [];
@@ -38,33 +42,25 @@ function buildProjectClientSelectOptions(
     out.push(o);
   };
 
-  if (hintCompany) {
-    const cur = clients.find((c) => c.company === hintCompany);
-    if (cur) {
-      const linked = users.some(
-        (u) =>
-          u.role === 'client' &&
-          (u.email || '').trim().toLowerCase() === cur.email.trim().toLowerCase()
-      );
-      if (!linked) {
-        push({
-          key: `crm-${cur.id}`,
-          value: cur.company,
-          label: `${cur.company} (CRM record, no Client-role login)`,
-        });
-      }
-    }
+  const sorted = [...clients].sort((a, b) => a.company.localeCompare(b.company, undefined, { sensitivity: 'base' }));
+  for (const c of sorted) {
+    push({
+      key: `crm-${c.id}`,
+      value: c.id,
+      label: `${c.company} (${c.email})`,
+    });
   }
 
   for (const u of users) {
     if (u.role !== 'client' || !(u.email || '').trim()) continue;
     const em = u.email.trim().toLowerCase();
-    const row = clients.find((c) => c.email.trim().toLowerCase() === em);
-    const value = row?.company ?? u.email.trim();
-    const label = row
-      ? `${row.company} (${u.email})`
-      : `${(u.name || '').trim() || u.email} — no CRM client for this email yet (save Client role with email, then check Clients)`;
-    push({ key: u.id, value, label, disabled: !row });
+    if (clients.some((c) => c.email.trim().toLowerCase() === em)) continue;
+    push({
+      key: u.id,
+      value: u.email.trim(),
+      label: `${(u.name || '').trim() || u.email} — no CRM row for this email (assign Client role or add on Clients)`,
+      disabled: true,
+    });
   }
 
   return out;
@@ -98,7 +94,7 @@ const AdminProjects = () => {
 
   const openAssign = (p: Project) => {
     setAssignTarget(p);
-    setAssignClient(p.client);
+    setAssignClient(projectPickerInitialClientId(clients, p.client));
   };
 
   const filtered = useMemo(() => projects.filter((p) => {
@@ -108,14 +104,13 @@ const AdminProjects = () => {
   }), [projects, search, statusFilter]);
 
   const projectDialogClientOptions = useMemo(
-    () =>
-      buildProjectClientSelectOptions(users, clients, open && editing ? editing.client : null, adminSnapshotLoaded),
-    [users, clients, open, editing, adminSnapshotLoaded]
+    () => buildProjectClientSelectOptions(users, clients, adminSnapshotLoaded),
+    [users, clients, adminSnapshotLoaded]
   );
 
   const assignDialogClientOptions = useMemo(
-    () => buildProjectClientSelectOptions(users, clients, assignTarget?.client, adminSnapshotLoaded),
-    [users, clients, assignTarget?.client, adminSnapshotLoaded]
+    () => buildProjectClientSelectOptions(users, clients, adminSnapshotLoaded),
+    [users, clients, adminSnapshotLoaded]
   );
 
   const renderClientSelectItems = useCallback((opts: ProjectClientOption[]) => {
@@ -126,8 +121,25 @@ const AdminProjects = () => {
     ));
   }, []);
 
-  const openAdd = () => { setEditing(null); setForm(empty); setProgress(0); setOpen(true); };
-  const openEdit = (p: Project) => { setEditing(p); setForm({ name: p.name, client: p.client, type: p.type, status: p.status, dueDate: p.dueDate, team: p.team }); setProgress(p.progress); setOpen(true); };
+  const openAdd = () => {
+    setEditing(null);
+    setForm(empty);
+    setProgress(0);
+    setOpen(true);
+  };
+  const openEdit = (p: Project) => {
+    setEditing(p);
+    setForm({
+      name: p.name,
+      client: projectPickerInitialClientId(clients, p.client),
+      type: p.type,
+      status: p.status,
+      dueDate: p.dueDate,
+      team: p.team,
+    });
+    setProgress(p.progress);
+    setOpen(true);
+  };
 
   const submit = async () => {
     if (!form.name || !form.client) { toast({ title: 'Name and client required', variant: 'destructive' }); return; }
@@ -263,7 +275,9 @@ const AdminProjects = () => {
               disabled={assignSaving || !assignTarget || !assignClient || !adminSnapshotLoaded}
               onClick={async () => {
                 if (!assignTarget || !assignClient) return;
-                if (assignTarget.client === assignClient) {
+                const prevPick = resolveClientFromProjectPicker(clients, assignTarget.client);
+                const nextPick = resolveClientFromProjectPicker(clients, assignClient);
+                if (prevPick && nextPick && prevPick.id === nextPick.id) {
                   toast({ title: 'No change', description: 'Select a different client to update this project.' });
                   return;
                 }

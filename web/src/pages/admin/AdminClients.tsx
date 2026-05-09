@@ -26,6 +26,7 @@ const AdminClients = () => {
   const [form, setForm] = useState(empty);
   const [view, setView] = useState<Client | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const filtered = useMemo(() => clients.filter((c) =>
     !search || c.company.toLowerCase().includes(search.toLowerCase()) || c.contact.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase())
@@ -34,11 +35,26 @@ const AdminClients = () => {
   const openAdd = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (c: Client) => { setEditing(c); setForm({ company: c.company, contact: c.contact, email: c.email, phone: c.phone, type: c.type, panVat: c.panVat, status: c.status }); setOpen(true); };
 
-  const submit = () => {
-    if (!form.company || !form.contact || !form.email) { toast({ title: 'Required fields missing', variant: 'destructive' }); return; }
-    if (editing) { updateClient(editing.id, form); toast({ title: 'Client updated' }); }
-    else { addClient(form); toast({ title: 'Client created' }); }
-    setOpen(false);
+  const submit = async () => {
+    if (!form.company || !form.contact || !form.email) {
+      toast({ title: 'Required fields missing', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editing) {
+        await updateClient(editing.id, form);
+        toast({ title: 'Client updated' });
+      } else {
+        await addClient(form);
+        toast({ title: 'Client created' });
+      }
+      setOpen(false);
+    } catch {
+      toast({ title: 'Could not save client', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -157,7 +173,14 @@ const AdminClients = () => {
               </div>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={submit}>{editing ? 'Save' : 'Create'}</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={() => void submit()} disabled={saving}>
+              {saving ? 'Saving…' : editing ? 'Save' : 'Create'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -177,7 +200,23 @@ const AdminClients = () => {
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Delete client?</AlertDialogTitle><AlertDialogDescription>This cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { if (deleteId) { deleteClient(deleteId); toast({ title: 'Deleted' }); setDeleteId(null); } }} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction
+              onClick={() => {
+                void (async () => {
+                  if (!deleteId) return;
+                  try {
+                    await deleteClient(deleteId);
+                    toast({ title: 'Deleted' });
+                  } catch {
+                    toast({ title: 'Could not delete client', variant: 'destructive' });
+                  }
+                  setDeleteId(null);
+                })();
+              }}
+              className="bg-destructive text-destructive-foreground"
+            >
+              Delete
+            </AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

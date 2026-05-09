@@ -503,8 +503,8 @@ function mapMeToAdminUser(u: AuthMeUser): AdminUser {
   };
 }
 
-/** Match project form / assign-dialog value (CRM company name, account email, or client id) to a Client row. */
-function resolveClientFromProjectPicker(clients: Client[], token: string): Client | undefined {
+/** Match project form / assign-dialog value (client id, CRM company name, or email) to a Client row. */
+export function resolveClientFromProjectPicker(clients: Client[], token: string): Client | undefined {
   const t = (token || '').trim();
   if (!t) return undefined;
   const byId = clients.find((c) => c.id === t);
@@ -531,7 +531,10 @@ interface AdminStore {
   addTransaction: (t: Omit<Transaction, 'id' | 'createdAt'>) => void;
   updateTransaction: (id: string, patch: Partial<Transaction> & { rejectionReason?: string }) => Promise<void>;
   deleteTransaction: (id: string) => void;
-  clients: Client[]; addClient: (c: Omit<Client, 'id' | 'joinedAt' | 'activeProjects'>) => void; updateClient: (id: string, patch: Partial<Client>) => void; deleteClient: (id: string) => void;
+  clients: Client[];
+  addClient: (c: Omit<Client, 'id' | 'joinedAt' | 'activeProjects'>) => Promise<void>;
+  updateClient: (id: string, patch: Partial<Client>) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
   projects: Project[];
   addProject: (p: Omit<Project, 'id' | 'progress'>) => Promise<void>;
   updateProject: (id: string, patch: Partial<Project>) => Promise<void>;
@@ -1278,27 +1281,25 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
       });
     },
     clients,
-    addClient: (c) => {
+    addClient: async (c) => {
       if (apiConnected) {
-        void (async () => {
-          await adminPost('clients/', {
-            company: c.company,
-            contact: c.contact,
-            email: c.email,
-            phone: c.phone,
-            type: c.type,
-            pan_vat: c.panVat,
-            status: c.status,
-            joined_at: today(),
-          });
-          await refreshFromApi();
-          pushAudit({
-            action: 'create',
-            entityType: 'Client',
-            detail: `Registered client ${c.company} (${c.email}).`,
-            metadata: { api: 'POST /api/admin/clients/', company: c.company, type: c.type, status: c.status },
-          });
-        })();
+        await adminPost('clients/', {
+          company: c.company,
+          contact: c.contact,
+          email: c.email,
+          phone: c.phone,
+          type: c.type,
+          pan_vat: c.panVat,
+          status: c.status,
+          joined_at: today(),
+        });
+        await refreshFromApi();
+        pushAudit({
+          action: 'create',
+          entityType: 'Client',
+          detail: `Registered client ${c.company} (${c.email}).`,
+          metadata: { api: 'POST /api/admin/clients/', company: c.company, type: c.type, status: c.status },
+        });
         return;
       }
       const newId = uid('cl');
@@ -1311,31 +1312,29 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
         metadata: { mode: 'local_demo', company: c.company },
       });
     },
-    updateClient: (id, patch) => {
+    updateClient: async (id, patch) => {
       const prev = clients.find((x) => x.id === id);
       if (apiConnected) {
-        void (async () => {
-          const body: Record<string, unknown> = {};
-          if (patch.company !== undefined) body.company = patch.company;
-          if (patch.contact !== undefined) body.contact = patch.contact;
-          if (patch.email !== undefined) body.email = patch.email;
-          if (patch.phone !== undefined) body.phone = patch.phone;
-          if (patch.type !== undefined) body.type = patch.type;
-          if (patch.panVat !== undefined) body.pan_vat = patch.panVat;
-          if (patch.status !== undefined) body.status = patch.status;
-          await adminPatch(`clients/${id}/`, body);
-          await refreshFromApi();
-          pushAudit({
-            action: 'update',
-            entityType: 'Client',
-            entityId: id,
-            detail: `Updated client ${prev?.company ?? id}.`,
-            metadata: {
-              api: `PATCH /api/admin/clients/${id}/`,
-              changes: shallowChangeRecord(prev as unknown as Record<string, unknown>, patch as unknown as Record<string, unknown>),
-            },
-          });
-        })();
+        const body: Record<string, unknown> = {};
+        if (patch.company !== undefined) body.company = patch.company;
+        if (patch.contact !== undefined) body.contact = patch.contact;
+        if (patch.email !== undefined) body.email = patch.email;
+        if (patch.phone !== undefined) body.phone = patch.phone;
+        if (patch.type !== undefined) body.type = patch.type;
+        if (patch.panVat !== undefined) body.pan_vat = patch.panVat;
+        if (patch.status !== undefined) body.status = patch.status;
+        await adminPatch(`clients/${id}/`, body);
+        await refreshFromApi();
+        pushAudit({
+          action: 'update',
+          entityType: 'Client',
+          entityId: id,
+          detail: `Updated client ${prev?.company ?? id}.`,
+          metadata: {
+            api: `PATCH /api/admin/clients/${id}/`,
+            changes: shallowChangeRecord(prev as unknown as Record<string, unknown>, patch as unknown as Record<string, unknown>),
+          },
+        });
         return;
       }
       setClients((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
@@ -1350,20 +1349,18 @@ export const AdminStoreProvider = ({ children }: { children: ReactNode }) => {
         },
       });
     },
-    deleteClient: (id) => {
+    deleteClient: async (id) => {
       const prev = clients.find((x) => x.id === id);
       if (apiConnected) {
-        void (async () => {
-          await adminDelete(`clients/${id}/`);
-          await refreshFromApi();
-          pushAudit({
-            action: 'delete',
-            entityType: 'Client',
-            entityId: id,
-            detail: `Deleted client ${prev?.company ?? id}.`,
-            metadata: { api: `DELETE /api/admin/clients/${id}/` },
-          });
-        })();
+        await adminDelete(`clients/${id}/`);
+        await refreshFromApi();
+        pushAudit({
+          action: 'delete',
+          entityType: 'Client',
+          entityId: id,
+          detail: `Deleted client ${prev?.company ?? id}.`,
+          metadata: { api: `DELETE /api/admin/clients/${id}/` },
+        });
         return;
       }
       setClients((s) => s.filter((x) => x.id !== id));
