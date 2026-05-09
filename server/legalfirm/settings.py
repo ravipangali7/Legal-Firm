@@ -206,5 +206,3 @@ AAKASHSMS_API_URL = os.environ.get(
     "AAKASHSMS_API_URL",
     "https://sms.aakashsms.com/sms/v3/send",
 ).strip()
-
-PUBLIC_APP_BASE_URL="https://legalfirm.360winx.com/"
