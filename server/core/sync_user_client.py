@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from core.models import Client, User, UserProfile
@@ -12,6 +14,13 @@ def sync_crm_client_for_user(user: User) -> None:
     When ``user.role.key`` is ``client``, ensure a matching Client exists (lookup by email,
     case-insensitive). This matches :func:`core.project_notifications.notify_client_assigned_to_project`,
     which resolves portal users by client email.
+
+    If the user's email was changed in the same save (see ``_crm_previous_email`` from
+    :func:`core.signals.user_stash_previous_email_for_crm`), the existing CRM row for the
+    previous address is updated in place so projects stay attached to one Client record.
+
+    Uses a short atomic transaction with ``select_for_update`` so concurrent saves for the
+    same addresses do not create duplicate CRM rows.
     """
     if user.role_key != User.RoleKey.CLIENT:
         return
@@ -47,7 +56,9 @@ def sync_crm_client_for_user(user: User) -> None:
     created = getattr(user, "created_at", None)
     joined_fallback = created.date() if created else timezone.now().date()
 
-    existing = Client.objects.filter(email__iexact=email).first()
+    prev_raw = getattr(user, "_crm_previous_email", None)
+    prev_email = (prev_raw or "").strip() if prev_raw else ""
+    email_changed = bool(prev_email and prev_email.lower() != email.lower())
 
     data = {
         "company": company[:255],
@@ -59,10 +70,32 @@ def sync_crm_client_for_user(user: User) -> None:
         "status": crm_status,
     }
 
-    if existing:
-        for k, v in data.items():
-            setattr(existing, k, v)
-        existing.save(update_fields=list(data.keys()))
-        return
+    with transaction.atomic():
+        q = Q(email__iexact=email)
+        if email_changed:
+            q |= Q(email__iexact=prev_email)
+        locked = list(Client.objects.select_for_update().filter(q).order_by("joined_at"))
 
-    Client.objects.create(**data, joined_at=joined_fallback)
+        target: Client | None = None
+        if email_changed:
+            target = next((c for c in locked if c.email.strip().lower() == prev_email.lower()), None)
+        if target is None:
+            target = next((c for c in locked if c.email.strip().lower() == email.lower()), None)
+        if target is None and locked:
+            target = locked[0]
+
+        if target is not None:
+            for k, v in data.items():
+                setattr(target, k, v)
+            target.save(update_fields=list(data.keys()))
+            return
+
+        try:
+            Client.objects.create(**data, joined_at=joined_fallback)
+        except IntegrityError:
+            retry = Client.objects.select_for_update().filter(email__iexact=email).order_by("joined_at").first()
+            if retry is None:
+                raise
+            for k, v in data.items():
+                setattr(retry, k, v)
+            retry.save(update_fields=list(data.keys()))

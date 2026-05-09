@@ -113,3 +113,20 @@ class AdminClientSyncOnRolePatchTests(TestCase):
         payload = lst.data if hasattr(lst, "data") else lst.json()
         emails = [row.get("email") for row in payload]
         self.assertIn(u.email, emails)
+
+    def test_patch_client_user_email_migrates_single_crm_row(self):
+        u = User.objects.create_user(
+            email=f"migrate-{uuid.uuid4().hex[:8]}@old.example",
+            password="pwd123456",
+            full_name="Migrant",
+            role="client",
+        )
+        self.assertTrue(Client.objects.filter(email__iexact=u.email).exists())
+        crm_before = Client.objects.get(email__iexact=u.email)
+        new_email = f"migrate-{uuid.uuid4().hex[:8]}@new.example"
+        rsp = self.client.patch(f"/api/admin/users/{u.pk}/", {"email": new_email}, format="json")
+        self.assertEqual(rsp.status_code, 200)
+        self.assertFalse(Client.objects.filter(email__iexact=u.email).exists())
+        self.assertTrue(Client.objects.filter(email__iexact=new_email).exists())
+        crm_after = Client.objects.get(email__iexact=new_email)
+        self.assertEqual(crm_before.pk, crm_after.pk)

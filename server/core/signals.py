@@ -14,6 +14,25 @@ from .subscription_service import apply_refunded_transaction, apply_verified_tra
 
 
 @receiver(pre_save, sender=User)
+def user_stash_previous_email_for_crm(sender, instance: User, **kwargs):
+    """When the login email changes, :func:`~core.sync_user_client.sync_crm_client_for_user` can migrate the CRM row."""
+    if not instance.pk:
+        instance._crm_previous_email = None  # type: ignore[attr-defined]
+        return
+    try:
+        prev = User.objects.only("email").get(pk=instance.pk)
+    except User.DoesNotExist:
+        instance._crm_previous_email = None  # type: ignore[attr-defined]
+        return
+    old = (prev.email or "").strip()
+    new = (instance.email or "").strip()
+    if old and new and old.lower() != new.lower():
+        instance._crm_previous_email = old  # type: ignore[attr-defined]
+    else:
+        instance._crm_previous_email = None  # type: ignore[attr-defined]
+
+
+@receiver(pre_save, sender=User)
 def user_sync_staff_flags(sender, instance: User, **kwargs):
     """Keep ``is_staff`` / ``is_superuser`` aligned with ``role`` (all accounts are staff; superuser only for super_admin)."""
     if not instance.role_id:
