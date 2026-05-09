@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { userHomeHref } from '@/lib/userHomeRoute';
 import { accountTypeDisplayLine, firstGreetingName, userInitials } from '@/lib/userDisplay';
-import { Sparkles, Lock, BookOpen, Bell, LogOut, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Lock, BookOpen, Bell, LogOut, ArrowRight, CheckCircle2, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,12 @@ const FreeAccount = () => {
             </div>
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
+            <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1 px-2 sm:px-3" asChild>
+              <a href="/" target="_blank" rel="noopener noreferrer" aria-label="Browse site, opens in a new tab">
+                <ChevronRight className="h-4 w-4" aria-hidden />
+                <span className="hidden sm:inline">Browse Site</span>
+              </a>
+            </Button>
             <SiteThemeToggle />
             <Button variant="ghost" size="icon"><Bell className="h-5 w-5" /></Button>
             <Avatar className="h-8 w-8">
