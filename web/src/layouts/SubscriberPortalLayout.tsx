@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
 import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
-import { buildPortalSidebarNav, type BuiltPortalNavItem } from '@/lib/subscriberPortalNav';
+import { buildPortalSidebarNav, portalNavTarget, type BuiltPortalNavItem } from '@/lib/subscriberPortalNav';
 
 const NOTIF_QUEUE_PARAM = 'notif_queue';
 
@@ -48,27 +48,20 @@ function portalNavItemIsActive(
   hubPath: '/dashboard' | '/client',
   item: BuiltPortalNavItem,
 ): boolean {
-  if (item.module === 'Dashboard') {
-    if (pathname !== hubPath) return false;
-    const t = new URLSearchParams(search).get('tab');
-    return !t || t === 'activity';
-  }
-  if (item.module === 'Pricing Plans') {
-    return pathname === hubPath && new URLSearchParams(search).get('tab') === 'wallet';
-  }
-  if (item.module === 'Transactions') {
-    return pathname === hubPath && new URLSearchParams(search).get('tab') === 'billing';
-  }
   try {
     const url = new URL(item.to, 'http://local');
-    if (pathname !== url.pathname) return false;
-    const want = new URLSearchParams(url.search);
-    if ([...want].length === 0) return true;
-    const have = new URLSearchParams(search);
-    for (const [k, v] of want) {
-      if (have.get(k) !== v) return false;
+    if (url.pathname !== hubPath) {
+      return pathname === url.pathname || pathname.startsWith(`${url.pathname}/`);
     }
-    return true;
+    const wantTab = url.searchParams.get('tab');
+    const haveTab = new URLSearchParams(search).get('tab');
+    if (wantTab != null && wantTab !== '') {
+      return haveTab === wantTab;
+    }
+    if (item.module === 'Dashboard') {
+      return !haveTab || haveTab === 'activity';
+    }
+    return [...url.searchParams].every(([k, v]) => new URLSearchParams(search).get(k) === v);
   } catch {
     return false;
   }
@@ -222,11 +215,11 @@ export default function SubscriberPortalLayout() {
 
   const enqueueBellNotification = (id: string) => {
     const nextParams = new URLSearchParams();
+    nextParams.set('tab', 'notifications');
     const q = parseNotifQueue(new URLSearchParams(location.search).get(NOTIF_QUEUE_PARAM));
     const next = q.includes(id) ? q : [...q, id];
     if (next.length) nextParams.set(NOTIF_QUEUE_PARAM, next.join(','));
-    const search = nextParams.toString() ? `?${nextParams.toString()}` : '';
-    navigate({ pathname: `${hubPath}/notifications`, search }, { replace: true });
+    navigate({ pathname: hubPath, search: `?${nextParams.toString()}` }, { replace: true });
     setNotifOpen(false);
     setMobileOpen(false);
   };
@@ -393,7 +386,7 @@ export default function SubscriberPortalLayout() {
                       </div>
                       <div className="p-2 border-t border-border">
                         <Button variant="ghost" size="sm" className="w-full text-primary-onBg h-9 text-xs" asChild>
-                          <Link to={`${hubPath}/notifications`} onClick={() => setNotifOpen(false)}>
+                          <Link to={portalNavTarget('Notifications', hubPath, user).to} onClick={() => setNotifOpen(false)}>
                             Open notifications
                           </Link>
                         </Button>
@@ -404,7 +397,7 @@ export default function SubscriberPortalLayout() {
                 {showProfileShortcut ? (
                   <button
                     type="button"
-                    onClick={() => navigate(`${hubPath}/profile`)}
+                    onClick={() => navigate(portalNavTarget('Settings', hubPath, user).to)}
                     className="flex items-center gap-2 rounded-lg pr-1 py-0.5 pl-0.5 sm:pl-2 -mr-0.5 text-left hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label="Open profile settings"
                   >

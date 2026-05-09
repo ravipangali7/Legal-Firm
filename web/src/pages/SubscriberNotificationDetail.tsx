@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEffect, useRef } from 'react';
 import { subscriberHubPath } from '@/lib/subscriberPortalPaths';
 import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
+import { portalNavTarget } from '@/lib/subscriberPortalNav';
 
 function safeFormatDistance(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -103,7 +104,7 @@ const SubscriberNotificationDetail = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-6 w-full">
       <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" asChild>
-        <Link to={`${hubPath}/notifications`}>
+        <Link to={portalNavTarget('Notifications', hubPath, user).to}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to notifications
         </Link>
@@ -120,7 +121,7 @@ const SubscriberNotificationDetail = () => {
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">This alert may have been removed or the link is invalid.</p>
             <Button asChild>
-              <Link to={`${hubPath}/notifications`}>Return to notifications</Link>
+              <Link to={portalNavTarget('Notifications', hubPath, user).to}>Return to notifications</Link>
             </Button>
           </CardContent>
         </Card>

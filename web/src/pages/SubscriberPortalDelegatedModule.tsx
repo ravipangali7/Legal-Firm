@@ -2,22 +2,31 @@ import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { isPortalStaffShellSession, subscriberHubPath } from '@/lib/subscriberPortalPaths';
 import { evaluatePortalModuleView } from '@/lib/subscriberPortalPermissions';
-import { resolvePortalModuleFromSlug, STAFF_ADMIN_PATH } from '@/lib/subscriberPortalNav';
+import { portalNavTarget, resolvePortalModuleFromSlug, STAFF_ADMIN_PATH } from '@/lib/subscriberPortalNav';
 import type { PortalPermissionModuleName } from '@/lib/subscriberPortalNav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+
+type SubscriberPortalDelegatedModuleProps = {
+  /** When embedded in the hub tabs, pass the Admin → Roles module name directly (e.g. `Users`). */
+  moduleName?: string;
+};
 
 /**
  * Fallback content for permission modules that do not have a dedicated subscriber page.
  * Staff accounts jump to the admin SPA instead (see `portalNavTarget`).
  */
-export default function SubscriberPortalDelegatedModule() {
+export default function SubscriberPortalDelegatedModule({ moduleName: moduleNameProp }: SubscriberPortalDelegatedModuleProps) {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const { user } = useAuth();
   const hubPath = subscriberHubPath(location.pathname);
 
-  const moduleName = slug ? resolvePortalModuleFromSlug(user, slug) : null;
+  const moduleName = moduleNameProp?.trim()
+    ? moduleNameProp.trim()
+    : slug
+      ? resolvePortalModuleFromSlug(user, slug)
+      : null;
 
   if (!user) {
     return (
@@ -58,7 +67,7 @@ export default function SubscriberPortalDelegatedModule() {
           <p className="text-sm text-muted-foreground">
             Client and matter records are maintained by your firm&apos;s administrators. If something looks wrong with
             your profile or assignments, contact them or use{' '}
-            <Link to={`${hubPath}/support`} className="text-primary underline-offset-4 hover:underline">
+            <Link to={portalNavTarget('Support', hubPath, user).to} className="text-primary underline-offset-4 hover:underline">
               Support
             </Link>
             .

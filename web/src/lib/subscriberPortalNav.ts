@@ -64,6 +64,11 @@ export function portalModuleSlug(moduleName: string): string {
     .replace(/[^a-z0-9-]/g, '');
 }
 
+/** `?tab=` value for a permission-module row on the subscriber hub (matches `SubscriberDashboard`). */
+export function portalPermissionTabQueryValue(moduleName: string): string {
+  return `m:${String(moduleName ?? '').trim()}`;
+}
+
 export function portalModuleFromSlug(slug: string): string | null {
   const s = slug.trim().toLowerCase();
   for (const name of PORTAL_PERMISSION_MODULE_NAMES) {
@@ -122,25 +127,25 @@ export function portalNavTarget(module: string, hub: Hub, user: AuthMeUser): { t
     case 'Dashboard':
       return { to: hub, end: true };
     case 'Notifications':
-      return { to: `${hub}/notifications` };
+      return { to: `${hub}?tab=notifications` };
     case 'Projects':
-      return { to: `${hub}/projects` };
+      return { to: `${hub}?tab=projects` };
     case 'Settings':
-      return { to: `${hub}/profile` };
+      return { to: `${hub}?tab=${encodeURIComponent(portalPermissionTabQueryValue('Settings'))}` };
     case 'Help':
-      return { to: `${hub}/help` };
+      return { to: `${hub}?tab=${encodeURIComponent(portalPermissionTabQueryValue('Help'))}` };
     case 'Support':
-      return { to: `${hub}/support` };
+      return { to: `${hub}?tab=${encodeURIComponent(portalPermissionTabQueryValue('Support'))}` };
     case 'Pricing Plans':
       return { to: `${hub}?tab=wallet` };
     case 'Transactions':
       return { to: `${hub}?tab=billing` };
     case 'Legal library':
-      return { to: '/laws' };
+      return { to: `${hub}?tab=${encodeURIComponent(portalPermissionTabQueryValue('Legal library'))}` };
     case 'Analytics':
-      return { to: `${hub}/analytics` };
+      return { to: `${hub}?tab=${encodeURIComponent(portalPermissionTabQueryValue('Analytics'))}` };
     default:
-      return { to: `${hub}/portal/${portalModuleSlug(module)}` };
+      return { to: `${hub}?tab=${encodeURIComponent(portalPermissionTabQueryValue(module))}` };
   }
 }
 

@@ -38,11 +38,9 @@ import BackToTop from "./components/BackToTop";
 // New consolidated dashboards
 import SubscriberDashboard from "./pages/SubscriberDashboard";
 import SubscriberNotificationDetail from "./pages/SubscriberNotificationDetail";
-import SubscriberProfile from "./pages/SubscriberProfile";
-import SubscriberHelpPortal from "./pages/SubscriberHelpPortal";
-import SubscriberSupportPortal from "./pages/SubscriberSupportPortal";
-import SubscriberPortalAnalytics from "./pages/SubscriberPortalAnalytics";
-import SubscriberPortalDelegatedModule from "./pages/SubscriberPortalDelegatedModule";
+import SubscriberHubTabRedirect from "./components/SubscriberHubTabRedirect";
+import SubscriberHubPortalSlugRedirect from "./components/SubscriberHubPortalSlugRedirect";
+import { portalPermissionTabQueryValue } from "./lib/subscriberPortalNav";
 import SubscriberPortalLayout from "./layouts/SubscriberPortalLayout";
 import FreeAccount from "./pages/FreeAccount";
 
@@ -218,14 +216,14 @@ const AppRoutes = () => {
             }
           >
             <Route index element={<SubscriberDashboard />} />
-            <Route path="notifications" element={<SubscriberDashboard view="notifications" />} />
+            <Route path="notifications" element={<SubscriberHubTabRedirect tab="notifications" />} />
             <Route path="notifications/:id" element={<SubscriberNotificationDetail />} />
-            <Route path="projects" element={<SubscriberDashboard view="projects" />} />
-            <Route path="profile" element={<SubscriberProfile />} />
-            <Route path="help" element={<SubscriberHelpPortal />} />
-            <Route path="analytics" element={<SubscriberPortalAnalytics />} />
-            <Route path="portal/:slug" element={<SubscriberPortalDelegatedModule />} />
-            <Route path="support" element={<SubscriberSupportPortal />} />
+            <Route path="projects" element={<SubscriberHubTabRedirect tab="projects" />} />
+            <Route path="profile" element={<SubscriberHubTabRedirect tab={portalPermissionTabQueryValue('Settings')} />} />
+            <Route path="help" element={<SubscriberHubTabRedirect tab={portalPermissionTabQueryValue('Help')} />} />
+            <Route path="analytics" element={<SubscriberHubTabRedirect tab={portalPermissionTabQueryValue('Analytics')} />} />
+            <Route path="portal/:slug" element={<SubscriberHubPortalSlugRedirect />} />
+            <Route path="support" element={<SubscriberHubTabRedirect tab={portalPermissionTabQueryValue('Support')} />} />
           </Route>
           <Route
             path="/client"
@@ -238,14 +236,14 @@ const AppRoutes = () => {
             }
           >
             <Route index element={<SubscriberDashboard />} />
-            <Route path="notifications" element={<SubscriberDashboard view="notifications" />} />
+            <Route path="notifications" element={<SubscriberHubTabRedirect tab="notifications" />} />
             <Route path="notifications/:id" element={<SubscriberNotificationDetail />} />
-            <Route path="projects" element={<SubscriberDashboard view="projects" />} />
-            <Route path="profile" element={<SubscriberProfile />} />
-            <Route path="help" element={<SubscriberHelpPortal />} />
-            <Route path="analytics" element={<SubscriberPortalAnalytics />} />
-            <Route path="portal/:slug" element={<SubscriberPortalDelegatedModule />} />
-            <Route path="support" element={<SubscriberSupportPortal />} />
+            <Route path="projects" element={<SubscriberHubTabRedirect tab="projects" />} />
+            <Route path="profile" element={<SubscriberHubTabRedirect tab={portalPermissionTabQueryValue('Settings')} />} />
+            <Route path="help" element={<SubscriberHubTabRedirect tab={portalPermissionTabQueryValue('Help')} />} />
+            <Route path="analytics" element={<SubscriberHubTabRedirect tab={portalPermissionTabQueryValue('Analytics')} />} />
+            <Route path="portal/:slug" element={<SubscriberHubPortalSlugRedirect />} />
+            <Route path="support" element={<SubscriberHubTabRedirect tab={portalPermissionTabQueryValue('Support')} />} />
           </Route>
           <Route
             path="/account"
