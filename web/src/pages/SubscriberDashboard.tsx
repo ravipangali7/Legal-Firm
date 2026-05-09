@@ -40,6 +40,7 @@ import {
   subscriberHubPath,
 } from '@/lib/subscriberPortalPaths';
 import { evaluatePortalModuleView, PORTAL_PERM_MODULES } from '@/lib/subscriberPortalPermissions';
+import { portalNavTarget } from '@/lib/subscriberPortalNav';
 import { useToast } from '@/hooks/use-toast';
 import {
   type LucideIcon,
@@ -287,19 +288,21 @@ function portalPermissionTabValue(row: AuthMeAdminPermission): string {
   return `m:${String(row.module ?? '').trim()}`;
 }
 
-/** Primary link for subscriber-shell modules that are not the core activity/wallet/billing tabs. */
-function portalExtraModuleCta(
+/** Target route for a permission-module tab (`m:<module>`), aligned with portal sidebar (`portalNavTarget`). */
+function portalModuleTabDestination(
   hubPath: '/dashboard' | '/client',
-  moduleName: string,
-): { label: string; to: string } | null {
-  const m = String(moduleName ?? '').trim();
-  if (m === PORTAL_PERM_MODULES.help) return { label: 'Open help', to: `${hubPath}/help` };
-  if (m === PORTAL_PERM_MODULES.support) return { label: 'Contact support', to: '/contact' };
-  if (m === PORTAL_PERM_MODULES.profile) return { label: 'Account settings', to: `${hubPath}/profile` };
-  if (m === PORTAL_PERM_MODULES.projects) return { label: 'Projects', to: `${hubPath}/projects` };
-  if (m === PORTAL_PERM_MODULES.library) return { label: 'Legal library', to: '/laws' };
-  if (m === PORTAL_PERM_MODULES.notifications) return { label: 'Notifications', to: `${hubPath}/notifications` };
-  return null;
+  tabValue: string,
+  permissionRows: AuthMeAdminPermission[],
+  me: AuthMeUser,
+): string | null {
+  const tv = String(tabValue ?? '').trim();
+  if (!tv.toLowerCase().startsWith('m:')) return null;
+  const tl = tv.toLowerCase();
+  const row = permissionRows.find((r) => portalPermissionTabValue(r).toLowerCase() === tl);
+  if (!row) return null;
+  const name = String(row.module ?? '').trim();
+  if (!name) return null;
+  return portalNavTarget(name, hubPath, me).to;
 }
 
 /** Maps dashboard tab query values to Admin Roles module names (subscriber shell). */
@@ -412,6 +415,11 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
   );
 
   const activeTab = tabParam && homeTabIsAllowed(tabParam) ? tabParam : allowedHomeTabs[0] ?? 'activity';
+  const portalModuleRedirectDest = useMemo(() => {
+    if (view !== 'home' || !user || !tabParam || !tabParam.startsWith('m:')) return null;
+    if (!homeTabIsAllowed(tabParam)) return null;
+    return portalModuleTabDestination(hubPath, tabParam, portalPermissionRowsForTabs, user);
+  }, [view, user, tabParam, hubPath, portalPermissionRowsForTabs, homeTabIsAllowed]);
   const walletInitialBilling = parseWalletBillingParam(searchParams.get('billing'));
 
   const projectsPortalOk = Boolean(user && evaluatePortalModuleView(user, PORTAL_PERM_MODULES.projects));
@@ -850,6 +858,10 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
     return '';
   })();
 
+  if (portalModuleRedirectDest) {
+    return <Navigate to={portalModuleRedirectDest} replace />;
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 w-full">
         {hasPendingVerification ? (
@@ -1222,41 +1234,8 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
           {portalPermissionRowsForTabs.map((row) => {
             const tv = portalPermissionTabValue(row);
             if (!allowedHomeTabs.includes(tv)) return null;
-            const cta = portalExtraModuleCta(hubPath, row.module);
-            return (
-              <TabsContent key={tv} value={tv}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{row.module}</CardTitle>
-                    <CardDescription>
-                      From your role under Admin → Roles. This tab appears only when your role has view access to this
-                      module.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {cta ? (
-                      <Button asChild variant="default" size="sm">
-                        <Link to={cta.to}>{cta.label}</Link>
-                      </Button>
-                    ) : null}
-                    <div className="flex flex-wrap gap-2">
-                      {(
-                        [
-                          ['View', row.view],
-                          ['Create', row.create],
-                          ['Edit', row.edit],
-                          ['Delete', row.delete],
-                        ] as const
-                      ).map(([label, on]) => (
-                        <Badge key={label} variant={on ? 'default' : 'secondary'} className="font-normal">
-                          {label}: {on ? 'On' : 'Off'}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            );
+            /* Content for `m:` tabs is never shown: selecting the tab updates `?tab=` and we `<Navigate />` to the real route. */
+            return <TabsContent key={tv} value={tv} className="hidden" aria-hidden />;
           })}
         </Tabs>
 
