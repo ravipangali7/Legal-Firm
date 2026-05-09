@@ -43,11 +43,15 @@ const FreeAccount = () => {
             </div>
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
-            <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1 px-2 sm:px-3" asChild>
-              <a href="/" target="_blank" rel="noopener noreferrer" aria-label="Browse site, opens in a new tab">
-                <ChevronRight className="h-4 w-4" aria-hidden />
-                <span className="hidden sm:inline">Browse Site</span>
-              </a>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 h-9 gap-1 px-2 sm:px-3"
+              onClick={() => navigate('/')}
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden />
+              <span className="hidden sm:inline">Browse Site</span>
             </Button>
             <SiteThemeToggle />
             <Button variant="ghost" size="icon"><Bell className="h-5 w-5" /></Button>

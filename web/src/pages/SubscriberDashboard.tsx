@@ -54,6 +54,7 @@ import {
   AlertTriangle,
   Wallet,
   CheckCircle2,
+  ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -862,8 +863,8 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
           </Alert>
         ) : null}
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-3xl font-bold">Welcome back, {firstGreetingName(user)}</h1>
               <Badge variant="secondary" className="font-normal">
@@ -872,6 +873,16 @@ const SubscriberDashboard = ({ view = 'home' }: { view?: 'home' | 'notifications
             </div>
             <p className="text-muted-foreground mt-1">{subscriberDashboardSubtitle(user)}</p>
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1 self-start sm:self-center"
+            onClick={() => navigate('/')}
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden />
+            Browse Site
+          </Button>
         </div>
 
         <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20 overflow-hidden">
