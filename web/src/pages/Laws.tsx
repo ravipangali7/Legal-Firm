@@ -17,7 +17,7 @@ import { useSiteConfig } from '@/context/SiteConfigContext';
 import { cn } from '@/lib/utils';
 import { PageHelpFaqs } from '@/components/PageHelpFaqs';
 import { useAuth } from '@/context/AuthContext';
-import { hasLibraryEntitlement } from '@/lib/subscriptionAccess';
+import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 import { usePremiumSubscribeToast } from '@/hooks/usePremiumSubscribeToast';
 
 function formatUpdated(iso: string): string {
@@ -44,7 +44,6 @@ const Laws = () => {
   const { config } = useSiteConfig();
   const { user } = useAuth();
   const toastPremium = usePremiumSubscribeToast();
-  const libraryOk = hasLibraryEntitlement(user);
   const [q, setQ] = useState('');
   const [active, setActive] = useState<string[]>([]);
   const [sort, setSort] = useState<LawSortKey>('alpha');
@@ -112,10 +111,11 @@ const Laws = () => {
   const countLabel = filtered.length === 1 ? 'act' : 'acts';
 
   const renderRow = (a: ActApi) => {
+    const unlocked = canAccessPremiumItem(user, a);
     const rowClass = cn(
       'group block rounded-md border border-border bg-card px-4 py-3 text-left w-full',
       'hover:bg-accent/30 hover:border-l-4 hover:border-l-primary transition-all',
-      !libraryOk && 'opacity-90 cursor-pointer',
+      !unlocked && 'opacity-90 cursor-pointer',
     );
     const inner = (
       <>
@@ -128,12 +128,8 @@ const Laws = () => {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Badge variant="secondary">{a.year}</Badge>
-            {!libraryOk ? (
+            {a.premium && !unlocked ? (
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-500/15 border border-amber-400/50 rounded-full px-2 py-0.5">
-                <Lock className="h-3 w-3" /> Locked
-              </span>
-            ) : a.premium ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-500/10 border border-emerald-300 rounded-full px-2 py-0.5">
                 <Lock className="h-3 w-3" /> Subscriber only
               </span>
             ) : null}
@@ -142,7 +138,7 @@ const Laws = () => {
         </div>
       </>
     );
-    if (!libraryOk) {
+    if (!unlocked) {
       return (
         <button
           type="button"

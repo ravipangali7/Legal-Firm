@@ -10,13 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fetchProcedureDetail, PROCEDURE_NOT_FOUND } from '@/lib/api';
 import { RelatedContentSidebar } from '@/components/RelatedContentSidebar';
-import { useAuth } from '@/context/AuthContext';
-import PaywallGate from '@/components/PaywallGate';
-import { canAccessProcedures } from '@/lib/subscriptionAccess';
-
 const ProcedureDetail = () => {
   const { slug } = useParams();
-  const { user } = useAuth();
 
   const {
     data: proc,
@@ -50,8 +45,6 @@ const ProcedureDetail = () => {
   }
 
   const notFound = isError && error instanceof Error && error.message === PROCEDURE_NOT_FOUND;
-
-  const proceduresUnlocked = canAccessProcedures(user);
 
   return (
     <div className="min-h-screen bg-background">
@@ -106,11 +99,7 @@ const ProcedureDetail = () => {
                 <span className="text-foreground line-clamp-1">{proc.title}</span>
               </nav>
 
-              <PaywallGate
-                unlocked={proceduresUnlocked}
-                contentType="Procedure"
-                previewHeight={480}
-              >
+              <>
                 <div className="mb-8">
                   <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary-onBg mb-2">
                     {proc.category}
@@ -152,7 +141,7 @@ const ProcedureDetail = () => {
                     Get Free Consultation
                   </Link>
                 </div>
-              </PaywallGate>
+              </>
             </>
           )}
             </div>

@@ -354,7 +354,7 @@ def act_detail(request, slug: str):
         obj = Act.objects.select_related("category").get(pk=slug)
     except Act.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-    return Response(ActDetailSerializer(obj).data)
+    return Response(ActDetailSerializer(obj, context={"request": request}).data)
 
 
 @api_view(["GET"])

@@ -129,8 +129,27 @@ class ActSerializer(serializers.ModelSerializer):
         )
 
 
-class ActDetailSerializer(ActSerializer):
+class PremiumContentSerializerMixin:
+    """Strip or encrypt protected fields on premium rows when the caller lacks library access."""
+
+    premium_content_fields: tuple[str, ...] = ()
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        from core.premium_content import gate_premium_content
+
+        return gate_premium_content(
+            data,
+            is_premium=bool(getattr(instance, "premium", False)),
+            protected_keys=self.premium_content_fields,
+            request=self.context.get("request"),
+        )
+
+
+class ActDetailSerializer(PremiumContentSerializerMixin, ActSerializer):
     """Single-act payload including optional CMS `detail_json` for the public law reader."""
+
+    premium_content_fields = ("detail_json",)
 
     class Meta(ActSerializer.Meta):
         fields = ActSerializer.Meta.fields + ("detail_json",)
@@ -160,10 +179,12 @@ class ProcedureCategorySerializer(serializers.ModelSerializer):
         fields = ("id", "slug", "name", "color", "sort_order")
 
 
-class SummarySerializer(serializers.ModelSerializer):
+class SummarySerializer(PremiumContentSerializerMixin, serializers.ModelSerializer):
     category_slug = serializers.SlugField(source="category.slug", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
     my_vote = serializers.SerializerMethodField()
+
+    premium_content_fields = ("body",)
 
     class Meta:
         model = Summary

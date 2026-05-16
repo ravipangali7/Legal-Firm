@@ -1,13 +1,15 @@
 import shutil
 import tempfile
 import uuid
+from datetime import date, timedelta
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from core.models import Client, KnowledgeResource, KnowledgeResourceCategory, Role
+from core.models import Act, ActCategory, Client, KnowledgeResource, KnowledgeResourceCategory, Role, Summary, SummaryCategory
 
 User = get_user_model()
 
@@ -130,3 +132,81 @@ class AdminClientSyncOnRolePatchTests(TestCase):
         self.assertTrue(Client.objects.filter(email__iexact=new_email).exists())
         crm_after = Client.objects.get(email__iexact=new_email)
         self.assertEqual(crm_before.pk, crm_after.pk)
+
+
+class PremiumContentApiGateTests(TestCase):
+    """Premium acts/summaries: plaintext for subscribers only; encrypted blobs for anonymous users."""
+
+    def setUp(self):
+        self.api = APIClient()
+        Role.objects.get_or_create(key="user", defaults={"name": "User", "is_system": True})
+        self.act_cat = ActCategory.objects.create(slug=f"tax-{uuid.uuid4().hex[:8]}", name="Tax")
+        self.sum_cat = SummaryCategory.objects.create(
+            slug=f"tax-{uuid.uuid4().hex[:8]}",
+            name="Tax",
+            color="#000",
+        )
+        self.premium_act = Act.objects.create(
+            slug=f"act-prem-{uuid.uuid4().hex[:8]}",
+            title_en="Premium Act",
+            title_ne="प्रिमियम",
+            category=self.act_cat,
+            year="2080",
+            updated=date(2026, 1, 1),
+            premium=True,
+            detail_json={"sections": [{"id": "s1", "title": "Secret"}]},
+        )
+        Act.objects.create(
+            slug=f"act-free-{uuid.uuid4().hex[:8]}",
+            title_en="Free Act",
+            title_ne="निःशुल्क",
+            category=self.act_cat,
+            year="2080",
+            updated=date(2026, 1, 1),
+            premium=False,
+            detail_json={"sections": [{"id": "s1", "title": "Public"}]},
+        )
+        self.premium_summary = Summary.objects.create(
+            slug=f"sum-prem-{uuid.uuid4().hex[:8]}",
+            title="Premium Summary",
+            category=self.sum_cat,
+            posted=date(2026, 1, 1),
+            premium=True,
+            body="<p>Secret body</p>",
+        )
+        self.subscriber = User.objects.create_user(
+            email=f"sub-{uuid.uuid4().hex[:8]}@test.example",
+            password="pwd123456",
+            full_name="Subscriber",
+            role="user",
+            subscribed=True,
+        )
+        self.subscriber.subscription_period_end = timezone.now() + timedelta(days=30)
+        self.subscriber.save(update_fields=["subscription_period_end"])
+
+    def test_anonymous_premium_act_returns_encrypted_not_plaintext(self):
+        rsp = self.api.get(f"/api/acts/{self.premium_act.slug}/")
+        self.assertEqual(rsp.status_code, 200)
+        self.assertTrue(rsp.data.get("premium"))
+        self.assertNotIn("detail_json", rsp.data)
+        self.assertIn("detail_json_encrypted", rsp.data)
+
+    def test_subscriber_premium_act_returns_plaintext(self):
+        self.api.force_authenticate(user=self.subscriber)
+        rsp = self.api.get(f"/api/acts/{self.premium_act.slug}/")
+        self.assertEqual(rsp.status_code, 200)
+        self.assertIn("detail_json", rsp.data)
+        self.assertNotIn("detail_json_encrypted", rsp.data)
+
+    def test_free_act_always_returns_plaintext(self):
+        free = Act.objects.filter(premium=False).first()
+        rsp = self.api.get(f"/api/acts/{free.slug}/")
+        self.assertEqual(rsp.status_code, 200)
+        self.assertIn("detail_json", rsp.data)
+        self.assertNotIn("detail_json_encrypted", rsp.data)
+
+    def test_anonymous_premium_summary_body_encrypted(self):
+        rsp = self.api.get(f"/api/summaries/{self.premium_summary.slug}/")
+        self.assertEqual(rsp.status_code, 200)
+        self.assertNotIn("body", rsp.data)
+        self.assertIn("body_encrypted", rsp.data)

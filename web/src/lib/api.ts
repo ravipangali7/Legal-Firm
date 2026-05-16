@@ -1244,6 +1244,8 @@ export interface SummaryApi {
   preview: string;
   premium: boolean;
   body: string;
+  /** Present when `premium` and the caller lacks library access (server-side ciphertext). */
+  body_encrypted?: string;
   /** Current visitor / session vote when X-Visitor-Id or auth is recognized. */
   my_vote?: 'up' | 'down' | null;
 }
@@ -1714,6 +1716,8 @@ export interface ActApi {
   premium: boolean;
   /** CMS-driven law reader payload; absent on list rows and when not configured. */
   detail_json?: unknown;
+  /** Present when `premium` and the caller lacks library access (server-side ciphertext). */
+  detail_json_encrypted?: string;
 }
 
 export async function fetchPublicActs(params?: {
@@ -1732,7 +1736,7 @@ export async function fetchPublicActs(params?: {
 }
 
 export async function fetchPublicActBySlug(slug: string): Promise<ActApi | null> {
-  const r = await fetch(apiUrl(`/api/acts/${encodeURIComponent(slug)}/`), { credentials: 'omit' });
+  const r = await fetch(apiUrl(`/api/acts/${encodeURIComponent(slug)}/`), { credentials: 'include' });
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`act ${r.status}`);
   return r.json() as Promise<ActApi>;

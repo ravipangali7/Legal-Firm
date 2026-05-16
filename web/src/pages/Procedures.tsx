@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import * as Icons from 'lucide-react';
-import { Search, ArrowRight, FileText, Lock } from 'lucide-react';
+import { Search, ArrowRight, FileText } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,14 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { proceduresListQueryOptions } from '@/lib/proceduresListQuery';
 import { PageHelpFaqs } from '@/components/PageHelpFaqs';
-import { useAuth } from '@/context/AuthContext';
-import { hasLibraryEntitlement } from '@/lib/subscriptionAccess';
-import { usePremiumSubscribeToast } from '@/hooks/usePremiumSubscribeToast';
-
 const Procedures = () => {
-  const { user } = useAuth();
-  const toastPremium = usePremiumSubscribeToast();
-  const libraryOk = hasLibraryEntitlement(user);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
@@ -143,23 +136,12 @@ const Procedures = () => {
                         <span>{p.steps_count} steps</span>
                         {p.duration_label ? <span>â± {p.duration_label}</span> : null}
                       </div>
-                      {libraryOk ? (
-                        <Link
-                          to={`/procedures/${p.slug}`}
-                          className="inline-flex items-center text-primary-onBg text-sm font-medium hover:underline"
-                        >
-                          View Procedure <ArrowRight className="h-4 w-4 ml-1" aria-hidden />
-                        </Link>
-                      ) : (
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1.5 text-amber-800 text-sm font-medium hover:underline"
-                          onClick={() => toastPremium(Boolean(user))}
-                        >
-                          <Lock className="h-4 w-4" aria-hidden />
-                          Locked — take subscription
-                        </button>
-                      )}
+                      <Link
+                        to={`/procedures/${p.slug}`}
+                        className="inline-flex items-center text-primary-onBg text-sm font-medium hover:underline"
+                      >
+                        View Procedure <ArrowRight className="h-4 w-4 ml-1" aria-hidden />
+                      </Link>
                     </CardContent>
                   </Card>
                 );

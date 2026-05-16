@@ -23,6 +23,15 @@ export function canAccessProcedures(user: AuthMeUser | null | undefined): boolea
   return canAccessPremiumContent(user);
 }
 
+/** Whether this catalog row's full content may be read (free rows always; premium rows need subscription). */
+export function canAccessPremiumItem(
+  user: AuthMeUser | null | undefined,
+  item: { premium?: boolean } | null | undefined,
+): boolean {
+  if (!item?.premium) return true;
+  return hasLibraryEntitlement(user);
+}
+
 /** Full library / premium content access (includes post-paid benefits window). */
 export function hasLibraryEntitlement(user: AuthMeUser | null | undefined): boolean {
   if (!user) return false;

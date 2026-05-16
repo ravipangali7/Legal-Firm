@@ -13,7 +13,7 @@ import { fetchPublicSummaries, fetchPublicSummaryCategories, postSummaryTrackVie
 import { cn } from '@/lib/utils';
 import { PageHelpFaqs } from '@/components/PageHelpFaqs';
 import { useAuth } from '@/context/AuthContext';
-import { hasLibraryEntitlement } from '@/lib/subscriptionAccess';
+import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 import { usePremiumSubscribeToast } from '@/hooks/usePremiumSubscribeToast';
 
 const TEAL = 'bg-emerald-600 text-white';
@@ -48,7 +48,6 @@ const Summaries = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const toastPremium = usePremiumSubscribeToast();
-  const libraryOk = hasLibraryEntitlement(user);
   const [q, setQ] = useState('');
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const listViewsSentRef = useRef<Set<string>>(new Set());
@@ -221,6 +220,7 @@ const Summaries = () => {
             <>
               <p className="text-sm text-muted-foreground">{filtered.length} summaries</p>
               {filtered.map((s) => {
+                const unlocked = canAccessPremiumItem(user, s);
                 const cat = sortedCategories.find((c) => c.slug === s.category_slug);
                 const pillColor = cat?.color;
                 const rowClass =
@@ -230,13 +230,9 @@ const Summaries = () => {
                           <h2 className="font-semibold text-foreground group-hover:text-primary-onBg">
                             {s.title}
                           </h2>
-                          {!libraryOk ? (
+                          {s.premium && !unlocked ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-500/15 border border-amber-400/50 rounded-full px-2 py-0.5">
-                              <Lock className="h-3 w-3" /> Locked
-                            </span>
-                          ) : s.premium ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-500/10 border border-emerald-300 rounded-full px-2 py-0.5">
-                              <Lock className="h-3 w-3" /> Premium
+                              <Lock className="h-3 w-3" /> Subscriber only
                             </span>
                           ) : null}
                         </div>
@@ -269,7 +265,7 @@ const Summaries = () => {
                     </div>
                   </>
                 );
-                if (!libraryOk) {
+                if (!unlocked) {
                   return (
                     <button
                       type="button"

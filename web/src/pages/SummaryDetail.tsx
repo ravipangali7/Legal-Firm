@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import PaywallGate from '@/components/PaywallGate';
-import { canAccessCaseSummaries } from '@/lib/subscriptionAccess';
+import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 
 const TEAL = 'bg-emerald-600 text-white';
 
@@ -204,7 +204,7 @@ const SummaryDetail = () => {
 
   const myVote = current.my_vote ?? null;
 
-  const summariesUnlocked = canAccessCaseSummaries(user);
+  const summariesUnlocked = canAccessPremiumItem(user, current);
 
   return (
     <div className="min-h-screen flex flex-col">

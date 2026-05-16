@@ -7,13 +7,30 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Printer, Download, FileText } from 'lucide-react';
-import type { ActItem } from '@/data/lawsAndSummaries';
+import type { ActItem, LawDetailContent } from '@/data/lawsAndSummaries';
 import { getLawDetailContent, parseLawDetailFromApi } from '@/data/lawsAndSummaries';
+
+const LOCKED_LAW_DETAIL_PLACEHOLDER: LawDetailContent = {
+  tabs: [{ id: 'content', label: 'Content', labelNe: 'सामग्री' }],
+  sections: [
+    {
+      id: 'preview',
+      label: '',
+      labelNe: '',
+      title: '',
+      titleNe: '',
+      paragraphs: { en: [''], ne: [''] },
+    },
+  ],
+  callout: { title: '', titleNe: '', body: { en: '', ne: '' } },
+  amendments: [],
+  relatedCases: [],
+};
 import { fetchPublicActs, fetchPublicActBySlug, type ActApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import PaywallGate from '@/components/PaywallGate';
 import { useAuth } from '@/context/AuthContext';
-import { canAccessLawsLibrary } from '@/lib/subscriptionAccess';
+import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 import { jsPDF } from 'jspdf';
 import { buildLawPdfSegments, registerNepaliFonts, renderLawPdfSegments } from '@/lib/lawPdf';
 
@@ -41,7 +58,6 @@ const LawDetail = () => {
   const [q, setQ] = useState('');
   const [lang, setLang] = useState<Lang>('en');
   const [tab, setTab] = useState<'content' | 'amendments' | 'cases'>('content');
-  const isSubscribed = canAccessLawsLibrary(user);
   const printableRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -75,6 +91,8 @@ const LawDetail = () => {
 
   const current = useMemo(() => (currentApi ? actApiToItem(currentApi) : null), [currentApi]);
 
+  const contentUnlocked = canAccessPremiumItem(user, current);
+
   const filtered = useMemo(
     () => acts.filter((a) => a.title_en.toLowerCase().includes(q.toLowerCase())),
     [q, acts]
@@ -83,8 +101,10 @@ const LawDetail = () => {
   const detail = useMemo(() => {
     if (!current) return null;
     const fromApi = parseLawDetailFromApi(currentApi?.detail_json);
-    return fromApi ?? getLawDetailContent(current);
-  }, [current, currentApi]);
+    if (fromApi) return fromApi;
+    if (!current.premium || contentUnlocked) return getLawDetailContent(current);
+    return LOCKED_LAW_DETAIL_PLACEHOLDER;
+  }, [current, currentApi, contentUnlocked]);
   
   const printTitle = useMemo(() => {
     if (!current || !detail) return '';
@@ -183,7 +203,7 @@ const LawDetail = () => {
     );
   }
 
-  if (notFound || !detail || !current) {
+  if (notFound || !current || !detail) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
@@ -306,7 +326,7 @@ const LawDetail = () => {
 
                 <div ref={printableRef} className="law-print-root">
                   <h1 className="hidden print:block text-xl font-bold mb-3">{printTitle}</h1>
-                  <PaywallGate unlocked={isSubscribed} contentType="Act" previewHeight={520}>
+                  <PaywallGate unlocked={contentUnlocked} contentType="Act" previewHeight={520}>
                     {tab === 'content' ? (
                       <article className="prose max-w-none">
                         {detail.sections.map((section, sectionIndex) => (
