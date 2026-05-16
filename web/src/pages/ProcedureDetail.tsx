@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fetchProcedureDetail, PROCEDURE_NOT_FOUND } from '@/lib/api';
 import { RelatedContentSidebar } from '@/components/RelatedContentSidebar';
+import { usePageSeo } from '@/context/SeoContext';
+
 const ProcedureDetail = () => {
   const { slug } = useParams();
 
@@ -31,6 +33,17 @@ const ProcedureDetail = () => {
     if (!proc?.steps?.length) return [];
     return [...proc.steps].sort((a, b) => a.order - b.order);
   }, [proc]);
+
+  usePageSeo(
+    proc && slug
+      ? {
+          title: proc.title,
+          description: proc.summary,
+          pathname: `/procedures/${slug}`,
+          type: 'article',
+        }
+      : null
+  );
 
   if (!slug) {
     return (

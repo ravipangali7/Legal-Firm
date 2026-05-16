@@ -11,6 +11,7 @@ import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
 import { resolveServiceDestination } from '@/lib/serviceLink';
 import { RelatedContentSidebar } from '@/components/RelatedContentSidebar';
+import { usePageSeo } from '@/context/SeoContext';
 
 const ServiceDetailPage = () => {
   const { serviceId } = useParams<{ serviceId: string }>();
@@ -27,6 +28,16 @@ const ServiceDetailPage = () => {
     if (!service?.href?.trim()) return null;
     return resolveServiceDestination(service.href);
   }, [service?.href]);
+
+  usePageSeo(
+    service && serviceId
+      ? {
+          title: service.title,
+          description: service.description,
+          pathname: `/services/${serviceId}`,
+        }
+      : null
+  );
 
   if (!serviceId) {
     return (

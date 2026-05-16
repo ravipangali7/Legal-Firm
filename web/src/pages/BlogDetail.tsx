@@ -10,6 +10,7 @@ import { HtmlPreview } from '@/components/HtmlPreview';
 import { blogBodyToParagraphs, blogPostPublicAuthorLabel, fetchPublicBlogPost } from '@/lib/api';
 import { looksLikeHtml } from '@/lib/summaryHtml';
 import { RelatedContentSidebar } from '@/components/RelatedContentSidebar';
+import { usePageSeo } from '@/context/SeoContext';
 
 const BlogDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +21,19 @@ const BlogDetail = () => {
     enabled: Boolean(id),
     staleTime: 60_000,
   });
+
+  usePageSeo(
+    post && id
+      ? {
+          title: post.title,
+          description: post.excerpt,
+          pathname: `/blog/${id}`,
+          type: 'article',
+          publishedTime: post.date,
+          author: blogPostPublicAuthorLabel(post),
+        }
+      : null
+  );
 
   if (!id) {
     return (

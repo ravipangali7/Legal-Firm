@@ -10,6 +10,7 @@ import { siteHomepageQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
 import { CmsImage } from '@/components/CmsImage';
 import { SocialRow, initials } from './Professionals';
+import { usePageSeo } from '@/context/SeoContext';
 
 function ProfessionalDetailBody({ loadError, memberId }: { loadError: boolean; memberId: string }) {
   const { team: allTeam } = useCms();
@@ -19,6 +20,19 @@ function ProfessionalDetailBody({ loadError, memberId }: { loadError: boolean; m
   );
   const id = decodeURIComponent(memberId);
   const member = team.find((m) => m.id === id);
+
+  usePageSeo(
+    member
+      ? {
+          title: member.name,
+          description: `${member.role} — ${member.bio || 'Tax and legal professional at TaxLexis.'}`,
+          pathname: `/professionals/${encodeURIComponent(member.id)}`,
+          type: 'profile',
+          image: member.avatar,
+        }
+      : null
+  );
+
   if (!member) {
     return (
       <main className="pt-28 pb-16 px-4 flex-1">

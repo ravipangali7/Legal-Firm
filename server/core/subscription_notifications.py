@@ -10,7 +10,8 @@ from django.utils import formats
 
 from core.models import AdminBroadcast, AppSettings, UserInAppNotification
 from core.rbac import subscriber_portal_hub_prefix
-from core.outbound_email import send_site_transactional_email_with_outcome
+from core.email_templates import base_email_context, send_templated_email
+from core.models import EmailTemplate
 from core.outbound_panel_log import log_automated_admin_outbound
 from core.sms import phone_to_e164, send_sms
 
@@ -57,14 +58,15 @@ def notify_package_benefits_ended(user, *, ended_at: datetime) -> None:
         outbound_report["inApp"] = {"status": "failed", "detail": "in-app row create failed"}
         log_lines.append("In-app · failed")
 
-    email_st, email_detail = send_site_transactional_email_with_outcome(
+    ended_on = f" on {ended_label}" if ended_label else ""
+    tpl_ctx = base_email_context(user=user)
+    tpl_ctx["ended_on"] = ended_on
+    tpl_ctx["wallet_url"] = wallet_url
+    email_st, email_detail = send_templated_email(
+        EmailTemplate.EventType.PACKAGE_ENDED,
         to_email=user.email,
-        subject=f"{site}: {title}",
-        body=(
-            f"Hello {user.full_name or user.email},\n\n"
-            f"{body}\n\n"
-            f"If you did not expect this message, contact support.\n"
-        ),
+        context=tpl_ctx,
+        user=user,
     )
     outbound_report["email"] = {"status": email_st, "to": user.email, "detail": email_detail}
     log_lines.append(f"Email · {email_st} · {user.email}" + (f" · {email_detail}" if email_detail else ""))

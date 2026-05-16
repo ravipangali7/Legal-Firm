@@ -84,9 +84,15 @@ import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminSupport from "./pages/admin/AdminSupport";
 import AdminActivityLogs from "./pages/admin/AdminActivityLogs";
 import AdminHelp from "./pages/admin/AdminHelp";
+import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
+import ForgotPassword from "./pages/ForgotPassword";
 import AdminProfile from "./pages/admin/AdminProfile";
 import HelpCenter from "./pages/HelpCenter";
 import { SiteConfigProvider, useSiteConfig } from "@/context/SiteConfigContext";
+import { SeoProvider } from "@/context/SeoContext";
+import { HelmetProvider } from "react-helmet-async";
+import SiteSeoHead from "@/components/seo/SiteSeoHead";
+import GoogleAnalytics from "@/components/seo/GoogleAnalytics";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { userHomeHref } from "@/lib/userHomeRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -116,15 +122,28 @@ const AppShell = () => {
   }, [qc, pathname]);
 
   return (
-    <SiteConfigProvider>
-      <ImpersonationBanner />
-      <div className={impersonation.active ? "pt-9" : undefined}>
-        <ScrollToTop />
-        <AppRoutes />
-        <BackToTop />
-      </div>
-    </SiteConfigProvider>
+    <HelmetProvider>
+      <SiteConfigProvider>
+        <SeoProvider>
+          <SiteSeoHead />
+          <SiteAnalytics />
+          <ImpersonationBanner />
+          <div className={impersonation.active ? "pt-9" : undefined}>
+            <ScrollToTop />
+            <AppRoutes />
+            <BackToTop />
+          </div>
+        </SeoProvider>
+      </SiteConfigProvider>
+    </HelmetProvider>
   );
+};
+
+const SiteAnalytics = () => {
+  const { config } = useSiteConfig();
+  const gaId = (config?.ga_id || '').trim();
+  if (!gaId) return null;
+  return <GoogleAnalytics measurementId={gaId} />;
 };
 
 /** Sends each role to its home (`/admin`, `/client`, `/dashboard`, or `/account`). */
@@ -177,6 +196,7 @@ const AppRoutes = () => {
           <Route path="/services/:serviceId" element={<ServiceDetailPage />} />
           <Route path="/events/:newsId" element={<NewsEventDetail />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/admin/login" element={<Navigate to="/login?next=/admin" replace />} />
           <Route path="/client/login" element={<Navigate to="/login?next=/client" replace />} />
           <Route path="/portal/login" element={<Navigate to="/login?next=/portal" replace />} />
@@ -280,6 +300,7 @@ const AppRoutes = () => {
             <Route path="clients" element={<AdminClients />} />
             <Route path="projects" element={<AdminProjects />} />
             <Route path="settings" element={<AdminSettings />} />
+            <Route path="email-templates" element={<AdminEmailTemplates />} />
             <Route path="profile" element={<AdminProfile />} />
             <Route path="cms" element={<CmsLayout />}>
               <Route index element={<CmsOverview />} />

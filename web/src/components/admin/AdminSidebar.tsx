@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Shield, CreditCard, UserCheck, Bell,
-  Settings, HelpCircle, Activity, ChevronLeft, ChevronRight, LogOut,
+  Settings, HelpCircle, Activity, ChevronLeft, ChevronRight, LogOut, Mail,
   BarChart3, FolderKanban, MessageSquare, Layout, Library,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -117,6 +117,12 @@ export const SIDEBAR_NAV_ITEMS: NavItem[] = [
     title: 'Settings',
     href: '/admin/settings',
     icon: Settings,
+    module: 'Settings',
+  },
+  {
+    title: 'Email templates',
+    href: '/admin/email-templates',
+    icon: Mail,
     module: 'Settings',
   },
   {

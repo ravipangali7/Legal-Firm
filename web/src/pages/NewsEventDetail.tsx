@@ -15,6 +15,7 @@ import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
 import { safeCmsExternalHref } from '@/lib/cmsAssetUrl';
 import { CmsImage } from '@/components/CmsImage';
 import { RelatedContentSidebar } from '@/components/RelatedContentSidebar';
+import { usePageSeo } from '@/context/SeoContext';
 
 const NewsEventDetail = () => {
   const { newsId } = useParams<{ newsId: string }>();
@@ -31,6 +32,19 @@ const NewsEventDetail = () => {
   const paragraphs = blogBodyToParagraphs(mainText);
   const bodyIsHtml = looksLikeHtml(mainText);
   const external = item?.href ? safeCmsExternalHref(item.href, 'url') : null;
+
+  usePageSeo(
+    item && newsId
+      ? {
+          title: item.title,
+          description: item.excerpt,
+          pathname: `/news/${newsId}`,
+          type: 'article',
+          publishedTime: item.date,
+          image: item.image,
+        }
+      : null
+  );
 
   if (!newsId) {
     return (

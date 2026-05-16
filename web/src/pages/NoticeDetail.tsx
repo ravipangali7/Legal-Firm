@@ -26,6 +26,7 @@ import {
 import { downloadNoticeAsPdf } from '@/lib/noticePdf';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { usePageSeo } from '@/context/SeoContext';
 
 const TEAL = 'bg-emerald-600 text-white';
 
@@ -80,6 +81,18 @@ const NoticeDetail = () => {
     enabled: Boolean(slug) && !isLegacyUuid,
     staleTime: 30_000,
   });
+
+  usePageSeo(
+    current && slug
+      ? {
+          title: current.title,
+          description: current.excerpt,
+          pathname: `/notices/${slug}`,
+          type: 'article',
+          publishedTime: current.created_at,
+        }
+      : null
+  );
 
   const list = useMemo(
     () =>

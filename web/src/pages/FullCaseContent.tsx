@@ -28,6 +28,7 @@ import { fetchPublicLegalCaseBySlug } from '@/lib/api';
 import { mapLegalCaseApiToCase } from '@/lib/legalCaseMap';
 import { useAuth } from '@/context/AuthContext';
 import { hasLibraryEntitlement } from '@/lib/subscriptionAccess';
+import { usePageSeo } from '@/context/SeoContext';
 
 const FullCaseContent = () => {
   const { caseId } = useParams();
@@ -50,6 +51,17 @@ const FullCaseContent = () => {
     staleTime: 60_000,
     retry: 1,
   });
+
+  usePageSeo(
+    caseData && caseId
+      ? {
+          title: caseData.title,
+          description: caseData.teaser,
+          pathname: `/case/${caseId}`,
+          type: 'article',
+        }
+      : null
+  );
 
   const handleDownloadPDF = () => {
     console.log('Downloading PDF for case:', caseData?.id);

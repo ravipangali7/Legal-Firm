@@ -251,10 +251,10 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.register(models.OtpVerification)
 class OtpVerificationAdmin(admin.ModelAdmin):
-    list_display = ("phone_digits", "code", "created_at", "expires_at", "used_at")
-    list_filter = ("created_at",)
-    readonly_fields = ("id", "phone_digits", "code", "created_at", "expires_at", "used_at")
-    search_fields = ("phone_digits",)
+    list_display = ("purpose", "phone_digits", "email", "code", "created_at", "expires_at", "used_at")
+    list_filter = ("purpose", "created_at")
+    readonly_fields = ("id", "purpose", "phone_digits", "email", "code", "created_at", "expires_at", "used_at")
+    search_fields = ("phone_digits", "email")
 
     def has_add_permission(self, request):
         return False
@@ -693,6 +693,15 @@ class BlogPostAdmin(admin.ModelAdmin):
     @admin.display(description="Featured", boolean=True, ordering="featured")
     def featured_badge(self, obj):
         return obj.featured
+
+
+@admin.register(models.EmailTemplate)
+class EmailTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "event_type", "enabled", "updated_at")
+    list_filter = ("enabled", "event_type")
+    search_fields = ("name", "event_type", "subject")
+    readonly_fields = ("event_type", "updated_at")
+    ordering = ("event_type",)
 
 
 @admin.register(models.HelpArticle)

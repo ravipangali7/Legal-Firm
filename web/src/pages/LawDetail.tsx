@@ -33,6 +33,7 @@ import { useAuth } from '@/context/AuthContext';
 import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 import { jsPDF } from 'jspdf';
 import { buildLawPdfSegments, registerNepaliFonts, renderLawPdfSegments } from '@/lib/lawPdf';
+import { usePageSeo } from '@/context/SeoContext';
 
 const TEAL = 'bg-emerald-600 text-white'; // active sidebar item
 
@@ -90,6 +91,17 @@ const LawDetail = () => {
   }, [slug, acts, detailLoading, actBySlug]);
 
   const current = useMemo(() => (currentApi ? actApiToItem(currentApi) : null), [currentApi]);
+
+  usePageSeo(
+    current && slug
+      ? {
+          title: current.titleEn,
+          description: `${current.category} · ${current.year}`,
+          pathname: `/laws/${slug}`,
+          type: 'article',
+        }
+      : null
+  );
 
   const contentUnlocked = canAccessPremiumItem(user, current);
 

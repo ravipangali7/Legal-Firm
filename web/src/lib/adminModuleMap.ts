@@ -15,6 +15,7 @@ const PREFIX_MODULE: [string, string][] = [
   ['/admin/support', 'Support'],
   ['/admin/logs', 'Activity Logs'],
   ['/admin/settings', 'Settings'],
+  ['/admin/email-templates', 'Settings'],
   ['/admin/help', 'Help'],
   ['/admin/profile', 'Dashboard'],
   ['/admin', 'Dashboard'],

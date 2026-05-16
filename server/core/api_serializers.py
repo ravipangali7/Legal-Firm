@@ -23,6 +23,7 @@ from .models import (
     FooterConfig,
     FooterLink,
     FooterSocialLink,
+    EmailTemplate,
     HelpArticle,
     HeroSlide,
     LegalCase,
@@ -410,6 +411,27 @@ class HelpArticleSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = ("id", "created_at", "updated_at")
+
+
+class EmailTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailTemplate
+        fields = (
+            "id",
+            "event_type",
+            "name",
+            "subject",
+            "body",
+            "enabled",
+            "description",
+            "updated_at",
+        )
+        read_only_fields = ("id", "event_type", "updated_at")
+
+    def validate_event_type(self, value):
+        if self.instance is not None and value != self.instance.event_type:
+            raise serializers.ValidationError("Event type cannot be changed.")
+        return value
 
 
 class NoticePublicSerializer(serializers.ModelSerializer):

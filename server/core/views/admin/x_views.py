@@ -23,6 +23,7 @@ from core.api_serializers import (
     AppSettingsAdminSerializer,
     BlogPostSerializer,
     ClientSerializer,
+    EmailTemplateSerializer,
     HelpArticleSerializer,
     NoticeAdminSerializer,
     KnowledgeResourceAdminSerializer,
@@ -55,6 +56,7 @@ from core.models import (
     BlogPost,
     Client,
     ContactMessage,
+    EmailTemplate,
     HelpArticle,
     Notice,
     KnowledgeResource,
@@ -680,6 +682,92 @@ def admin_app_settings_test_mail(request):
     except Exception as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+    return Response({"ok": True, "to": to_addr})
+
+
+# ——— Email templates ———
+
+
+@csrf_exempt
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_email_templates(request):
+    if err := require_admin_perm(request, "Settings", "view"):
+        return err
+    qs = EmailTemplate.objects.order_by("event_type")
+    return Response(EmailTemplateSerializer(qs, many=True).data)
+
+
+@csrf_exempt
+@api_view(["GET", "PATCH"])
+@permission_classes([IsAuthenticated])
+def admin_email_template_detail(request, template_id):
+    perm = "view" if request.method == "GET" else "edit"
+    if err := require_admin_perm(request, "Settings", perm):
+        return err
+    try:
+        tid = uuid.UUID(str(template_id))
+    except ValueError:
+        return Response({"detail": "Invalid id."}, status=status.HTTP_400_BAD_REQUEST)
+    obj = get_object_or_404(EmailTemplate, pk=tid)
+    if request.method == "GET":
+        return Response(EmailTemplateSerializer(obj).data)
+    allowed = {"name", "subject", "body", "enabled", "description"}
+    patch = {k: v for k, v in request.data.items() if k in allowed}
+    ser = EmailTemplateSerializer(obj, data=patch, partial=True)
+    if not ser.is_valid():
+        return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+    ser.save()
+    return Response(ser.data)
+
+
+@csrf_exempt
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def admin_email_template_test(request, template_id):
+    if err := require_admin_perm(request, "Settings", "edit"):
+        return err
+    try:
+        tid = uuid.UUID(str(template_id))
+    except ValueError:
+        return Response({"detail": "Invalid id."}, status=status.HTTP_400_BAD_REQUEST)
+    obj = get_object_or_404(EmailTemplate, pk=tid)
+    to_addr = (request.data.get("to") or "").strip()
+    if not to_addr:
+        return Response({"detail": "Recipient address (to) is required."}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        validate_email(to_addr)
+    except ValidationError:
+        return Response({"detail": "Invalid recipient email address."}, status=status.HTTP_400_BAD_REQUEST)
+
+    from core.email_templates import base_email_context, render_template_text, send_site_transactional_email_with_outcome
+
+    ctx = base_email_context()
+    ctx.update(
+        {
+            "user_name": "Test User",
+            "user_email": to_addr,
+            "otp_code": "123456",
+            "otp_expiry_minutes": "10",
+            "invoice": "INV-TEST-001",
+            "amount": "999.00",
+            "currency": "NPR",
+            "plan": "Premium",
+            "billing_cycle": "Monthly",
+            "package_end_date": "2026-12-31",
+            "subscription_end_date": "2026-06-30",
+            "rejection_reason": "Sample rejection reason",
+            "ended_on": " on 2026-05-01",
+            "login_time": "2026-05-17 12:00",
+        }
+    )
+    subject = render_template_text(obj.subject, ctx)
+    body = render_template_text(obj.body, ctx)
+    st, detail = send_site_transactional_email_with_outcome(to_email=to_addr, subject=subject, body=body)
+    if st == "failed":
+        return Response({"detail": detail or "Send failed"}, status=status.HTTP_400_BAD_REQUEST)
+    if st == "skipped":
+        return Response({"detail": detail or "Email skipped"}, status=status.HTTP_400_BAD_REQUEST)
     return Response({"ok": True, "to": to_addr})
 
 

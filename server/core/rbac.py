@@ -12,7 +12,8 @@ Endpoint → PermissionModule mapping (enforced in `x_views` / `dashboard_views`
          admin_client_detail
 - Projects: admin_projects, admin_project_detail
 - Pricing Plans: admin_pricing_plans, admin_pricing_plan_detail
-- Settings: admin_app_settings, admin_app_settings_test_mail
+- Settings: admin_app_settings, admin_app_settings_test_mail, admin_email_templates,
+  admin_email_template_detail, admin_email_template_test
 - Homepage CMS: admin_blog_posts, admin_blog_post_detail, admin_hero_slides, admin_hero_slide_detail,
                 admin_cms_homepage_snapshot, admin_nav_items, admin_nav_item_detail
 - Help: admin_help_articles, admin_help_article_detail

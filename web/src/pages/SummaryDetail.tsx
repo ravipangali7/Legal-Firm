@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import PaywallGate from '@/components/PaywallGate';
 import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
+import { usePageSeo } from '@/context/SeoContext';
 
 const TEAL = 'bg-emerald-600 text-white';
 
@@ -61,6 +62,18 @@ const SummaryDetail = () => {
     enabled: Boolean(slug),
     staleTime: 30_000,
   });
+
+  usePageSeo(
+    current && slug
+      ? {
+          title: current.title,
+          description: current.preview,
+          pathname: `/summaries/${slug}`,
+          type: 'article',
+          publishedTime: current.posted,
+        }
+      : null
+  );
 
   const list = useMemo(
     () => summaries.filter((s) => s.title.toLowerCase().includes(q.toLowerCase())),

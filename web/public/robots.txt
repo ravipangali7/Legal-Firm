@@ -1,14 +1,5 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Static fallback for local preview. Production uses /api/public/robots.txt via proxy.
 User-agent: *
 Allow: /
+
+Sitemap: /sitemap.xml

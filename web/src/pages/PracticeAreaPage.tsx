@@ -18,6 +18,7 @@ import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { hasLibraryEntitlement } from "@/lib/subscriptionAccess";
 import { usePremiumSubscribeToast } from "@/hooks/usePremiumSubscribeToast";
+import { usePageSeo } from "@/context/SeoContext";
 
 type AreaViewModel = {
   slug: string;
@@ -111,6 +112,16 @@ const PracticeAreaPage = () => {
     }
     return undefined;
   }, [areaFromApi, areasLoading, areasError, areasApi, areaSlug]);
+
+  usePageSeo(
+    areaVm && areaSlug
+      ? {
+          title: areaVm.name,
+          description: areaVm.overview,
+          pathname: `/practice-areas/${areaSlug}`,
+        }
+      : null
+  );
 
   const {
     data: cases = [],

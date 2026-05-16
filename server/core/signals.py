@@ -7,6 +7,11 @@ from django.dispatch import receiver
 
 from .dashboard_events import record_transaction_verified
 from .models import Procedure, ProcedureStep, Transaction, User
+from .payment_notifications import (
+    send_payment_pending_email,
+    send_payment_rejected_email,
+    send_payment_verified_email,
+)
 from .sms import send_payment_rejection_sms
 from .sync_user_client import sync_crm_client_for_user
 from .staff_notifications import notify_super_admins_in_app
@@ -73,6 +78,10 @@ def transaction_subscription_effects(sender, instance: Transaction, created: boo
         if instance.status == Transaction.Status.VERIFIED:
             apply_verified_transaction(instance)
             record_transaction_verified(instance)
+            try:
+                send_payment_verified_email(instance)
+            except Exception:
+                pass
         elif instance.status == Transaction.Status.PENDING:
             # eSewa creates a pending row at checkout initiation; notify Super Admins
             # only for flows that actually require manual verification.
@@ -85,6 +94,10 @@ def transaction_subscription_effects(sender, instance: Transaction, created: boo
                 body=f"{who} submitted {instance.method} payment for invoice {instance.invoice}{plan_part}.",
                 link="/admin/transactions",
             )
+            try:
+                send_payment_pending_email(instance)
+            except Exception:
+                pass
         return
 
     if prev == instance.status:
@@ -93,12 +106,20 @@ def transaction_subscription_effects(sender, instance: Transaction, created: boo
     if instance.status == Transaction.Status.VERIFIED:
         apply_verified_transaction(instance)
         record_transaction_verified(instance)
+        try:
+            send_payment_verified_email(instance)
+        except Exception:
+            pass
         return
 
     if instance.status == Transaction.Status.REJECTED and prev == Transaction.Status.PENDING:
         reason = (getattr(instance, "rejection_reason", None) or "").strip()
         if len(reason) >= 3:
             send_payment_rejection_sms(instance.user, instance.invoice, reason)
+        try:
+            send_payment_rejected_email(instance)
+        except Exception:
+            pass
         return
 
     if (

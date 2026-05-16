@@ -244,9 +244,20 @@ class User(AbstractUser):
 
 
 class OtpVerification(UUIDModel):
-    """One-time 6-digit codes for phone login; expires after a short window."""
+    """One-time 6-digit codes for phone login and password reset; expires after a short window."""
 
-    phone_digits = models.CharField(max_length=16, db_index=True)
+    class Purpose(models.TextChoices):
+        PHONE_LOGIN = "phone_login", "Phone login"
+        PASSWORD_RESET = "password_reset", "Password reset"
+
+    purpose = models.CharField(
+        max_length=32,
+        choices=Purpose.choices,
+        default=Purpose.PHONE_LOGIN,
+        db_index=True,
+    )
+    phone_digits = models.CharField(max_length=16, blank=True, db_index=True)
+    email = models.EmailField(blank=True, db_index=True)
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
@@ -258,7 +269,8 @@ class OtpVerification(UUIDModel):
         verbose_name_plural = "OTP verifications"
 
     def __str__(self):
-        return f"OTP {self.phone_digits[-4:]}… @ {self.created_at}"
+        target = self.email or (f"…{self.phone_digits[-4:]}" if self.phone_digits else "?")
+        return f"OTP {self.purpose} {target} @ {self.created_at}"
 
 
 class UserProfile(models.Model):
@@ -911,6 +923,43 @@ class BlogPost(UUIDModel):
 
     def __str__(self):
         return self.title
+
+
+class EmailTemplate(UUIDModel):
+    """
+    Staff-editable transactional email content. ``event_type`` keys are fixed system triggers;
+    subject/body support ``{{placeholder}}`` tokens documented per template.
+    """
+
+    class EventType(models.TextChoices):
+        SIGNUP = "signup", "Signup welcome"
+        LOGIN = "login", "Login thank you"
+        OTP_LOGIN = "otp_login", "OTP login code"
+        PASSWORD_RESET = "password_reset", "Password reset OTP"
+        PAYMENT_VERIFIED = "payment_verified", "Payment confirmed"
+        PAYMENT_PENDING = "payment_pending", "Payment pending verification"
+        PAYMENT_REJECTED = "payment_rejected", "Payment rejected"
+        SUBSCRIPTION_DUE = "subscription_due", "Subscription renewal due"
+        PACKAGE_ENDED = "package_ended", "Package ended"
+
+    event_type = models.CharField(max_length=32, choices=EventType.choices, unique=True)
+    name = models.CharField(max_length=255)
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    enabled = models.BooleanField(default=True)
+    description = models.TextField(
+        blank=True,
+        help_text="Admin hint: when this email is sent and which placeholders are available.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["event_type"]
+        verbose_name = "Email template"
+        verbose_name_plural = "Email templates"
+
+    def __str__(self):
+        return f"{self.name} ({self.event_type})"
 
 
 class HelpArticle(UUIDModel):

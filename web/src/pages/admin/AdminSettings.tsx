@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { adminPost, settingsPatchToApi } from '@/lib/adminSnapshot';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Globe, Mail, CreditCard, Navigation, Settings } from 'lucide-react';
 import esewaLogo from '@/assets/esewa-logo.png';
 import ImageInput from '@/components/admin/cms/ImageInput';
@@ -249,6 +250,20 @@ const AdminSettings = () => {
               </div>
               <div><Label>From email</Label><Input type="email" value={form.supportEmail} onChange={(e) => setForm({ ...form, supportEmail: e.target.value })} /></div>
               <div><Label>From name</Label><Input value={form.emailFromName || 'TaxLexis'} onChange={(e) => setForm({ ...form, emailFromName: e.target.value })} /></div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Transactional templates</CardTitle>
+              <CardDescription>
+                Customize signup, login, OTP, payment, and subscription emails sent automatically by the platform.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" asChild>
+                <Link to="/admin/email-templates">Manage email templates</Link>
+              </Button>
             </CardContent>
           </Card>
 

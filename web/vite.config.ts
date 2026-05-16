@@ -72,6 +72,16 @@ export default defineConfig(({ mode, command }) => ({
         target: "https://legalfirmserver.360winx.com",
         changeOrigin: true,
       },
+      "/sitemap.xml": {
+        target: "https://legalfirmserver.360winx.com",
+        changeOrigin: true,
+        rewrite: (path) => "/api/public/sitemap.xml",
+      },
+      "/robots.txt": {
+        target: "https://legalfirmserver.360winx.com",
+        changeOrigin: true,
+        rewrite: (path) => "/api/public/robots.txt",
+      },
     },
   },
   plugins: [

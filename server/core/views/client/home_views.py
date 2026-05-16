@@ -6,8 +6,6 @@ import logging
 import uuid
 from datetime import timedelta
 from decimal import Decimal
-from secrets import randbelow
-
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.db import DatabaseError
@@ -81,6 +79,17 @@ from core.notice_engagement import apply_notice_vote, notice_actor_from_request,
 from core.summary_engagement import apply_summary_vote, record_summary_daily_views, summary_actor_from_request
 from core.google_oauth import fetch_google_userinfo
 from core.serializers import ContactMessageDetailSerializer, PublicContactSerializer, SignupSerializer, SubscribePendingSerializer
+from core.auth_notifications import (
+    OTP_EXPIRY_MINUTES,
+    OTP_MAX_PER_HOUR,
+    create_otp,
+    deliver_password_reset_otp,
+    deliver_phone_login_otp,
+    send_login_email,
+    send_signup_email,
+    _otp_rate_exceeded,
+)
+from core.email_templates import maybe_send_subscription_due_email
 from core.staff_notifications import notify_super_admins_in_app
 from core.subscription_service import (
     create_pending_subscription_txn,
@@ -89,13 +98,13 @@ from core.subscription_service import (
     subscription_checkout_allowed,
 )
 from core.rbac import portal_module_perm
-from core.sms import phone_to_e164, send_sms
 
 User = get_user_model()
 
 
 def _user_me_response(user):
     refresh_user_entitlements(user)
+    maybe_send_subscription_due_email(user)
     data = UserMeSerializer(user).data
     if settings.DEBUG:
         _LOG.debug(
@@ -109,8 +118,6 @@ def _user_me_response(user):
 
 
 _LOG = logging.getLogger(__name__)
-OTP_EXPIRY_MINUTES = 10
-OTP_MAX_PER_HOUR = 10
 
 
 @api_view(["GET"])
@@ -562,6 +569,10 @@ def auth_signup(request):
         body=f"{who} ({user.email}) signed up and awaits activation.",
         link="/admin/users",
     )
+    try:
+        send_signup_email(user)
+    except Exception:
+        _LOG.exception("signup email failed for user_id=%s", user.pk)
     return Response(
         {"id": str(user.id), "email": user.email, "status": user.status},
         status=status.HTTP_201_CREATED,
@@ -583,6 +594,10 @@ def auth_login(request):
     if user.status == User.Status.SUSPENDED:
         return Response({"detail": "This account is suspended."}, status=status.HTTP_403_FORBIDDEN)
     login(request, user)
+    try:
+        send_login_email(user)
+    except Exception:
+        _LOG.exception("login email failed for user_id=%s", user.pk)
     return _user_me_response(user)
 
 
@@ -619,6 +634,10 @@ def auth_google(request):
     if user.status == User.Status.SUSPENDED:
         return Response({"detail": "This account is suspended."}, status=status.HTTP_403_FORBIDDEN)
     login(request, user)
+    try:
+        send_login_email(user)
+    except Exception:
+        _LOG.exception("login email failed for user_id=%s", user.pk)
     return _user_me_response(user)
 
 
@@ -636,41 +655,18 @@ def auth_otp_request(request):
     if user.status == User.Status.SUSPENDED:
         return Response({"detail": "This account is suspended."}, status=status.HTTP_403_FORBIDDEN)
 
-    hour_ago = timezone.now() - timedelta(hours=1)
-    recent = OtpVerification.objects.filter(phone_digits=digits, created_at__gte=hour_ago).count()
-    if recent >= OTP_MAX_PER_HOUR:
+    if _otp_rate_exceeded(purpose=OtpVerification.Purpose.PHONE_LOGIN, phone_digits=digits):
         return Response(
             {"detail": "Too many verification attempts. Try again later."},
             status=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
-    code = f"{randbelow(1_000_000):06d}"
-    expires_at = timezone.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
-    otp = OtpVerification.objects.create(phone_digits=digits, code=code, expires_at=expires_at)
-
-    site = AppSettings.load().site_name or "TaxLexis"
-    to_e164 = phone_to_e164((user.phone or "").strip()) or phone_to_e164(digits)
-    if not to_e164:
-        otp.delete()
-        return Response(
-            {"detail": "No valid phone number on file for SMS. Update your phone in your account or contact support."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    sms_body = (
-        f"{site}: your login code is {code}. It expires in {OTP_EXPIRY_MINUTES} minutes. "
-        "Do not share this code."
-    )
-    sms_ok = send_sms(to_e164, sms_body)
+    otp, code = create_otp(purpose=OtpVerification.Purpose.PHONE_LOGIN, phone_digits=digits)
+    sms_ok, sms_err = deliver_phone_login_otp(user, digits=digits, code=code)
     if not sms_ok and not settings.DEBUG:
         otp.delete()
         return Response(
-            {
-                "detail": (
-                    "We could not send the verification SMS. Check SMS provider configuration "
-                    "or try again later."
-                ),
-            },
+            {"detail": sms_err or "We could not send the verification code. Try again later."},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
@@ -707,6 +703,7 @@ def auth_otp_verify(request):
     now = timezone.now()
     otp = (
         OtpVerification.objects.filter(
+            purpose=OtpVerification.Purpose.PHONE_LOGIN,
             phone_digits=digits,
             code=code,
             used_at__isnull=True,
@@ -720,7 +717,127 @@ def auth_otp_verify(request):
     otp.used_at = now
     otp.save(update_fields=["used_at"])
     login(request, user)
+    try:
+        send_login_email(user)
+    except Exception:
+        _LOG.exception("login email failed for user_id=%s", user.pk)
     return _user_me_response(user)
+
+
+@csrf_exempt
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def auth_password_reset_request(request):
+    """Send a password-reset OTP to the user's email and/or phone."""
+    email_raw = (request.data.get("email") or "").strip().lower()
+    phone = (request.data.get("phone") or "").strip()
+    digits = normalize_phone_digits(phone) if phone else ""
+
+    user = None
+    if email_raw:
+        user = User.objects.filter(email__iexact=email_raw).first()
+    elif len(digits) >= 10:
+        user = find_user_by_phone_digits(digits)
+    else:
+        return Response(
+            {"detail": "Enter your email or phone number."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    generic = {"detail": "If an account exists, a reset code has been sent."}
+    if user is None:
+        return Response(generic)
+    if user.status == User.Status.SUSPENDED:
+        return Response({"detail": "This account is suspended."}, status=status.HTTP_403_FORBIDDEN)
+
+    purpose = OtpVerification.Purpose.PASSWORD_RESET
+    if email_raw and _otp_rate_exceeded(purpose=purpose, email=email_raw):
+        return Response(
+            {"detail": "Too many reset attempts. Try again later."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+    if digits and _otp_rate_exceeded(purpose=purpose, phone_digits=digits):
+        return Response(
+            {"detail": "Too many reset attempts. Try again later."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    otp, code = create_otp(
+        purpose=purpose,
+        phone_digits=digits,
+        email=email_raw or user.email,
+    )
+    try:
+        deliver_password_reset_otp(
+            user,
+            digits=digits,
+            email=email_raw or user.email,
+            code=code,
+        )
+    except Exception:
+        _LOG.exception("password reset OTP delivery failed for user_id=%s", user.pk)
+        otp.delete()
+        if not settings.DEBUG:
+            return Response(
+                {"detail": "Could not send reset code. Try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+    payload: dict = dict(generic)
+    if settings.DEBUG:
+        payload["debug_otp"] = code
+    return Response(payload)
+
+
+@csrf_exempt
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def auth_password_reset_confirm(request):
+    """Verify OTP and set a new password."""
+    email_raw = (request.data.get("email") or "").strip().lower()
+    phone = (request.data.get("phone") or "").strip()
+    code_raw = request.data.get("code") or ""
+    new_password = (request.data.get("new_password") or request.data.get("password") or "").strip()
+    code = "".join(c for c in str(code_raw) if c.isdigit())[:6]
+    digits = normalize_phone_digits(phone) if phone else ""
+
+    if len(code) != 6 or len(new_password) < 8:
+        return Response(
+            {"detail": "Enter a valid 6-digit code and a password of at least 8 characters."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = None
+    if email_raw:
+        user = User.objects.filter(email__iexact=email_raw).first()
+    elif len(digits) >= 10:
+        user = find_user_by_phone_digits(digits)
+    else:
+        return Response({"detail": "Enter your email or phone number."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if user is None:
+        return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+
+    now = timezone.now()
+    otp_qs = OtpVerification.objects.filter(
+        purpose=OtpVerification.Purpose.PASSWORD_RESET,
+        code=code,
+        used_at__isnull=True,
+        expires_at__gte=now,
+    )
+    if email_raw:
+        otp_qs = otp_qs.filter(email__iexact=email_raw)
+    elif digits:
+        otp_qs = otp_qs.filter(phone_digits=digits)
+    otp = otp_qs.order_by("-created_at").first()
+    if otp is None:
+        return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+
+    otp.used_at = now
+    otp.save(update_fields=["used_at"])
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+    return Response({"detail": "Password updated. You can sign in now."})
 
 
 @csrf_exempt

@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Award, Users, Building2, Briefcase, Scale, Calculator, Globe2, Shield, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePageSeo } from '@/context/SeoContext';
 
 const SUBPAGES = [
   { slug: 'background', label: 'Background' },
@@ -33,6 +34,12 @@ const SERVICES = [
 const AboutSubpage = () => {
   const { sub } = useParams();
   const current = SUBPAGES.find(s => s.slug === sub) ?? SUBPAGES[0];
+
+  usePageSeo({
+    title: current.label,
+    description: `About TaxLexis — ${current.label}.`,
+    pathname: `/about/${current.slug}`,
+  });
 
   return (
     <div className="min-h-screen flex flex-col">

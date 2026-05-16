@@ -2,9 +2,11 @@
 
 from django.urls import path
 
-from core.views.client import esewa_views, home_views
+from core.views.client import esewa_views, home_views, seo_views
 
 urlpatterns = [
+    path("public/sitemap.xml", seo_views.public_sitemap_xml),
+    path("public/robots.txt", seo_views.public_robots_txt),
     path("public/config/", home_views.public_config),
     path("public/translate/en-ne/", home_views.public_translate_en_ne),
     path("public/contact/", home_views.public_contact_submit),
@@ -44,6 +46,8 @@ urlpatterns = [
     path("auth/google/", home_views.auth_google),
     path("auth/otp/request/", home_views.auth_otp_request),
     path("auth/otp/verify/", home_views.auth_otp_verify),
+    path("auth/password-reset/request/", home_views.auth_password_reset_request),
+    path("auth/password-reset/confirm/", home_views.auth_password_reset_confirm),
     path("auth/logout/", home_views.auth_logout),
     path("auth/stop-impersonate/", home_views.auth_stop_impersonate),
     path("auth/me/", home_views.auth_me),

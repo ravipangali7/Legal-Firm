@@ -46,6 +46,15 @@ export interface PublicSiteConfig {
   site_favicon?: string;
   seo_title?: string;
   seo_description?: string;
+  seo_keywords?: string;
+  /** Default Open Graph / Twitter image (`/media/...`). */
+  og_image?: string;
+  /** Production site URL without trailing slash (canonical + sitemap base). */
+  canonical_url?: string;
+  /** Google Analytics 4 measurement ID (e.g. G-XXXXXXXX). */
+  ga_id?: string;
+  /** Custom robots.txt body; served at `/robots.txt` when set. */
+  robots_txt?: string;
   /** ISO currency code from App Settings (e.g. NPR). */
   currency?: string;
   email_notifications?: boolean;
@@ -440,6 +449,42 @@ export async function postAuthOtpRequest(phone: string): Promise<{ detail?: stri
   const data = (await r.json().catch(() => ({}))) as { detail?: string; debug_otp?: string };
   if (!r.ok) {
     throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not send verification code');
+  }
+  return data;
+}
+
+export async function postPasswordResetRequest(body: {
+  email?: string;
+  phone?: string;
+}): Promise<{ detail?: string; debug_otp?: string }> {
+  const r = await fetch(apiUrl('/api/auth/password-reset/request/'), {
+    method: 'POST',
+    credentials: 'omit',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = (await r.json().catch(() => ({}))) as { detail?: string; debug_otp?: string };
+  if (!r.ok) {
+    throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not send reset code');
+  }
+  return data;
+}
+
+export async function postPasswordResetConfirm(body: {
+  email?: string;
+  phone?: string;
+  code: string;
+  new_password: string;
+}): Promise<{ detail?: string }> {
+  const r = await fetch(apiUrl('/api/auth/password-reset/confirm/'), {
+    method: 'POST',
+    credentials: 'omit',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = (await r.json().catch(() => ({}))) as { detail?: string };
+  if (!r.ok) {
+    throw new Error(typeof data.detail === 'string' ? data.detail : 'Password reset failed');
   }
   return data;
 }
