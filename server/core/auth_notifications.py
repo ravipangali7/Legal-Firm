@@ -12,6 +12,12 @@ from django.utils import timezone
 
 from core.email_templates import base_email_context, send_templated_email
 from core.models import AppSettings, EmailTemplate, OtpVerification
+from core.otp_schema import (
+    OtpHandle,
+    legacy_create_otp,
+    legacy_rate_count,
+    otp_schema_has_purpose,
+)
 from core.sms import phone_to_e164, send_sms
 
 _LOG = logging.getLogger(__name__)
@@ -32,6 +38,9 @@ def _is_synthetic_phone_email(email: str) -> bool:
 def _otp_rate_exceeded(*, purpose: str, phone_digits: str = "", email: str = "") -> bool:
     hour_ago = timezone.now() - timedelta(hours=1)
     try:
+        if not otp_schema_has_purpose():
+            count = legacy_rate_count(phone_digits=phone_digits, email=email, since=hour_ago)
+            return count >= OTP_MAX_PER_HOUR
         qs = OtpVerification.objects.filter(purpose=purpose, created_at__gte=hour_ago)
         if phone_digits:
             return qs.filter(phone_digits=phone_digits).count() >= OTP_MAX_PER_HOUR
@@ -43,13 +52,20 @@ def _otp_rate_exceeded(*, purpose: str, phone_digits: str = "", email: str = "")
         raise
 
 
-def create_otp(*, purpose: str, phone_digits: str = "", email: str = "") -> tuple[OtpVerification, str]:
+def create_otp(*, purpose: str, phone_digits: str = "", email: str = "") -> tuple[OtpHandle | OtpVerification, str]:
     code = f"{randbelow(1_000_000):06d}"
     expires_at = timezone.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+    digits = phone_digits or ""
     try:
+        if not otp_schema_has_purpose():
+            if purpose != OtpVerification.Purpose.PHONE_LOGIN:
+                _LOG.warning(
+                    "Legacy OTP schema: password-reset codes share the phone_login table until migrate runs"
+                )
+            return legacy_create_otp(phone_digits=digits, code=code, expires_at=expires_at), code
         otp = OtpVerification.objects.create(
             purpose=purpose,
-            phone_digits=phone_digits or "",
+            phone_digits=digits,
             email=(email or "").strip().lower(),
             code=code,
             expires_at=expires_at,
@@ -122,7 +138,7 @@ def deliver_password_reset_otp(user, *, digits: str, email: str, code: str) -> N
     ctx["otp_code"] = code
     ctx["otp_expiry_minutes"] = str(OTP_EXPIRY_MINUTES)
 
-    if email:
+    if email and otp_schema_has_purpose() and not _is_synthetic_phone_email(email):
         send_templated_email(
             EmailTemplate.EventType.PASSWORD_RESET,
             to_email=email,

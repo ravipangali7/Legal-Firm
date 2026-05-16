@@ -90,6 +90,7 @@ from core.auth_notifications import (
     send_signup_email,
     _otp_rate_exceeded,
 )
+from core.otp_schema import legacy_find_valid_otp, legacy_mark_used, otp_schema_has_purpose
 from core.email_templates import maybe_send_subscription_due_email
 from core.staff_notifications import notify_super_admins_in_app
 from core.subscription_service import (
@@ -725,21 +726,27 @@ def auth_otp_verify(request):
 
     try:
         now = timezone.now()
-        otp = (
-            OtpVerification.objects.filter(
-                purpose=OtpVerification.Purpose.PHONE_LOGIN,
-                phone_digits=digits,
-                code=code,
-                used_at__isnull=True,
-                expires_at__gte=now,
+        if otp_schema_has_purpose():
+            otp = (
+                OtpVerification.objects.filter(
+                    purpose=OtpVerification.Purpose.PHONE_LOGIN,
+                    phone_digits=digits,
+                    code=code,
+                    used_at__isnull=True,
+                    expires_at__gte=now,
+                )
+                .order_by("-created_at")
+                .first()
             )
-            .order_by("-created_at")
-            .first()
-        )
-        if otp is None:
-            return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
-        otp.used_at = now
-        otp.save(update_fields=["used_at"])
+            if otp is None:
+                return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+            otp.used_at = now
+            otp.save(update_fields=["used_at"])
+        else:
+            handle = legacy_find_valid_otp(phone_digits=digits, code=code, now=now)
+            if handle is None:
+                return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+            legacy_mark_used(otp_id=handle.pk, used_at=now)
     except DatabaseError:
         _LOG.exception("POST /api/auth/otp/verify/ failed (database schema or DB error)")
         return _otp_schema_error_response()
@@ -851,22 +858,33 @@ def auth_password_reset_confirm(request):
         return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
 
     now = timezone.now()
-    otp_qs = OtpVerification.objects.filter(
-        purpose=OtpVerification.Purpose.PASSWORD_RESET,
-        code=code,
-        used_at__isnull=True,
-        expires_at__gte=now,
-    )
-    if email_raw:
-        otp_qs = otp_qs.filter(email__iexact=email_raw)
-    elif digits:
-        otp_qs = otp_qs.filter(phone_digits=digits)
-    otp = otp_qs.order_by("-created_at").first()
-    if otp is None:
-        return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
-
-    otp.used_at = now
-    otp.save(update_fields=["used_at"])
+    try:
+        if otp_schema_has_purpose():
+            otp_qs = OtpVerification.objects.filter(
+                purpose=OtpVerification.Purpose.PASSWORD_RESET,
+                code=code,
+                used_at__isnull=True,
+                expires_at__gte=now,
+            )
+            if email_raw:
+                otp_qs = otp_qs.filter(email__iexact=email_raw)
+            elif digits:
+                otp_qs = otp_qs.filter(phone_digits=digits)
+            otp = otp_qs.order_by("-created_at").first()
+            if otp is None:
+                return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+            otp.used_at = now
+            otp.save(update_fields=["used_at"])
+        elif digits:
+            handle = legacy_find_valid_otp(phone_digits=digits, code=code, now=now)
+            if handle is None:
+                return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+            legacy_mark_used(otp_id=handle.pk, used_at=now)
+        else:
+            return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+    except DatabaseError:
+        _LOG.exception("POST /api/auth/password-reset/confirm/ failed (database schema or DB error)")
+        return _otp_schema_error_response()
     user.set_password(new_password)
     user.save(update_fields=["password"])
     return Response({"detail": "Password updated. You can sign in now."})

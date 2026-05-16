@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from django.db.models.signals import post_delete, post_save, pre_save
+from django.db.models.signals import post_delete, post_migrate, post_save, pre_save
 from django.dispatch import receiver
 
 from .dashboard_events import record_transaction_verified
@@ -142,3 +142,12 @@ def procedure_step_saved(sender, instance: ProcedureStep, **kwargs):
 @receiver(post_delete, sender=ProcedureStep)
 def procedure_step_deleted(sender, instance: ProcedureStep, **kwargs):
     _refresh_procedure_steps_count(instance.procedure_id)
+
+
+@receiver(post_migrate)
+def clear_otp_schema_cache_after_migrate(sender, **kwargs):
+    if getattr(sender, "name", None) != "core":
+        return
+    from core.otp_schema import invalidate_otp_schema_cache
+
+    invalidate_otp_schema_cache()
