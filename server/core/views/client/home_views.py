@@ -82,6 +82,7 @@ from core.serializers import ContactMessageDetailSerializer, PublicContactSerial
 from core.auth_notifications import (
     OTP_EXPIRY_MINUTES,
     OTP_MAX_PER_HOUR,
+    OTP_SCHEMA_UNAVAILABLE_DETAIL,
     create_otp,
     deliver_password_reset_otp,
     deliver_phone_login_otp,
@@ -100,6 +101,13 @@ from core.subscription_service import (
 from core.rbac import portal_module_perm
 
 User = get_user_model()
+
+
+def _otp_schema_error_response():
+    return Response(
+        {"detail": OTP_SCHEMA_UNAVAILABLE_DETAIL},
+        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
 
 
 def _user_me_response(user):
@@ -655,33 +663,48 @@ def auth_otp_request(request):
     if user.status == User.Status.SUSPENDED:
         return Response({"detail": "This account is suspended."}, status=status.HTTP_403_FORBIDDEN)
 
-    if _otp_rate_exceeded(purpose=OtpVerification.Purpose.PHONE_LOGIN, phone_digits=digits):
-        return Response(
-            {"detail": "Too many verification attempts. Try again later."},
-            status=status.HTTP_429_TOO_MANY_REQUESTS,
-        )
+    try:
+        if _otp_rate_exceeded(purpose=OtpVerification.Purpose.PHONE_LOGIN, phone_digits=digits):
+            return Response(
+                {"detail": "Too many verification attempts. Try again later."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
 
-    otp, code = create_otp(purpose=OtpVerification.Purpose.PHONE_LOGIN, phone_digits=digits)
-    sms_ok, sms_err = deliver_phone_login_otp(user, digits=digits, code=code)
-    if not sms_ok and not settings.DEBUG:
-        otp.delete()
-        return Response(
-            {"detail": sms_err or "We could not send the verification code. Try again later."},
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+        otp, code = create_otp(purpose=OtpVerification.Purpose.PHONE_LOGIN, phone_digits=digits)
+        try:
+            sms_ok, sms_err = deliver_phone_login_otp(user, digits=digits, code=code)
+        except Exception:
+            _LOG.exception("OTP login delivery failed for user_id=%s", user.pk)
+            otp.delete()
+            if not settings.DEBUG:
+                return Response(
+                    {"detail": "We could not send the verification code. Try again later."},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            sms_ok, sms_err = False, None
 
-    if sms_ok:
-        _LOG.info("OTP login SMS sent (…%s)", digits[-4:])
-    else:
-        _LOG.warning(
-            "OTP login SMS failed; DEBUG=true so request still succeeds (…%s)",
-            digits[-4:],
-        )
+        if not sms_ok and not settings.DEBUG:
+            otp.delete()
+            return Response(
+                {"detail": sms_err or "We could not send the verification code. Try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
-    payload: dict = {"detail": "Verification code sent."}
-    if settings.DEBUG:
-        payload["debug_otp"] = code
-    return Response(payload)
+        if sms_ok:
+            _LOG.info("OTP login SMS sent (…%s)", digits[-4:])
+        else:
+            _LOG.warning(
+                "OTP login SMS failed; DEBUG=true so request still succeeds (…%s)",
+                digits[-4:],
+            )
+
+        payload: dict = {"detail": "Verification code sent."}
+        if settings.DEBUG:
+            payload["debug_otp"] = code
+        return Response(payload)
+    except DatabaseError:
+        _LOG.exception("POST /api/auth/otp/request/ failed (database schema or DB error)")
+        return _otp_schema_error_response()
 
 
 @csrf_exempt
@@ -700,22 +723,27 @@ def auth_otp_verify(request):
     if user.status == User.Status.SUSPENDED:
         return Response({"detail": "This account is suspended."}, status=status.HTTP_403_FORBIDDEN)
 
-    now = timezone.now()
-    otp = (
-        OtpVerification.objects.filter(
-            purpose=OtpVerification.Purpose.PHONE_LOGIN,
-            phone_digits=digits,
-            code=code,
-            used_at__isnull=True,
-            expires_at__gte=now,
+    try:
+        now = timezone.now()
+        otp = (
+            OtpVerification.objects.filter(
+                purpose=OtpVerification.Purpose.PHONE_LOGIN,
+                phone_digits=digits,
+                code=code,
+                used_at__isnull=True,
+                expires_at__gte=now,
+            )
+            .order_by("-created_at")
+            .first()
         )
-        .order_by("-created_at")
-        .first()
-    )
-    if otp is None:
-        return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
-    otp.used_at = now
-    otp.save(update_fields=["used_at"])
+        if otp is None:
+            return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+        otp.used_at = now
+        otp.save(update_fields=["used_at"])
+    except DatabaseError:
+        _LOG.exception("POST /api/auth/otp/verify/ failed (database schema or DB error)")
+        return _otp_schema_error_response()
+
     login(request, user)
     try:
         send_login_email(user)
@@ -751,37 +779,41 @@ def auth_password_reset_request(request):
         return Response({"detail": "This account is suspended."}, status=status.HTTP_403_FORBIDDEN)
 
     purpose = OtpVerification.Purpose.PASSWORD_RESET
-    if email_raw and _otp_rate_exceeded(purpose=purpose, email=email_raw):
-        return Response(
-            {"detail": "Too many reset attempts. Try again later."},
-            status=status.HTTP_429_TOO_MANY_REQUESTS,
-        )
-    if digits and _otp_rate_exceeded(purpose=purpose, phone_digits=digits):
-        return Response(
-            {"detail": "Too many reset attempts. Try again later."},
-            status=status.HTTP_429_TOO_MANY_REQUESTS,
-        )
-
-    otp, code = create_otp(
-        purpose=purpose,
-        phone_digits=digits,
-        email=email_raw or user.email,
-    )
     try:
-        deliver_password_reset_otp(
-            user,
-            digits=digits,
-            email=email_raw or user.email,
-            code=code,
-        )
-    except Exception:
-        _LOG.exception("password reset OTP delivery failed for user_id=%s", user.pk)
-        otp.delete()
-        if not settings.DEBUG:
+        if email_raw and _otp_rate_exceeded(purpose=purpose, email=email_raw):
             return Response(
-                {"detail": "Could not send reset code. Try again later."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                {"detail": "Too many reset attempts. Try again later."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
+        if digits and _otp_rate_exceeded(purpose=purpose, phone_digits=digits):
+            return Response(
+                {"detail": "Too many reset attempts. Try again later."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        otp, code = create_otp(
+            purpose=purpose,
+            phone_digits=digits,
+            email=email_raw or user.email,
+        )
+        try:
+            deliver_password_reset_otp(
+                user,
+                digits=digits,
+                email=email_raw or user.email,
+                code=code,
+            )
+        except Exception:
+            _LOG.exception("password reset OTP delivery failed for user_id=%s", user.pk)
+            otp.delete()
+            if not settings.DEBUG:
+                return Response(
+                    {"detail": "Could not send reset code. Try again later."},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+    except DatabaseError:
+        _LOG.exception("POST /api/auth/password-reset/request/ failed (database schema or DB error)")
+        return _otp_schema_error_response()
 
     payload: dict = dict(generic)
     if settings.DEBUG:

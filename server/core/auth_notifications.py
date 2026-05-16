@@ -7,6 +7,7 @@ from datetime import timedelta
 from secrets import randbelow
 
 from django.conf import settings
+from django.db import DatabaseError
 from django.utils import timezone
 
 from core.email_templates import base_email_context, send_templated_email
@@ -18,27 +19,44 @@ _LOG = logging.getLogger(__name__)
 OTP_EXPIRY_MINUTES = 10
 OTP_MAX_PER_HOUR = 10
 
+OTP_SCHEMA_UNAVAILABLE_DETAIL = (
+    "Verification is temporarily unavailable. "
+    "If the site was recently updated, run: python manage.py migrate"
+)
+
+
+def _is_synthetic_phone_email(email: str) -> bool:
+    return (email or "").strip().lower().endswith("@phone.local")
+
 
 def _otp_rate_exceeded(*, purpose: str, phone_digits: str = "", email: str = "") -> bool:
     hour_ago = timezone.now() - timedelta(hours=1)
-    qs = OtpVerification.objects.filter(purpose=purpose, created_at__gte=hour_ago)
-    if phone_digits:
-        return qs.filter(phone_digits=phone_digits).count() >= OTP_MAX_PER_HOUR
-    if email:
-        return qs.filter(email__iexact=email).count() >= OTP_MAX_PER_HOUR
-    return False
+    try:
+        qs = OtpVerification.objects.filter(purpose=purpose, created_at__gte=hour_ago)
+        if phone_digits:
+            return qs.filter(phone_digits=phone_digits).count() >= OTP_MAX_PER_HOUR
+        if email:
+            return qs.filter(email__iexact=email).count() >= OTP_MAX_PER_HOUR
+        return False
+    except DatabaseError:
+        _LOG.exception("OTP rate-limit check failed (database schema or DB error)")
+        raise
 
 
 def create_otp(*, purpose: str, phone_digits: str = "", email: str = "") -> tuple[OtpVerification, str]:
     code = f"{randbelow(1_000_000):06d}"
     expires_at = timezone.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
-    otp = OtpVerification.objects.create(
-        purpose=purpose,
-        phone_digits=phone_digits or "",
-        email=(email or "").strip().lower(),
-        code=code,
-        expires_at=expires_at,
-    )
+    try:
+        otp = OtpVerification.objects.create(
+            purpose=purpose,
+            phone_digits=phone_digits or "",
+            email=(email or "").strip().lower(),
+            code=code,
+            expires_at=expires_at,
+        )
+    except DatabaseError:
+        _LOG.exception("OTP create failed (database schema or DB error)")
+        raise
     return otp, code
 
 
@@ -86,7 +104,11 @@ def deliver_phone_login_otp(user, *, digits: str, code: str) -> tuple[bool, str 
             "Do not share this code."
         )
         sms_ok = send_sms(to_e164, sms_body)
-    email_ok = bool(user.email) and send_otp_login_email(user, code=code)
+    email_ok = (
+        bool(user.email)
+        and not _is_synthetic_phone_email(user.email)
+        and send_otp_login_email(user, code=code)
+    )
     if sms_ok or email_ok:
         return True, None
     if not to_e164 and not user.email:

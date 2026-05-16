@@ -9,7 +9,8 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from core.models import Act, ActCategory, Client, KnowledgeResource, KnowledgeResourceCategory, Role, Summary, SummaryCategory
+from core.models import Act, ActCategory, Client, KnowledgeResource, KnowledgeResourceCategory, OtpVerification, Role, Summary, SummaryCategory
+from core.phone_auth import normalize_phone_digits, phone_login_email
 
 User = get_user_model()
 
@@ -210,3 +211,43 @@ class PremiumContentApiGateTests(TestCase):
         self.assertEqual(rsp.status_code, 200)
         self.assertNotIn("body", rsp.data)
         self.assertIn("body_encrypted", rsp.data)
+
+
+class AuthOtpRequestTests(TestCase):
+    def setUp(self):
+        self.api = APIClient()
+        Role.objects.get_or_create(key="user", defaults={"name": "User", "is_system": True})
+        self.digits = "9847670381"
+        self.user = User.objects.create_user(
+            email=phone_login_email(self.digits),
+            password="unused-for-otp",
+            full_name="OTP Test",
+            phone=f"+977{self.digits}",
+            role="user",
+        )
+
+    def test_otp_request_unknown_phone_returns_404(self):
+        rsp = self.api.post(
+            "/api/auth/otp/request/",
+            {"phone": "+9779800000001"},
+            format="json",
+        )
+        self.assertEqual(rsp.status_code, 404)
+
+    @override_settings(DEBUG=True)
+    def test_otp_request_known_phone_returns_debug_code(self):
+        rsp = self.api.post(
+            "/api/auth/otp/request/",
+            {"phone": f"+977{self.digits}"},
+            format="json",
+        )
+        self.assertEqual(rsp.status_code, 200, rsp.data)
+        self.assertEqual(rsp.data.get("detail"), "Verification code sent.")
+        self.assertRegex(rsp.data.get("debug_otp", ""), r"^\d{6}$")
+        self.assertEqual(
+            OtpVerification.objects.filter(
+                purpose=OtpVerification.Purpose.PHONE_LOGIN,
+                phone_digits=normalize_phone_digits(self.digits),
+            ).count(),
+            1,
+        )

@@ -8,6 +8,7 @@ from typing import Any
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import DatabaseError
 from django.utils import formats
 
 from core.models import AppSettings, EmailTemplate
@@ -173,6 +174,9 @@ def get_email_template(event_type: str) -> EmailTemplate | None:
     try:
         return EmailTemplate.objects.get(event_type=event_type)
     except EmailTemplate.DoesNotExist:
+        return None
+    except DatabaseError:
+        _LOG.exception("EmailTemplate lookup failed for event_type=%s", event_type)
         return None
 
 
