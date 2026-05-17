@@ -106,6 +106,8 @@ export interface AppSettings {
   // SEO
   seoTitle?: string; seoDescription?: string; seoKeywords?: string;
   ogImage?: string; canonicalUrl?: string; gaId?: string; robotsTxt?: string;
+  /** Third-party chat widget embed (paste full script tag(s) from your provider). */
+  chatbotScript?: string;
   // Email
   smtpHost?: string; smtpPort?: number; smtpUser?: string; smtpPass?: string; emailFromName?: string;
   // Payments

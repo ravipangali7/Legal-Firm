@@ -55,6 +55,8 @@ export interface PublicSiteConfig {
   ga_id?: string;
   /** Custom robots.txt body; served at `/robots.txt` when set. */
   robots_txt?: string;
+  /** Third-party chat widget embed (script tags); injected site-wide when set. */
+  chatbot_script?: string;
   /** ISO currency code from App Settings (e.g. NPR). */
   currency?: string;
   email_notifications?: boolean;

@@ -209,6 +209,26 @@ const AdminSettings = () => {
           </Card>
 
           <Card>
+            <CardHeader>
+              <CardTitle>Chatbot</CardTitle>
+              <CardDescription>
+                Paste the embed code from your chat provider (usually one or more script tags). It loads on every page of the site, including admin.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Label htmlFor="settings-chatbot-script">Chatbot script</Label>
+              <Textarea
+                id="settings-chatbot-script"
+                rows={8}
+                className="mt-1.5 font-mono text-xs"
+                value={form.chatbotScript || ''}
+                onChange={(e) => setForm({ ...form, chatbotScript: e.target.value })}
+                placeholder={'<script src="https://..." async></script>'}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle>Toggles</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between"><div><div className="font-medium">Maintenance mode</div><div className="text-xs text-muted-foreground">Block public access while you work on the site.</div></div><Switch checked={form.maintenanceMode} onCheckedChange={(v) => setForm({ ...form, maintenanceMode: v })} /></div>

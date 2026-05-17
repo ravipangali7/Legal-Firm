@@ -95,6 +95,7 @@ class AppSettingsPublicSerializer(serializers.ModelSerializer):
             "canonical_url",
             "ga_id",
             "robots_txt",
+            "chatbot_script",
             "nav_order",
             "google_oauth_client_id",
         )

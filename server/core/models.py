@@ -607,6 +607,10 @@ class AppSettings(SingletonModel):
     canonical_url = models.URLField(max_length=500, blank=True)
     ga_id = models.CharField(max_length=64, blank=True)
     robots_txt = models.TextField(blank=True)
+    chatbot_script = models.TextField(
+        blank=True,
+        help_text="Third-party chat widget embed code (script tags). Injected on every public page.",
+    )
     smtp_host = models.CharField(max_length=255, blank=True)
     smtp_port = models.PositiveIntegerField(blank=True, null=True)
     smtp_user = models.CharField(max_length=255, blank=True)

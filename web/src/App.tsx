@@ -93,6 +93,7 @@ import { SeoProvider } from "@/context/SeoContext";
 import { HelmetProvider } from "react-helmet-async";
 import SiteSeoHead from "@/components/seo/SiteSeoHead";
 import GoogleAnalytics from "@/components/seo/GoogleAnalytics";
+import ChatbotScript from "@/components/seo/ChatbotScript";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { userHomeHref } from "@/lib/userHomeRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -127,6 +128,7 @@ const AppShell = () => {
         <SeoProvider>
           <SiteSeoHead />
           <SiteAnalytics />
+          <SiteChatbot />
           <ImpersonationBanner />
           <div className={impersonation.active ? "pt-9" : undefined}>
             <ScrollToTop />
@@ -144,6 +146,13 @@ const SiteAnalytics = () => {
   const gaId = (config?.ga_id || '').trim();
   if (!gaId) return null;
   return <GoogleAnalytics measurementId={gaId} />;
+};
+
+const SiteChatbot = () => {
+  const { config } = useSiteConfig();
+  const script = (config?.chatbot_script || '').trim();
+  if (!script) return null;
+  return <ChatbotScript embedHtml={script} />;
 };
 
 /** Sends each role to its home (`/admin`, `/client`, `/dashboard`, or `/account`). */

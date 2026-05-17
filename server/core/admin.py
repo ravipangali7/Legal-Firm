@@ -484,7 +484,7 @@ class AppSettingsAdmin(SingletonAdminMixin, admin.ModelAdmin):
             },
         ),
         ("Flags", {"fields": ("maintenance_mode", "allow_signups", "email_notifications")}),
-        ("SEO", {"fields": ("seo_title", "seo_description", "seo_keywords", "og_image", "canonical_url", "ga_id", "robots_txt")}),
+        ("SEO", {"fields": ("seo_title", "seo_description", "seo_keywords", "og_image", "canonical_url", "ga_id", "robots_txt", "chatbot_script")}),
         ("SMTP", {"fields": ("smtp_host", "smtp_port", "smtp_user", "smtp_pass", "email_from_name")}),
         ("Payments", {"fields": ("payments_enabled",)}),
         ("Payments — eSewa (UAT only, see esewa_integration.md)", {"fields": ("esewa_enabled",)}),
