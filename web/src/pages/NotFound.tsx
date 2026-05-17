@@ -1,8 +1,16 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { usePageSeo } from "@/context/SeoContext";
 
 const NotFound = () => {
   const location = useLocation();
+
+  usePageSeo({
+    title: "Page Not Found",
+    description: "The page you requested could not be found.",
+    pathname: location.pathname,
+    noindex: true,
+  });
 
   useEffect(() => {
     console.error(

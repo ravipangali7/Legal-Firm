@@ -31,6 +31,8 @@ const BlogDetail = () => {
           type: 'article',
           publishedTime: post.date,
           author: blogPostPublicAuthorLabel(post),
+          section: post.category || undefined,
+          tags: post.category ? [post.category] : undefined,
         }
       : null
   );

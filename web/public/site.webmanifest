@@ -1,0 +1,17 @@
+{
+  "name": "TaxLexis Legal",
+  "short_name": "TaxLexis",
+  "description": "Expert tax, legal, and corporate advisory for businesses and individuals in Nepal.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f3d2e",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

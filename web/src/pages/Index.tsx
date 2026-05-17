@@ -13,6 +13,7 @@ import ChatWidget from '@/components/ChatWidget';
 import { siteHomepageIndexQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
 import { CmsStoreProvider, useCms, type SectionToggles } from '@/store/cmsStore';
+import HomepageSeo from '@/components/seo/HomepageSeo';
 import type { CSSProperties } from 'react';
 
 /** CMS section dimensions may be serialized as numbers from the API JSON. */
@@ -79,6 +80,7 @@ const Index = () => {
 
   return (
     <CmsStoreProvider initialSnapshot={initialSnapshot} persistMode="readonly">
+      <HomepageSeo />
       <div className="min-h-screen overflow-x-hidden">
         <Header />
         <Sections />

@@ -26,12 +26,17 @@ export function buildPageTitle(title: string | undefined, siteName: string): str
   return `${t} | ${site}`;
 }
 
-/** Strip tags and collapse whitespace for meta descriptions. */
-export function metaDescription(raw: string | undefined, maxLen = 160): string {
-  const text = (raw || '')
+/** Strip tags and collapse whitespace (e.g. for counters and meta tags). */
+export function seoPlainText(raw: string | undefined): string {
+  return (raw || '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** Strip tags and collapse whitespace for meta descriptions. */
+export function metaDescription(raw: string | undefined, maxLen = 160): string {
+  const text = seoPlainText(raw);
   if (!text) return '';
   if (text.length <= maxLen) return text;
   const cut = text.slice(0, maxLen - 1);
@@ -73,5 +78,26 @@ export interface PageSeoInput {
   author?: string;
   publishedTime?: string;
   modifiedTime?: string;
+  /** Open Graph article section (blog categories, practice area name, etc.) */
+  section?: string;
+  /** Article tags for `article:tag` meta */
+  tags?: string[];
+  /** Override breadcrumb labels; auto-built from pathname when omitted */
+  breadcrumbs?: { name: string; path: string }[];
+  /** Skip auto BreadcrumbList JSON-LD */
+  skipBreadcrumbs?: boolean;
+  /** `twitter:creator` handle, e.g. `@taxlexis` */
+  twitterCreator?: string;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+}
+
+/** Infer MIME type from image URL extension for `og:image:type`. */
+export function ogImageMimeType(url: string): string | undefined {
+  const path = url.split('?')[0].toLowerCase();
+  if (path.endsWith('.png')) return 'image/png';
+  if (path.endsWith('.webp')) return 'image/webp';
+  if (path.endsWith('.gif')) return 'image/gif';
+  if (path.endsWith('.svg')) return 'image/svg+xml';
+  if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg';
+  return undefined;
 }

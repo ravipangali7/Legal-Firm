@@ -64,6 +64,7 @@ def _static_paths() -> list[tuple[str, str]]:
         ("/help", "weekly"),
         ("/professionals", "weekly"),
         ("/practice-areas", "weekly"),
+        ("/law-details", "weekly"),
     ]
 
 
@@ -84,6 +85,13 @@ def collect_sitemap_urls() -> list[dict]:
 
     for path, freq in _static_paths():
         add(path, changefreq=freq, priority="0.9" if path == "/" else "0.7")
+
+    for path, freq in [
+        ("/about/background", "monthly"),
+        ("/about/our-team", "monthly"),
+        ("/about/our-services", "monthly"),
+    ]:
+        add(path, changefreq=freq, priority="0.6")
 
     for row in Act.objects.only("slug", "updated"):
         add(f"/laws/{row.slug}", lastmod=row.updated, priority="0.6", changefreq="monthly")

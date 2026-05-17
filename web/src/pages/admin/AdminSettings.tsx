@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom';
 import { Globe, Mail, CreditCard, Navigation, Settings } from 'lucide-react';
 import esewaLogo from '@/assets/esewa-logo.png';
 import ImageInput from '@/components/admin/cms/ImageInput';
+import { SeoDescriptionField } from '@/components/admin/SeoDescriptionField';
 const AdminSettings = () => {
   const { settings, updateSettings } = useAdminStore();
   const { toast } = useToast();
@@ -223,7 +224,11 @@ const AdminSettings = () => {
             <CardHeader><CardTitle>SEO Settings</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div><Label>Meta title</Label><Input value={form.seoTitle || ''} onChange={(e) => setForm({ ...form, seoTitle: e.target.value })} placeholder="TaxLexis — Nepal's Tax & Legal Advisory" /><p className="text-xs text-muted-foreground mt-1">{(form.seoTitle || '').length}/60 characters</p></div>
-              <div><Label>Meta description</Label><Textarea rows={3} value={form.seoDescription || ''} onChange={(e) => setForm({ ...form, seoDescription: e.target.value })} placeholder="Expert tax, corporate, and regulatory law advisory for Nepal..." /><p className="text-xs text-muted-foreground mt-1">{(form.seoDescription || '').length}/160 characters</p></div>
+              <SeoDescriptionField
+                value={form.seoDescription || ''}
+                onChange={(seoDescription) => setForm({ ...form, seoDescription })}
+                placeholder="Expert tax, corporate, and regulatory law advisory for Nepal..."
+              />
               <div><Label>Meta keywords</Label><Input value={form.seoKeywords || ''} onChange={(e) => setForm({ ...form, seoKeywords: e.target.value })} placeholder="tax law nepal, corporate law, VAT advisory" /></div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">

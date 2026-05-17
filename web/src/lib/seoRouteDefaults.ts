@@ -35,6 +35,16 @@ const RULES: RouteSeoRule[] = [
   exact('/knowledge', { title: 'Knowledge Base', description: 'Searchable knowledge base articles and materials.' }),
   exact('/help', { title: 'Help Center', description: 'Help articles and support documentation.' }),
   exact('/professionals', { title: 'Professionals', description: 'Meet our tax and legal professionals.' }),
+  prefix('/services', {
+    title: 'Services',
+    description: 'Legal and tax advisory services for businesses and individuals.',
+  }),
+  prefix('/news', { title: 'News', description: 'Firm news and announcements.' }),
+  prefix('/events', { title: 'Events', description: 'Upcoming events and seminars.' }),
+  prefix('/about', {
+    title: 'About',
+    description: 'Learn about our firm, mission, and team.',
+  }),
   prefix('/practice-areas', {
     title: 'Practice Areas',
     description: 'Explore our practice areas and related legal cases.',
@@ -50,6 +60,7 @@ const RULES: RouteSeoRule[] = [
   prefix('/portal', { title: 'Portal', noindex: true }),
   prefix('/payment', { title: 'Payment', noindex: true }),
   prefix('/subscribe', { title: 'Subscribe', noindex: true }),
+  prefix('/forgot-password', { title: 'Forgot Password', noindex: true }),
 ];
 
 export function seoDefaultsForPath(pathname: string): PageSeoInput | null {
