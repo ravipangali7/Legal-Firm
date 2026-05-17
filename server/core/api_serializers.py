@@ -430,7 +430,13 @@ class EmailTemplateSerializer(serializers.ModelSerializer):
             "description",
             "updated_at",
         )
-        read_only_fields = ("id", "automate", "automate_label", "event_type", "updated_at")
+        read_only_fields = ("id", "automate_label", "updated_at")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance is not None:
+            self.fields["automate"].read_only = True
+            self.fields["event_type"].read_only = True
 
 
 class NoticePublicSerializer(serializers.ModelSerializer):

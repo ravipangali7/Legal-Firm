@@ -285,6 +285,40 @@ class AdminEmailTemplatesApiTests(TestCase):
         self.assertGreaterEqual(len(rsp.data), len(EmailTemplate.EventType))
         self.assertTrue(EmailTemplate.objects.exists())
 
+    def test_create_email_template(self):
+        EmailTemplate.objects.filter(automate=EmailTemplate.Automate.SUBSCRIBED).delete()
+        rsp = self.client.post(
+            "/api/admin/email-templates/",
+            {
+                "automate": EmailTemplate.Automate.SUBSCRIBED,
+                "event_type": "",
+                "name": "Subscribed test",
+                "subject": "{{site_name}}: Test",
+                "body": "Hello {{user_name}}",
+                "enabled": True,
+                "description": "Test create",
+            },
+            format="json",
+        )
+        self.assertEqual(rsp.status_code, 201, rsp.data)
+        self.assertEqual(rsp.data["name"], "Subscribed test")
+        self.assertTrue(EmailTemplate.objects.filter(automate=EmailTemplate.Automate.SUBSCRIBED).exists())
+
+    def test_create_rejects_duplicate_automate(self):
+        existing = EmailTemplate.objects.order_by("automate").first()
+        self.assertIsNotNone(existing)
+        rsp = self.client.post(
+            "/api/admin/email-templates/",
+            {
+                "automate": existing.automate,
+                "name": "Duplicate",
+                "subject": "Subj",
+                "body": "Body",
+            },
+            format="json",
+        )
+        self.assertEqual(rsp.status_code, 400, rsp.data)
+
     def test_list_returns_503_when_table_missing(self):
         from django.db import connection
 

@@ -689,17 +689,41 @@ def admin_app_settings_test_mail(request):
 
 
 @csrf_exempt
-@api_view(["GET"])
+@api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def admin_email_templates(request):
-    if err := require_admin_perm(request, "Settings", "view"):
-        return err
     from core.email_templates import EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL, load_email_templates_for_admin
 
-    qs, detail = load_email_templates_for_admin()
-    if detail:
-        return Response({"detail": detail}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-    return Response(EmailTemplateSerializer(qs, many=True).data)
+    if request.method == "GET":
+        if err := require_admin_perm(request, "Settings", "view"):
+            return err
+        qs, detail = load_email_templates_for_admin()
+        if detail:
+            return Response({"detail": detail}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(EmailTemplateSerializer(qs, many=True).data)
+
+    if err := require_admin_perm(request, "Settings", "edit"):
+        return err
+    allowed = {"automate", "event_type", "name", "subject", "body", "enabled", "description"}
+    payload = {k: v for k, v in request.data.items() if k in allowed}
+    if not (payload.get("automate") or "").strip():
+        return Response({"automate": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        ser = EmailTemplateSerializer(data=payload)
+        if not ser.is_valid():
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+        ser.save()
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+    except IntegrityError:
+        return Response(
+            {"automate": ["A template already exists for this trigger."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except DatabaseError:
+        return Response(
+            {"detail": EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
 
 @csrf_exempt

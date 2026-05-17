@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Mail, Send, Pencil, Search, Info, Zap, FileText } from 'lucide-react';
+import { Mail, Send, Pencil, Plus, Search, Info, Zap, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,12 +18,13 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { adminPatch, adminPost } from '@/lib/adminSnapshot';
 import { sessionFetch } from '@/lib/api';
-import { emailAutomateLabel } from '@/lib/emailAutomate';
-import { emailEventTypeLabel } from '@/lib/emailEventType';
+import { defaultEventTypeForAutomate, EMAIL_AUTOMATE_OPTIONS, emailAutomateLabel } from '@/lib/emailAutomate';
+import { EMAIL_EVENT_TYPE_OPTIONS, emailEventTypeLabel } from '@/lib/emailEventType';
 import { GLOBAL_EMAIL_PLACEHOLDERS, placeholderToken, placeholdersForAutomate } from '@/lib/emailTemplatePlaceholders';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,8 @@ export interface EmailTemplateRow {
 }
 
 type TemplateForm = {
+  automate: string;
+  event_type: string;
   name: string;
   subject: string;
   body: string;
@@ -49,6 +52,8 @@ type TemplateForm = {
 };
 
 const emptyForm: TemplateForm = {
+  automate: '',
+  event_type: '',
   name: '',
   subject: '',
   body: '',
@@ -84,6 +89,7 @@ const AdminEmailTemplates = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<EmailTemplateRow | null>(null);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<TemplateForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [testTo, setTestTo] = useState('');
@@ -142,9 +148,46 @@ const AdminEmailTemplates = () => {
 
   const enabledCount = useMemo(() => rows.filter((r) => r.enabled).length, [rows]);
 
+  const usedAutomates = useMemo(() => new Set(rows.map((r) => r.automate)), [rows]);
+
+  const availableAutomates = useMemo(
+    () => EMAIL_AUTOMATE_OPTIONS.filter((o) => !usedAutomates.has(o.value)),
+    [usedAutomates],
+  );
+
+  const dialogOpen = creating || !!editing;
+
+  const activeAutomate = creating ? form.automate : editing?.automate ?? '';
+
+  const openAdd = () => {
+    if (availableAutomates.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Cannot add template',
+        description: 'Every system trigger already has a template. Edit an existing row instead.',
+      });
+      return;
+    }
+    const automate = availableAutomates[0].value;
+    setCreating(true);
+    setEditing(null);
+    setForm({
+      automate,
+      event_type: defaultEventTypeForAutomate(automate),
+      name: '',
+      subject: '{{site_name}}: ',
+      body: 'Hello {{user_name}},\n\n',
+      enabled: true,
+      description: '',
+    });
+  };
+
   const openEdit = (row: EmailTemplateRow) => {
+    setCreating(false);
     setEditing(row);
     setForm({
+      automate: row.automate,
+      event_type: row.event_type || '',
       name: row.name,
       subject: row.subject,
       body: row.body,
@@ -153,16 +196,21 @@ const AdminEmailTemplates = () => {
     });
   };
 
-  const closeEdit = () => {
+  const closeDialog = () => {
+    setCreating(false);
     setEditing(null);
     setForm(emptyForm);
   };
 
   const save = async () => {
-    if (!editing) return;
+    if (!creating && !editing) return;
     const name = form.name.trim();
     const subject = form.subject.trim();
     const body = form.body.trim();
+    if (creating && !form.automate) {
+      toast({ variant: 'destructive', title: 'Select a system trigger' });
+      return;
+    }
     if (!name) {
       toast({ variant: 'destructive', title: 'Display name is required' });
       return;
@@ -177,15 +225,28 @@ const AdminEmailTemplates = () => {
     }
     setSaving(true);
     try {
-      await adminPatch(`email-templates/${editing.id}/`, {
-        name,
-        subject,
-        body,
-        enabled: form.enabled,
-        description: form.description.trim(),
-      });
-      toast({ title: 'Template saved' });
-      closeEdit();
+      if (creating) {
+        await adminPost('email-templates/', {
+          automate: form.automate,
+          event_type: form.event_type,
+          name,
+          subject,
+          body,
+          enabled: form.enabled,
+          description: form.description.trim(),
+        });
+        toast({ title: 'Template created' });
+      } else if (editing) {
+        await adminPatch(`email-templates/${editing.id}/`, {
+          name,
+          subject,
+          body,
+          enabled: form.enabled,
+          description: form.description.trim(),
+        });
+        toast({ title: 'Template saved' });
+      }
+      closeDialog();
       await load();
     } catch (e) {
       toast({ variant: 'destructive', title: 'Save failed', description: e instanceof Error ? e.message : 'Error' });
@@ -212,7 +273,9 @@ const AdminEmailTemplates = () => {
     }
   };
 
-  const triggerPlaceholders = editing ? placeholdersForAutomate(editing.automate) : GLOBAL_EMAIL_PLACEHOLDERS;
+  const triggerPlaceholders = activeAutomate
+    ? placeholdersForAutomate(activeAutomate)
+    : GLOBAL_EMAIL_PLACEHOLDERS;
 
   return (
     <div className="space-y-6">
@@ -227,24 +290,30 @@ const AdminEmailTemplates = () => {
             system trigger; placeholders are replaced when the message is sent.
           </p>
         </div>
-        {!loading && rows.length > 0 && (
-          <div className="flex flex-wrap gap-2 sm:justify-end">
-            <Badge variant="outline" className="text-sm py-1 px-2.5">
-              {rows.length} templates
-            </Badge>
-            <Badge variant={enabledCount === rows.length ? 'default' : 'secondary'} className="text-sm py-1 px-2.5">
-              {enabledCount} auto-send on
-            </Badge>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {!loading && rows.length > 0 && (
+            <>
+              <Badge variant="outline" className="text-sm py-1 px-2.5">
+                {rows.length} templates
+              </Badge>
+              <Badge variant={enabledCount === rows.length ? 'default' : 'secondary'} className="text-sm py-1 px-2.5">
+                {enabledCount} auto-send on
+              </Badge>
+            </>
+          )}
+          <Button onClick={openAdd} disabled={!loading && availableAutomates.length === 0}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add template
+          </Button>
+        </div>
       </div>
 
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>System templates</CardTitle>
           <CardDescription className="mt-1">
-            Templates are created by the platform for each automate trigger. Edit content below; triggers and event keys
-            cannot be changed here.
+            One template per system trigger (login, sign up, OTP, payments, and so on). Use Add template for triggers
+            that are missing; edit existing rows to change message content.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -264,7 +333,7 @@ const AdminEmailTemplates = () => {
           ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
               {rows.length === 0
-                ? 'No templates found. Run database migrations to seed defaults.'
+                ? 'No templates yet. Use Add template above to create one for each system trigger.'
                 : 'No matches for your search.'}
             </p>
           ) : (
@@ -326,22 +395,23 @@ const AdminEmailTemplates = () => {
         </CardContent>
       </Card>
 
-      <Dialog open={!!editing} onOpenChange={(o) => !o && closeEdit()}>
+      <Dialog open={dialogOpen} onOpenChange={(o) => !o && closeDialog()}>
         <DialogContent className="max-w-4xl max-h-[92vh] p-0 gap-0 overflow-hidden flex flex-col">
           <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/30">
             <DialogTitle className="text-xl pr-8">
-              Edit email template
-              {editing ? (
+              {creating ? 'Add email template' : 'Edit email template'}
+              {!creating && editing ? (
                 <span className="font-normal text-muted-foreground"> — {emailAutomateLabel(editing.automate)}</span>
               ) : null}
             </DialogTitle>
             <DialogDescription>
-              Fields match the database model: name, subject, body, enabled, and staff description. Automate and event
-              type are read-only system identifiers.
+              {creating
+                ? 'Choose a system trigger that does not yet have a template, then set the message content and delivery options.'
+                : 'Update message content and delivery options. Automate and event type cannot be changed after creation.'}
             </DialogDescription>
           </DialogHeader>
 
-          {editing && (
+          {dialogOpen && (
             <div className="flex-1 overflow-y-auto">
               <div className="grid lg:grid-cols-[1fr_min(300px,100%)] gap-0 min-h-0">
                 <div className="px-6 py-5 space-y-6">
@@ -350,28 +420,78 @@ const AdminEmailTemplates = () => {
                       <Zap className="h-4 w-4 text-primary" />
                       System trigger
                     </h3>
-                    <div className="grid sm:grid-cols-2 gap-3 rounded-lg border bg-muted/20 p-4 text-sm">
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Automate</p>
-                        <p className="font-medium mt-1">{editing.automate_label || emailAutomateLabel(editing.automate)}</p>
-                        <p className="font-mono text-xs text-muted-foreground mt-0.5">{editing.automate}</p>
+                    {creating ? (
+                      <div className="grid sm:grid-cols-2 gap-4 rounded-lg border bg-muted/20 p-4">
+                        <div>
+                          <Label htmlFor="tpl-automate">Automate trigger</Label>
+                          <Select
+                            value={form.automate}
+                            onValueChange={(automate) =>
+                              setForm({
+                                ...form,
+                                automate,
+                                event_type: defaultEventTypeForAutomate(automate),
+                              })
+                            }
+                          >
+                            <SelectTrigger id="tpl-automate" className="mt-1.5">
+                              <SelectValue placeholder="Select trigger" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableAutomates.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1.5 font-mono">{form.automate}</p>
+                        </div>
+                        <div>
+                          <Label htmlFor="tpl-event-type">Event type (optional)</Label>
+                          <Select
+                            value={form.event_type || '__none__'}
+                            onValueChange={(v) => setForm({ ...form, event_type: v === '__none__' ? '' : v })}
+                          >
+                            <SelectTrigger id="tpl-event-type" className="mt-1.5">
+                              <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">None</SelectItem>
+                              {EMAIL_EVENT_TYPE_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1.5">Legacy lookup key; can be left empty.</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Event type</p>
-                        <p className="font-medium mt-1">
-                          {editing.event_type ? emailEventTypeLabel(editing.event_type) : '—'}
-                        </p>
-                        {editing.event_type ? (
-                          <p className="font-mono text-xs text-muted-foreground mt-0.5">{editing.event_type}</p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground mt-0.5">Optional legacy key</p>
-                        )}
+                    ) : editing ? (
+                      <div className="grid sm:grid-cols-2 gap-3 rounded-lg border bg-muted/20 p-4 text-sm">
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Automate</p>
+                          <p className="font-medium mt-1">{editing.automate_label || emailAutomateLabel(editing.automate)}</p>
+                          <p className="font-mono text-xs text-muted-foreground mt-0.5">{editing.automate}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Event type</p>
+                          <p className="font-medium mt-1">
+                            {editing.event_type ? emailEventTypeLabel(editing.event_type) : '—'}
+                          </p>
+                          {editing.event_type ? (
+                            <p className="font-mono text-xs text-muted-foreground mt-0.5">{editing.event_type}</p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground mt-0.5">Optional legacy key</p>
+                          )}
+                        </div>
+                        <div className="sm:col-span-2">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last updated</p>
+                          <p className="mt-1">{formatUpdatedAt(editing.updated_at)}</p>
+                        </div>
                       </div>
-                      <div className="sm:col-span-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last updated</p>
-                        <p className="mt-1">{formatUpdatedAt(editing.updated_at)}</p>
-                      </div>
-                    </div>
+                    ) : null}
                   </section>
 
                   <Separator />
@@ -451,7 +571,7 @@ const AdminEmailTemplates = () => {
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           When on, the platform sends this template automatically when the{' '}
-                          <span className="font-medium">{emailAutomateLabel(editing.automate)}</span> trigger fires.
+                          <span className="font-medium">{emailAutomateLabel(activeAutomate)}</span> trigger fires.
                           When off, the send is skipped.
                         </p>
                       </div>
@@ -474,9 +594,11 @@ const AdminEmailTemplates = () => {
                     </div>
                   </section>
 
-                  <Separator />
+                  {!creating && editing && (
+                    <>
+                      <Separator />
 
-                  <section className="space-y-3 rounded-lg border border-dashed p-4 bg-muted/10">
+                      <section className="space-y-3 rounded-lg border border-dashed p-4 bg-muted/10">
                     <Label htmlFor="tpl-test-to" className="flex items-center gap-2">
                       <Send className="h-4 w-4" />
                       Send test email
@@ -499,6 +621,8 @@ const AdminEmailTemplates = () => {
                       </Button>
                     </div>
                   </section>
+                    </>
+                  )}
                 </div>
 
                 <aside className="border-t lg:border-t-0 lg:border-l bg-muted/20 px-5 py-5">
@@ -508,7 +632,7 @@ const AdminEmailTemplates = () => {
                   </p>
                   <ScrollArea className="h-[min(320px,40vh)] lg:h-[calc(92vh-220px)] pr-3">
                     <p className="text-xs font-medium text-muted-foreground mb-2">
-                      For {emailAutomateLabel(editing.automate)}
+                      For {emailAutomateLabel(activeAutomate)}
                     </p>
                     <ul className="space-y-1.5 mb-4">
                       {triggerPlaceholders.map((key) => (
@@ -550,11 +674,11 @@ const AdminEmailTemplates = () => {
           )}
 
           <DialogFooter className="px-6 py-4 border-t bg-muted/20 gap-2 sm:gap-0">
-            <Button variant="outline" onClick={closeEdit} disabled={saving}>
+            <Button variant="outline" onClick={closeDialog} disabled={saving}>
               Cancel
             </Button>
             <Button onClick={() => void save()} disabled={saving}>
-              {saving ? 'Saving…' : 'Save changes'}
+              {saving ? 'Saving…' : creating ? 'Create template' : 'Save changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
