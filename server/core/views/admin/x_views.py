@@ -8,7 +8,7 @@ from django.contrib.auth import login
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMessage, get_connection
 from django.core.validators import validate_email
-from django.db import IntegrityError
+from django.db import DatabaseError, IntegrityError
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 
@@ -694,7 +694,11 @@ def admin_app_settings_test_mail(request):
 def admin_email_templates(request):
     if err := require_admin_perm(request, "Settings", "view"):
         return err
-    qs = EmailTemplate.objects.order_by("event_type")
+    from core.email_templates import EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL, load_email_templates_for_admin
+
+    qs, detail = load_email_templates_for_admin()
+    if detail:
+        return Response({"detail": detail}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     return Response(EmailTemplateSerializer(qs, many=True).data)
 
 
@@ -709,7 +713,15 @@ def admin_email_template_detail(request, template_id):
         tid = uuid.UUID(str(template_id))
     except ValueError:
         return Response({"detail": "Invalid id."}, status=status.HTTP_400_BAD_REQUEST)
-    obj = get_object_or_404(EmailTemplate, pk=tid)
+    from core.email_templates import EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL
+
+    try:
+        obj = get_object_or_404(EmailTemplate, pk=tid)
+    except DatabaseError:
+        return Response(
+            {"detail": EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     if request.method == "GET":
         return Response(EmailTemplateSerializer(obj).data)
     allowed = {"name", "subject", "body", "enabled", "description"}
@@ -731,7 +743,15 @@ def admin_email_template_test(request, template_id):
         tid = uuid.UUID(str(template_id))
     except ValueError:
         return Response({"detail": "Invalid id."}, status=status.HTTP_400_BAD_REQUEST)
-    obj = get_object_or_404(EmailTemplate, pk=tid)
+    from core.email_templates import EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL
+
+    try:
+        obj = get_object_or_404(EmailTemplate, pk=tid)
+    except DatabaseError:
+        return Response(
+            {"detail": EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     to_addr = (request.data.get("to") or "").strip()
     if not to_addr:
         return Response({"detail": "Recipient address (to) is required."}, status=status.HTTP_400_BAD_REQUEST)

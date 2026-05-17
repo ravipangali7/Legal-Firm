@@ -9,7 +9,18 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from core.models import Act, ActCategory, Client, KnowledgeResource, KnowledgeResourceCategory, OtpVerification, Role, Summary, SummaryCategory
+from core.models import (
+    Act,
+    ActCategory,
+    Client,
+    EmailTemplate,
+    KnowledgeResource,
+    KnowledgeResourceCategory,
+    OtpVerification,
+    Role,
+    Summary,
+    SummaryCategory,
+)
 from core.phone_auth import normalize_phone_digits, phone_login_email
 
 User = get_user_model()
@@ -251,3 +262,40 @@ class AuthOtpRequestTests(TestCase):
             ).count(),
             1,
         )
+
+
+class AdminEmailTemplatesApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        Role.objects.get_or_create(
+            key="super_admin",
+            defaults={"name": "Super Admin", "is_system": True},
+        )
+        self.user = User.objects.create_superuser(
+            email="email-tpl-admin@test.example",
+            password="secret123",
+            full_name="Email Admin",
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_list_returns_seeded_templates(self):
+        EmailTemplate.objects.all().delete()
+        rsp = self.client.get("/api/admin/email-templates/")
+        self.assertEqual(rsp.status_code, 200, rsp.data)
+        self.assertGreaterEqual(len(rsp.data), len(EmailTemplate.EventType))
+        self.assertTrue(EmailTemplate.objects.exists())
+
+    def test_list_returns_503_when_table_missing(self):
+        from django.db import connection
+
+        table = EmailTemplate._meta.db_table
+        backup = f"{table}_missing_test"
+        with connection.cursor() as cursor:
+            cursor.execute(f"ALTER TABLE {table} RENAME TO {backup}")
+        try:
+            rsp = self.client.get("/api/admin/email-templates/")
+            self.assertEqual(rsp.status_code, 503, rsp.data)
+            self.assertIn("ensure_otp_migrations", rsp.data.get("detail", ""))
+        finally:
+            with connection.cursor() as cursor:
+                cursor.execute(f"ALTER TABLE {backup} RENAME TO {table}")

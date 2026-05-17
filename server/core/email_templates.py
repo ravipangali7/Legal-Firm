@@ -221,6 +221,33 @@ def seed_default_email_templates() -> None:
         )
 
 
+EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL = (
+    "Email templates are unavailable. "
+    "If the site was recently updated, run: python manage.py ensure_otp_migrations"
+)
+
+
+def ordered_email_templates_queryset():
+    """Staff API list ordering; raises :class:`~django.db.DatabaseError` when migration 0039+ is missing."""
+    return EmailTemplate.objects.order_by("event_type")
+
+
+def load_email_templates_for_admin() -> tuple[Any | None, str | None]:
+    """
+    Return (queryset, None) on success, or (None, detail) when the table is missing or the DB fails.
+    Seeds default rows when the table exists but is empty.
+    """
+    try:
+        qs = ordered_email_templates_queryset()
+        if not qs.exists():
+            seed_default_email_templates()
+            qs = ordered_email_templates_queryset()
+        return qs, None
+    except DatabaseError:
+        _LOG.exception("EmailTemplate load/seed failed (database schema or DB error)")
+        return None, EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL
+
+
 def maybe_send_subscription_due_email(user) -> None:
     from core.subscription_service import renewal_recommended
 

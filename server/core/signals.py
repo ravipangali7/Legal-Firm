@@ -151,3 +151,20 @@ def clear_otp_schema_cache_after_migrate(sender, **kwargs):
     from core.otp_schema import invalidate_otp_schema_cache
 
     invalidate_otp_schema_cache()
+
+
+@receiver(post_migrate)
+def seed_email_templates_after_migrate(sender, **kwargs):
+    """Ensure default rows exist after 0039+ even when RunPython seed was skipped."""
+    if getattr(sender, "name", None) != "core":
+        return
+    from django.db import connection
+
+    from core.email_templates import seed_default_email_templates
+    from core.models import EmailTemplate
+
+    table = EmailTemplate._meta.db_table
+    if table not in connection.introspection.table_names():
+        return
+    if not EmailTemplate.objects.exists():
+        seed_default_email_templates()

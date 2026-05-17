@@ -927,11 +927,20 @@ class BlogPost(UUIDModel):
 
 class EmailTemplate(UUIDModel):
     """
-    Staff-editable transactional email content. ``event_type`` keys are fixed system triggers;
+    Staff-editable transactional email content. ``automate`` selects when the message is sent;
     subject/body support ``{{placeholder}}`` tokens documented per template.
     """
 
+    class Automate(models.TextChoices):
+        LOGIN = "login", "Login"
+        SIGN_UP = "sign_up", "Sign up"
+        OTP = "otp", "OTP"
+        PAYMENT_DUE = "payment_due", "Payment due"
+        PAID = "paid", "Paid"
+        SUBSCRIBED = "subscribed", "Subscribed"
+
     class EventType(models.TextChoices):
+        """Legacy trigger keys; mapped to :attr:`automate` for template lookup."""
         SIGNUP = "signup", "Signup welcome"
         LOGIN = "login", "Login thank you"
         OTP_LOGIN = "otp_login", "OTP login code"
@@ -942,7 +951,18 @@ class EmailTemplate(UUIDModel):
         SUBSCRIPTION_DUE = "subscription_due", "Subscription renewal due"
         PACKAGE_ENDED = "package_ended", "Package ended"
 
-    event_type = models.CharField(max_length=32, choices=EventType.choices, unique=True)
+    automate = models.CharField(
+        max_length=32,
+        choices=Automate.choices,
+        unique=True,
+        help_text="System event that sends this template automatically.",
+    )
+    event_type = models.CharField(
+        max_length=32,
+        choices=EventType.choices,
+        blank=True,
+        help_text="Primary legacy trigger key (optional).",
+    )
     name = models.CharField(max_length=255)
     subject = models.CharField(max_length=255)
     body = models.TextField()
@@ -954,12 +974,12 @@ class EmailTemplate(UUIDModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["event_type"]
+        ordering = ["automate"]
         verbose_name = "Email template"
         verbose_name_plural = "Email templates"
 
     def __str__(self):
-        return f"{self.name} ({self.event_type})"
+        return f"{self.name} ({self.get_automate_display()})"
 
 
 class HelpArticle(UUIDModel):
