@@ -14,8 +14,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         verbosity = options.get("verbosity", 1)
         call_command("migrate", "core", verbosity=verbosity)
+        from core.email_template_schema import invalidate_email_template_schema_cache
         from core.email_templates import seed_default_email_templates
+        from core.otp_schema import invalidate_otp_schema_cache
 
+        invalidate_otp_schema_cache()
+        invalidate_email_template_schema_cache()
         seed_default_email_templates()
         self.stdout.write(
             self.style.SUCCESS(

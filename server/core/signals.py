@@ -151,9 +151,11 @@ def procedure_step_deleted(sender, instance: ProcedureStep, **kwargs):
 def clear_otp_schema_cache_after_migrate(sender, **kwargs):
     if getattr(sender, "name", None) != "core":
         return
+    from core.email_template_schema import invalidate_email_template_schema_cache
     from core.otp_schema import invalidate_otp_schema_cache
 
     invalidate_otp_schema_cache()
+    invalidate_email_template_schema_cache()
 
 
 @receiver(post_migrate)
@@ -163,11 +165,14 @@ def seed_email_templates_after_migrate(sender, **kwargs):
         return
     from django.db import connection
 
+    from core.email_template_schema import email_template_schema_has_automate
     from core.email_templates import seed_default_email_templates
     from core.models import EmailTemplate
 
     table = EmailTemplate._meta.db_table
     if table not in connection.introspection.table_names():
+        return
+    if not email_template_schema_has_automate():
         return
     if not EmailTemplate.objects.exists():
         seed_default_email_templates()

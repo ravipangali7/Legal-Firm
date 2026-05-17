@@ -11,6 +11,10 @@ from django.core.cache import cache
 from django.db import DatabaseError
 from django.utils import formats
 
+from core.email_template_schema import (
+    EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL,
+    email_templates_schema_unavailable_detail,
+)
 from core.models import AppSettings, EmailTemplate
 from core.outbound_email import send_site_transactional_email_with_outcome
 
@@ -237,12 +241,6 @@ def seed_default_email_templates() -> None:
         )
 
 
-EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL = (
-    "Email templates are unavailable. "
-    "If the site was recently updated, run: python manage.py migrate"
-)
-
-
 def ordered_email_templates_queryset():
     """Staff API list ordering; raises :class:`~django.db.DatabaseError` when migrations are missing."""
     return EmailTemplate.objects.order_by("automate")
@@ -253,6 +251,8 @@ def load_email_templates_for_admin() -> tuple[Any | None, str | None]:
     Return (queryset, None) on success, or (None, detail) when the table is missing or the DB fails.
     Seeds default rows when the table exists but is empty.
     """
+    if detail := email_templates_schema_unavailable_detail():
+        return None, detail
     try:
         qs = ordered_email_templates_queryset()
         if not qs.exists():
