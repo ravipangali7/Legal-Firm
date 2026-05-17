@@ -697,11 +697,11 @@ class BlogPostAdmin(admin.ModelAdmin):
 
 @admin.register(models.EmailTemplate)
 class EmailTemplateAdmin(admin.ModelAdmin):
-    list_display = ("name", "event_type", "enabled", "updated_at")
-    list_filter = ("enabled", "event_type")
-    search_fields = ("name", "event_type", "subject")
-    readonly_fields = ("event_type", "updated_at")
-    ordering = ("event_type",)
+    list_display = ("name", "automate", "enabled", "updated_at")
+    list_filter = ("enabled", "automate")
+    search_fields = ("name", "automate", "subject")
+    readonly_fields = ("automate", "event_type", "updated_at")
+    ordering = ("automate",)
 
 
 @admin.register(models.HelpArticle)

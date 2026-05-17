@@ -414,10 +414,14 @@ class HelpArticleSerializer(serializers.ModelSerializer):
 
 
 class EmailTemplateSerializer(serializers.ModelSerializer):
+    automate_label = serializers.CharField(source="get_automate_display", read_only=True)
+
     class Meta:
         model = EmailTemplate
         fields = (
             "id",
+            "automate",
+            "automate_label",
             "event_type",
             "name",
             "subject",
@@ -426,12 +430,7 @@ class EmailTemplateSerializer(serializers.ModelSerializer):
             "description",
             "updated_at",
         )
-        read_only_fields = ("id", "event_type", "updated_at")
-
-    def validate_event_type(self, value):
-        if self.instance is not None and value != self.instance.event_type:
-            raise serializers.ValidationError("Event type cannot be changed.")
-        return value
+        read_only_fields = ("id", "automate", "automate_label", "event_type", "updated_at")
 
 
 class NoticePublicSerializer(serializers.ModelSerializer):

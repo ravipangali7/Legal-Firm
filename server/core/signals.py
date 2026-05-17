@@ -11,6 +11,7 @@ from .payment_notifications import (
     send_payment_pending_email,
     send_payment_rejected_email,
     send_payment_verified_email,
+    send_subscribed_email,
 )
 from .sms import send_payment_rejection_sms
 from .sync_user_client import sync_crm_client_for_user
@@ -80,6 +81,7 @@ def transaction_subscription_effects(sender, instance: Transaction, created: boo
             record_transaction_verified(instance)
             try:
                 send_payment_verified_email(instance)
+                send_subscribed_email(instance)
             except Exception:
                 pass
         elif instance.status == Transaction.Status.PENDING:
@@ -108,6 +110,7 @@ def transaction_subscription_effects(sender, instance: Transaction, created: boo
         record_transaction_verified(instance)
         try:
             send_payment_verified_email(instance)
+            send_subscribed_email(instance)
         except Exception:
             pass
         return

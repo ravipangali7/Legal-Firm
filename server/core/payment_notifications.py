@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.utils import formats
 
-from core.email_templates import base_email_context, send_templated_email
+from core.email_templates import base_email_context, send_automated_email, send_templated_email
 from core.models import EmailTemplate, Transaction
 
 
@@ -46,5 +46,15 @@ def send_payment_rejected_email(txn: Transaction) -> None:
         EmailTemplate.EventType.PAYMENT_REJECTED,
         to_email=txn.email or txn.user.email,
         context=ctx,
+        user=txn.user,
+    )
+
+
+def send_subscribed_email(txn: Transaction) -> None:
+    """Subscription access granted after payment verification."""
+    send_automated_email(
+        EmailTemplate.Automate.SUBSCRIBED,
+        to_email=txn.email or txn.user.email,
+        context=_txn_context(txn),
         user=txn.user,
     )

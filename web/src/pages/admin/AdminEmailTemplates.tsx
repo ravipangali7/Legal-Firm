@@ -13,9 +13,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { adminPatch, adminPost } from '@/lib/adminSnapshot';
 import { sessionFetch } from '@/lib/api';
+import { emailAutomateLabel } from '@/lib/emailAutomate';
 
 export interface EmailTemplateRow {
   id: string;
+  automate: string;
+  automate_label?: string;
   event_type: string;
   name: string;
   subject: string;
@@ -142,7 +145,7 @@ const AdminEmailTemplates = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Event</TableHead>
+                  <TableHead>Automate</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Subject</TableHead>
                   <TableHead>Status</TableHead>
@@ -152,7 +155,10 @@ const AdminEmailTemplates = () => {
               <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-mono text-xs">{row.event_type}</TableCell>
+                    <TableCell>
+                      <span className="font-medium">{row.automate_label || emailAutomateLabel(row.automate)}</span>
+                      <span className="block font-mono text-xs text-muted-foreground">{row.automate}</span>
+                    </TableCell>
                     <TableCell>{row.name}</TableCell>
                     <TableCell className="max-w-[240px] truncate text-sm text-muted-foreground">{row.subject}</TableCell>
                     <TableCell>
@@ -174,7 +180,9 @@ const AdminEmailTemplates = () => {
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit template — {editing?.event_type}</DialogTitle>
+            <DialogTitle>
+              Edit template — {editing ? emailAutomateLabel(editing.automate) : ''}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>

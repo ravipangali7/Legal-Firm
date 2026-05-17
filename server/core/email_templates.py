@@ -18,10 +18,24 @@ _LOG = logging.getLogger(__name__)
 
 _PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
 
+# Legacy trigger keys → ``EmailTemplate.automate`` choice.
+EVENT_TYPE_TO_AUTOMATE: dict[str, str] = {
+    EmailTemplate.EventType.SIGNUP: EmailTemplate.Automate.SIGN_UP,
+    EmailTemplate.EventType.LOGIN: EmailTemplate.Automate.LOGIN,
+    EmailTemplate.EventType.OTP_LOGIN: EmailTemplate.Automate.OTP,
+    EmailTemplate.EventType.PASSWORD_RESET: EmailTemplate.Automate.OTP,
+    EmailTemplate.EventType.PAYMENT_VERIFIED: EmailTemplate.Automate.PAID,
+    EmailTemplate.EventType.PAYMENT_PENDING: EmailTemplate.Automate.PAID,
+    EmailTemplate.EventType.PAYMENT_REJECTED: EmailTemplate.Automate.PAID,
+    EmailTemplate.EventType.SUBSCRIPTION_DUE: EmailTemplate.Automate.PAYMENT_DUE,
+    EmailTemplate.EventType.PACKAGE_ENDED: EmailTemplate.Automate.PAYMENT_DUE,
+}
+
 DEFAULT_EMAIL_TEMPLATES: list[dict[str, str]] = [
     {
+        "automate": EmailTemplate.Automate.SIGN_UP,
         "event_type": EmailTemplate.EventType.SIGNUP,
-        "name": "Signup welcome",
+        "name": "Sign up welcome",
         "subject": "{{site_name}}: Welcome — account pending approval",
         "body": (
             "Hello {{user_name}},\n\n"
@@ -30,9 +44,10 @@ DEFAULT_EMAIL_TEMPLATES: list[dict[str, str]] = [
             "Sign in: {{login_url}}\n\n"
             "If you did not create this account, contact {{support_email}}."
         ),
-        "description": "Sent after a new user completes signup. Placeholders: site_name, user_name, user_email, login_url, support_email.",
+        "description": "Sent after a new user completes signup.",
     },
     {
+        "automate": EmailTemplate.Automate.LOGIN,
         "event_type": EmailTemplate.EventType.LOGIN,
         "name": "Login thank you",
         "subject": "{{site_name}}: Thank you for signing in",
@@ -41,93 +56,60 @@ DEFAULT_EMAIL_TEMPLATES: list[dict[str, str]] = [
             "Thank you for signing in to {{site_name}} on {{login_time}}.\n\n"
             "If this was not you, reset your password or contact {{support_email}} immediately."
         ),
-        "description": "Sent after a successful password or OTP login. Placeholders: site_name, user_name, user_email, login_time, support_email.",
+        "description": "Sent after a successful sign-in.",
     },
     {
+        "automate": EmailTemplate.Automate.OTP,
         "event_type": EmailTemplate.EventType.OTP_LOGIN,
-        "name": "OTP login code",
-        "subject": "{{site_name}}: Your login code",
+        "name": "OTP verification",
+        "subject": "{{site_name}}: Your verification code",
         "body": (
             "Hello {{user_name}},\n\n"
-            "Your login code is {{otp_code}}. It expires in {{otp_expiry_minutes}} minutes.\n\n"
-            "Do not share this code with anyone."
+            "Your verification code is {{otp_code}}. It expires in {{otp_expiry_minutes}} minutes.\n\n"
+            "Do not share this code. For password reset, visit: {{reset_url}}"
         ),
-        "description": "Sent with phone OTP login when the user has an email on file. Placeholders: otp_code, otp_expiry_minutes, user_name, site_name.",
+        "description": "Sent for phone login OTP and forgot-password OTP (email and SMS).",
     },
     {
-        "event_type": EmailTemplate.EventType.PASSWORD_RESET,
-        "name": "Password reset OTP",
-        "subject": "{{site_name}}: Password reset code",
-        "body": (
-            "Hello {{user_name}},\n\n"
-            "Use this code to reset your password: {{otp_code}}\n"
-            "It expires in {{otp_expiry_minutes}} minutes.\n\n"
-            "Reset page: {{reset_url}}\n\n"
-            "If you did not request a reset, ignore this email."
-        ),
-        "description": "Sent for forgot-password (email or phone flow). Placeholders: otp_code, otp_expiry_minutes, reset_url, user_name, site_name.",
-    },
-    {
-        "event_type": EmailTemplate.EventType.PAYMENT_VERIFIED,
-        "name": "Payment confirmed",
-        "subject": "{{site_name}}: Payment confirmed — {{invoice}}",
-        "body": (
-            "Hello {{user_name}},\n\n"
-            "Your payment of {{amount}} {{currency}} for invoice {{invoice}} has been verified.\n"
-            "Plan: {{plan}} ({{billing_cycle}}).\n"
-            "Package access until: {{package_end_date}}.\n\n"
-            "Wallet: {{wallet_url}}"
-        ),
-        "description": "Sent when a subscription payment is verified. Placeholders: invoice, amount, currency, plan, billing_cycle, package_end_date, wallet_url.",
-    },
-    {
-        "event_type": EmailTemplate.EventType.PAYMENT_PENDING,
-        "name": "Payment pending",
-        "subject": "{{site_name}}: Payment received — awaiting verification",
-        "body": (
-            "Hello {{user_name}},\n\n"
-            "We received your payment submission for invoice {{invoice}} ({{amount}} {{currency}}). "
-            "A Super Admin will verify it shortly.\n\n"
-            "Wallet: {{wallet_url}}"
-        ),
-        "description": "Sent when a non-eSewa payment is submitted as pending. Placeholders: invoice, amount, currency, wallet_url.",
-    },
-    {
-        "event_type": EmailTemplate.EventType.PAYMENT_REJECTED,
-        "name": "Payment rejected",
-        "subject": "{{site_name}}: Payment could not be verified — {{invoice}}",
-        "body": (
-            "Hello {{user_name}},\n\n"
-            "Your payment for invoice {{invoice}} was not verified.\n"
-            "Reason: {{rejection_reason}}\n\n"
-            "You may submit again from your wallet: {{wallet_url}}"
-        ),
-        "description": "Sent when a pending payment is rejected. Placeholders: invoice, rejection_reason, wallet_url.",
-    },
-    {
+        "automate": EmailTemplate.Automate.PAYMENT_DUE,
         "event_type": EmailTemplate.EventType.SUBSCRIPTION_DUE,
-        "name": "Subscription renewal due",
+        "name": "Payment due",
         "subject": "{{site_name}}: Your subscription renewal is due",
         "body": (
             "Hello {{user_name}},\n\n"
             "Your paid subscription period ended on {{subscription_end_date}}, but your library benefits "
-            "remain active until {{package_end_date}}. Renew now to extend access:\n\n"
-            "{{wallet_url}}"
+            "remain active until {{package_end_date}}. Renew now:\n\n"
+            "{{wallet_url}}\n\n"
+            "If your package has already ended{{ended_on}}, renew from your wallet to restore access."
         ),
-        "description": "Sent once per billing period when renewal is recommended. Placeholders: subscription_end_date, package_end_date, wallet_url.",
+        "description": "Sent when renewal is due or package access has ended.",
     },
     {
-        "event_type": EmailTemplate.EventType.PACKAGE_ENDED,
-        "name": "Package ended",
-        "subject": "{{site_name}}: Your package has ended",
+        "automate": EmailTemplate.Automate.PAID,
+        "event_type": EmailTemplate.EventType.PAYMENT_VERIFIED,
+        "name": "Payment paid",
+        "subject": "{{site_name}}: Payment update — {{invoice}}",
         "body": (
             "Hello {{user_name}},\n\n"
-            "Your subscription package access ended{{ended_on}}. "
-            "Renew or purchase again from your dashboard wallet:\n\n"
-            "{{wallet_url}}\n\n"
-            "If you did not expect this message, contact support."
+            "Payment for invoice {{invoice}}: {{amount}} {{currency}}.\n"
+            "Plan: {{plan}} ({{billing_cycle}}).\n"
+            "Access until: {{package_end_date}}.\n\n"
+            "{{wallet_url}}"
         ),
-        "description": "Sent when plan benefits end. Placeholders: ended_on, wallet_url.",
+        "description": "Sent when a payment is verified, pending, or rejected (use placeholders as needed).",
+    },
+    {
+        "automate": EmailTemplate.Automate.SUBSCRIBED,
+        "event_type": "",
+        "name": "Subscribed",
+        "subject": "{{site_name}}: Your subscription is active",
+        "body": (
+            "Hello {{user_name}},\n\n"
+            "Your {{plan}} subscription at {{site_name}} is now active. "
+            "Library access runs until {{package_end_date}}.\n\n"
+            "Manage your account: {{wallet_url}}"
+        ),
+        "description": "Sent when a subscription payment is verified and access is granted.",
     },
 ]
 
@@ -170,7 +152,20 @@ def render_template_text(text: str, context: dict[str, Any]) -> str:
     return _PLACEHOLDER_RE.sub(repl, text)
 
 
+def get_email_template_by_automate(automate: str) -> EmailTemplate | None:
+    try:
+        return EmailTemplate.objects.get(automate=automate)
+    except EmailTemplate.DoesNotExist:
+        return None
+    except DatabaseError:
+        _LOG.exception("EmailTemplate lookup failed for automate=%s", automate)
+        return None
+
+
 def get_email_template(event_type: str) -> EmailTemplate | None:
+    automate = EVENT_TYPE_TO_AUTOMATE.get(event_type)
+    if automate:
+        return get_email_template_by_automate(automate)
     try:
         return EmailTemplate.objects.get(event_type=event_type)
     except EmailTemplate.DoesNotExist:
@@ -207,11 +202,32 @@ def send_templated_email(
     return send_site_transactional_email_with_outcome(to_email=to, subject=subject, body=body)
 
 
+def send_automated_email(
+    automate: str,
+    *,
+    to_email: str,
+    context: dict[str, Any] | None = None,
+    user=None,
+) -> tuple[str, str]:
+    """Send using the ``automate`` choice directly (login, sign_up, otp, …)."""
+    to = (to_email or "").strip()
+    if not to:
+        return ("skipped", "no recipient email")
+    tpl = get_email_template_by_automate(automate)
+    if tpl is None or not tpl.enabled:
+        return ("skipped", "template disabled or missing")
+    merged = {**base_email_context(user=user), **(context or {})}
+    subject = render_template_text(tpl.subject, merged)
+    body = render_template_text(tpl.body, merged)
+    return send_site_transactional_email_with_outcome(to_email=to, subject=subject, body=body)
+
+
 def seed_default_email_templates() -> None:
     for row in DEFAULT_EMAIL_TEMPLATES:
         EmailTemplate.objects.update_or_create(
-            event_type=row["event_type"],
+            automate=row["automate"],
             defaults={
+                "event_type": row.get("event_type") or "",
                 "name": row["name"],
                 "subject": row["subject"],
                 "body": row["body"],
@@ -223,13 +239,13 @@ def seed_default_email_templates() -> None:
 
 EMAIL_TEMPLATES_SCHEMA_UNAVAILABLE_DETAIL = (
     "Email templates are unavailable. "
-    "If the site was recently updated, run: python manage.py ensure_otp_migrations"
+    "If the site was recently updated, run: python manage.py migrate"
 )
 
 
 def ordered_email_templates_queryset():
-    """Staff API list ordering; raises :class:`~django.db.DatabaseError` when migration 0039+ is missing."""
-    return EmailTemplate.objects.order_by("event_type")
+    """Staff API list ordering; raises :class:`~django.db.DatabaseError` when migrations are missing."""
+    return EmailTemplate.objects.order_by("automate")
 
 
 def load_email_templates_for_admin() -> tuple[Any | None, str | None]:
@@ -264,8 +280,8 @@ def maybe_send_subscription_due_email(user) -> None:
         ctx["subscription_end_date"] = formats.date_format(user.subscription_period_end, "DATETIME_FORMAT")
     if user.plan_benefits_end:
         ctx["package_end_date"] = formats.date_format(user.plan_benefits_end, "DATETIME_FORMAT")
-    st, _ = send_templated_email(
-        EmailTemplate.EventType.SUBSCRIPTION_DUE,
+    st, _ = send_automated_email(
+        EmailTemplate.Automate.PAYMENT_DUE,
         to_email=user.email,
         context=ctx,
         user=user,
