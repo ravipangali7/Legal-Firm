@@ -1,6 +1,6 @@
 import type { AuthMeUser } from '@/lib/api';
 
-/** Premium library (acts, summaries, procedures, practice areas, cases, tools) — active subscription only. */
+/** Premium library (acts, summaries, procedures, practice areas, cases) — active subscription only. */
 export function canAccessPremiumContent(user: AuthMeUser | null | undefined): boolean {
   if (!user) return false;
   return hasLibraryEntitlement(user);
@@ -15,8 +15,9 @@ export function canAccessCaseSummaries(user: AuthMeUser | null | undefined): boo
   return canAccessPremiumContent(user);
 }
 
-export function canAccessTaxTools(user: AuthMeUser | null | undefined): boolean {
-  return canAccessPremiumContent(user);
+/** Tax calculators and utilities — free for all visitors (no login or subscription). */
+export function canAccessTaxTools(_user?: AuthMeUser | null): boolean {
+  return true;
 }
 
 export function canAccessProcedures(user: AuthMeUser | null | undefined): boolean {

@@ -101,7 +101,7 @@ const quickLinks: {
     href: '/tools',
     color: 'text-purple-600 bg-purple-50',
     canAccess: (u) => canAccessTaxTools(u),
-    lockedHint: 'Subscribe to unlock tax tools.',
+    lockedHint: '',
   },
   {
     icon: BookOpen,

@@ -16,15 +16,10 @@ import {
   sqftToTerai,
   SQFT_TO_SQM,
 } from '@/lib/nepaliUtils';
-import { useAuth } from '@/context/AuthContext';
-import PaywallGate from '@/components/PaywallGate';
-import { canAccessTaxTools } from '@/lib/subscriptionAccess';
-
 const formatNPR = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'NPR', maximumFractionDigits: 0 }).format(n);
 
 const Tools = () => {
-  const { user } = useAuth();
   // Income tax calculator (simplified Nepal individual slabs FY 2080/81)
   const [income, setIncome] = useState('');
   const [status, setStatus] = useState<'individual' | 'couple'>('individual');
@@ -88,8 +83,6 @@ const Tools = () => {
   const teraiEquivalent = landMode === 'hill' ? sqftToTerai(totalSqft) : null;
   const hillEquivalent = landMode === 'terai' ? sqftToHill(totalSqft) : null;
 
-  const toolsUnlocked = canAccessTaxTools(user);
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -102,12 +95,7 @@ const Tools = () => {
             </p>
           </div>
 
-          <PaywallGate
-            unlocked={toolsUnlocked}
-            contentType="Calculator"
-            previewHeight={340}
-          >
-            <Tabs defaultValue="income" className="w-full">
+          <Tabs defaultValue="income" className="w-full">
             <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full max-w-3xl mx-auto mb-8">
               <TabsTrigger value="income"><Calculator className="h-4 w-4 mr-2" />Income Tax</TabsTrigger>
               <TabsTrigger value="vat"><Receipt className="h-4 w-4 mr-2" />VAT</TabsTrigger>
@@ -283,7 +271,6 @@ const Tools = () => {
               </Card>
             </TabsContent>
           </Tabs>
-          </PaywallGate>
         </div>
       </main>
       <Footer />
