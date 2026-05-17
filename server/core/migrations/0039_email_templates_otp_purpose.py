@@ -4,9 +4,9 @@ from django.db import migrations, models
 
 
 def seed_email_templates(apps, schema_editor):
-    from core.email_templates import seed_default_email_templates
-
-    seed_default_email_templates()
+    # Seeding runs in 0040 after the ``automate`` column exists (seed_default_email_templates
+    # keys on ``automate``, which is not on the model until the next migration).
+    pass
 
 
 class Migration(migrations.Migration):
