@@ -9,7 +9,6 @@ import NewsGrid from '@/components/cms/NewsGrid';
 import DynamicFooter from '@/components/cms/DynamicFooter';
 import ProceduresHomeBlock from '@/components/cms/ProceduresHomeBlock';
 import Testimonials from '@/components/Testimonials';
-import ChatWidget from '@/components/ChatWidget';
 import { siteHomepageIndexQueryOptions } from '@/lib/siteHomepageQuery';
 import { mapHomepageApiToSnapshot } from '@/lib/homepageMap';
 import { CmsStoreProvider, useCms, type SectionToggles } from '@/store/cmsStore';
@@ -84,7 +83,6 @@ const Index = () => {
       <div className="min-h-screen overflow-x-hidden">
         <Header />
         <Sections />
-        <ChatWidget />
       </div>
     </CmsStoreProvider>
   );
