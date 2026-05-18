@@ -111,6 +111,18 @@ def _otp_schema_error_response():
     )
 
 
+DB_SCHEMA_UNAVAILABLE_DETAIL = (
+    "Database schema is out of date. On the server, run: python manage.py migrate"
+)
+
+
+def _db_schema_error_response():
+    return Response(
+        {"detail": DB_SCHEMA_UNAVAILABLE_DETAIL},
+        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
+
+
 def _user_me_response(user):
     refresh_user_entitlements(user)
     maybe_send_subscription_due_email(user)
@@ -353,14 +365,18 @@ def public_professionals_page(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def acts_list(request):
-    qs = Act.objects.select_related("category").all()
-    q = request.query_params.get("search") or request.query_params.get("q")
-    if q:
-        qs = qs.filter(Q(title_en__icontains=q) | Q(title_ne__icontains=q))
-    cat = request.query_params.get("category")
-    if cat:
-        qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
-    return Response(ActSerializer(qs[:2000], many=True).data)
+    try:
+        qs = Act.objects.select_related("category").all()
+        q = request.query_params.get("search") or request.query_params.get("q")
+        if q:
+            qs = qs.filter(Q(title_en__icontains=q) | Q(title_ne__icontains=q))
+        cat = request.query_params.get("category")
+        if cat:
+            qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
+        return Response(ActSerializer(qs[:2000], many=True).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/acts/ failed (database schema or DB error)")
+        return _db_schema_error_response()
 
 
 @api_view(["GET"])
@@ -370,7 +386,14 @@ def act_detail(request, slug: str):
         obj = Act.objects.select_related("category").get(pk=slug)
     except Act.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-    return Response(ActDetailSerializer(obj, context={"request": request}).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/acts/%s/ failed (database schema or DB error)", slug)
+        return _db_schema_error_response()
+    try:
+        return Response(ActDetailSerializer(obj, context={"request": request}).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/acts/%s/ failed (database schema or DB error)", slug)
+        return _db_schema_error_response()
 
 
 @api_view(["GET"])
@@ -383,14 +406,18 @@ def summary_categories_list(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def summaries_list(request):
-    qs = Summary.objects.select_related("category").all()
-    cat = request.query_params.get("category")
-    if cat:
-        qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
-    q = request.query_params.get("search") or request.query_params.get("q")
-    if q:
-        qs = qs.filter(Q(title__icontains=q) | Q(preview__icontains=q))
-    return Response(SummarySerializer(qs[:2000], many=True, context={"request": request}).data)
+    try:
+        qs = Summary.objects.select_related("category").all()
+        cat = request.query_params.get("category")
+        if cat:
+            qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
+        q = request.query_params.get("search") or request.query_params.get("q")
+        if q:
+            qs = qs.filter(Q(title__icontains=q) | Q(preview__icontains=q))
+        return Response(SummarySerializer(qs[:2000], many=True, context={"request": request}).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/summaries/ failed (database schema or DB error)")
+        return _db_schema_error_response()
 
 
 @api_view(["POST"])
@@ -440,27 +467,42 @@ def summary_detail(request, slug: str):
         obj = Summary.objects.select_related("category").get(slug=slug)
     except Summary.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-    return Response(SummarySerializer(obj, context={"request": request}).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/summaries/%s/ failed (database schema or DB error)", slug)
+        return _db_schema_error_response()
+    try:
+        return Response(SummarySerializer(obj, context={"request": request}).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/summaries/%s/ failed (database schema or DB error)", slug)
+        return _db_schema_error_response()
 
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def practice_areas_list(request):
-    qs = PracticeArea.objects.all().order_by("sort_order", "name")
-    return Response(PracticeAreaSerializer(qs, many=True).data)
+    try:
+        qs = PracticeArea.objects.all().order_by("sort_order", "name")
+        return Response(PracticeAreaSerializer(qs, many=True).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/practice-areas/ failed (database schema or DB error)")
+        return _db_schema_error_response()
 
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def legal_cases_list(request):
-    qs = LegalCase.objects.select_related("category").all()
-    pa = request.query_params.get("practice_area")
-    if pa:
-        qs = qs.filter(practice_area=pa)
-    cat = request.query_params.get("category")
-    if cat:
-        qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
-    return Response(LegalCaseSerializer(qs[:2000], many=True).data)
+    try:
+        qs = LegalCase.objects.select_related("category").all()
+        pa = request.query_params.get("practice_area")
+        if pa:
+            qs = qs.filter(practice_area=pa)
+        cat = request.query_params.get("category")
+        if cat:
+            qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
+        return Response(LegalCaseSerializer(qs[:2000], many=True).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/legal-cases/ failed (database schema or DB error)")
+        return _db_schema_error_response()
 
 
 @api_view(["GET"])
@@ -470,17 +512,28 @@ def legal_case_detail(request, slug: str):
         obj = LegalCase.objects.select_related("category").get(slug=slug)
     except LegalCase.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-    return Response(LegalCaseSerializer(obj).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/legal-cases/%s/ failed (database schema or DB error)", slug)
+        return _db_schema_error_response()
+    try:
+        return Response(LegalCaseSerializer(obj).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/legal-cases/%s/ failed (database schema or DB error)", slug)
+        return _db_schema_error_response()
 
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def procedures_list(request):
-    qs = Procedure.objects.select_related("category").all()
-    cat = request.query_params.get("category")
-    if cat:
-        qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
-    return Response(ProcedureListSerializer(qs[:2000], many=True).data)
+    try:
+        qs = Procedure.objects.select_related("category").all()
+        cat = request.query_params.get("category")
+        if cat:
+            qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
+        return Response(ProcedureListSerializer(qs[:2000], many=True).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/procedures/ failed (database schema or DB error)")
+        return _db_schema_error_response()
 
 
 @api_view(["GET"])
@@ -490,7 +543,14 @@ def procedure_detail(request, slug: str):
         obj = Procedure.objects.select_related("category").prefetch_related("steps").get(slug=slug)
     except Procedure.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-    return Response(ProcedureSerializer(obj).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/procedures/%s/ failed (database schema or DB error)", slug)
+        return _db_schema_error_response()
+    try:
+        return Response(ProcedureSerializer(obj).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/procedures/%s/ failed (database schema or DB error)", slug)
+        return _db_schema_error_response()
 
 
 @api_view(["GET"])
@@ -545,10 +605,14 @@ def pricing_page(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def blog_posts_list(request):
-    qs = BlogPost.objects.filter(published=True).order_by("-date", "title")
-    if request.query_params.get("featured") in ("1", "true", "yes"):
-        qs = qs.filter(featured=True)
-    return Response(BlogPostPublicListSerializer(qs[:500], many=True).data)
+    try:
+        qs = BlogPost.objects.filter(published=True).order_by("-date", "title")
+        if request.query_params.get("featured") in ("1", "true", "yes"):
+            qs = qs.filter(featured=True)
+        return Response(BlogPostPublicListSerializer(qs[:500], many=True).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/blog/ failed (database schema or DB error)")
+        return _db_schema_error_response()
 
 
 @api_view(["GET"])
