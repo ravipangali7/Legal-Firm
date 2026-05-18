@@ -15,6 +15,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useCmsOptional, type NavItem } from '@/store/cmsStore';
 import { useSiteConfig } from '@/context/SiteConfigContext';
@@ -113,6 +122,7 @@ const Header = () => {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading, logout } = useAuth();
@@ -159,6 +169,22 @@ const Header = () => {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  const confirmLogout = () => {
+    void (async () => {
+      try {
+        await logout();
+        setLogoutOpen(false);
+        setOpen(false);
+      } catch (e) {
+        toast({
+          title: 'Could not sign out',
+          description: e instanceof Error ? e.message : 'Try again in a moment.',
+          variant: 'destructive',
+        });
+      }
+    })();
+  };
 
   return (
     <header className={cn('fixed top-0 left-0 right-0 z-50 transition-all duration-500', scrolled ? 'pt-3 sm:pt-4' : 'pt-0')}>
@@ -231,15 +257,7 @@ const Header = () => {
                   variant="ghost"
                   size="sm"
                   className="rounded-full shrink-0"
-                  onClick={() => {
-                    void logout().catch((e) =>
-                      toast({
-                        title: 'Could not sign out',
-                        description: e instanceof Error ? e.message : 'Try again in a moment.',
-                        variant: 'destructive',
-                      }),
-                    );
-                  }}
+                  onClick={() => setLogoutOpen(true)}
                 >
                   <LogOut className="h-4 w-4 mr-1.5" />
                   Log out
@@ -321,15 +339,8 @@ const Header = () => {
                     size="sm"
                     className="rounded-full"
                     onClick={() => {
-                      void logout()
-                        .then(() => setOpen(false))
-                        .catch((e) =>
-                          toast({
-                            title: 'Could not sign out',
-                            description: e instanceof Error ? e.message : 'Try again in a moment.',
-                            variant: 'destructive',
-                          }),
-                        );
+                      setOpen(false);
+                      setLogoutOpen(true);
                     }}
                   >
                     <LogOut className="h-4 w-4 mr-2" />
@@ -346,6 +357,28 @@ const Header = () => {
           </div>
         )}
       </div>
+
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will need to sign in again to access your account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmLogout}
+            >
+              Log out
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 };
