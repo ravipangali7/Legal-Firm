@@ -20,23 +20,26 @@ def summary_vote_map_for_request(request, summary_ids: list) -> dict[Any, str]:
     """Batch lookup votes for list endpoints (summary_id -> 'up'|'down')."""
     if not summary_ids or not summary_audience_vote_table_applied():
         return {}
-    actor = summary_actor_from_request(request)
-    if actor["kind"] not in ("user", "visitor"):
+    try:
+        actor = summary_actor_from_request(request)
+        if actor["kind"] not in ("user", "visitor"):
+            return {}
+        clean_ids = [pk for pk in summary_ids if pk is not None]
+        if not clean_ids:
+            return {}
+        if actor["kind"] == "user":
+            rows = SummaryAudienceVote.objects.filter(
+                summary_id__in=clean_ids,
+                user=actor["user"],
+            ).only("summary_id", "vote")
+        else:
+            rows = SummaryAudienceVote.objects.filter(
+                summary_id__in=clean_ids,
+                visitor_key=actor["visitor_key"],
+            ).only("summary_id", "vote")
+        return {row.summary_id: row.vote for row in rows}
+    except Exception:
         return {}
-    clean_ids = [pk for pk in summary_ids if pk is not None]
-    if not clean_ids:
-        return {}
-    if actor["kind"] == "user":
-        rows = SummaryAudienceVote.objects.filter(
-            summary_id__in=clean_ids,
-            user=actor["user"],
-        ).only("summary_id", "vote")
-    else:
-        rows = SummaryAudienceVote.objects.filter(
-            summary_id__in=clean_ids,
-            visitor_key=actor["visitor_key"],
-        ).only("summary_id", "vote")
-    return {row.summary_id: row.vote for row in rows}
 
 
 def summary_actor_from_request(request) -> dict[str, Any]:

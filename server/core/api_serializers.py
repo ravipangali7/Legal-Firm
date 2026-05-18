@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from decimal import Decimal
 
@@ -63,6 +64,7 @@ from .engagement_schema import notice_audience_vote_table_applied, summary_audie
 from .sync_user_client import sync_crm_client_for_user
 
 User = get_user_model()
+_LOG = logging.getLogger(__name__)
 
 
 # ——— Public read serializers ———
@@ -141,22 +143,57 @@ class PremiumContentSerializerMixin:
     premium_content_fields: tuple[str, ...] = ()
 
     def to_representation(self, instance):
-        data = super().to_representation(instance)
-        from core.premium_content import gate_premium_content
+        try:
+            data = super().to_representation(instance)
+        except Exception:
+            _LOG.exception("premium entity base serialization failed")
+            data = self._premium_fallback_representation(instance)
+        try:
+            from core.premium_content import gate_premium_content
 
-        return gate_premium_content(
-            data,
-            is_premium=bool(getattr(instance, "premium", False)),
-            protected_keys=self.premium_content_fields,
-            request=self.context.get("request"),
-        )
+            return gate_premium_content(
+                data,
+                is_premium=bool(getattr(instance, "premium", False)),
+                protected_keys=self.premium_content_fields,
+                request=self.context.get("request"),
+            )
+        except Exception:
+            _LOG.exception("premium content gate failed")
+            for key in self.premium_content_fields:
+                data.pop(key, None)
+            return data
+
+    def _premium_fallback_representation(self, instance) -> dict:
+        """Minimal safe payload when full serialization fails (schema drift / bad CMS data)."""
+        out: dict = {}
+        for name, field in self.fields.items():
+            if name in self.premium_content_fields or field.write_only:
+                continue
+            if name in ("category_slug", "category_name") or name == "category":
+                try:
+                    cat = getattr(instance, "category", None)
+                    if name == "category_slug":
+                        out[name] = getattr(cat, "slug", "") or ""
+                    elif name == "category_name":
+                        out[name] = getattr(cat, "name", "") or ""
+                    else:
+                        out[name] = getattr(cat, "name", "") or ""
+                except Exception:
+                    out[name] = ""
+                continue
+            try:
+                out[name] = field.get_attribute(instance)
+                out[name] = field.to_representation(out[name])
+            except Exception:
+                continue
+        return out
 
 
 class ActDetailSerializer(SeoMetaSerializerMixin, PremiumContentSerializerMixin, serializers.ModelSerializer):
     """Single-act payload including optional CMS `detail_json` for the public law reader."""
 
     category = serializers.CharField(source="category.name", read_only=True)
-    category_slug = serializers.SlugField(source="category.slug", read_only=True)
+    category_slug = serializers.CharField(source="category.slug", read_only=True)
     premium_content_fields = ("detail_json",)
 
     class Meta:
@@ -210,7 +247,7 @@ class SummaryListSerializer(SeoMetaSerializerMixin, _SummaryMyVoteMixin, seriali
     """Public list: preview only (no ``body`` / premium encryption on list)."""
 
     category = serializers.CharField(source="category.name", read_only=True)
-    category_slug = serializers.SlugField(source="category.slug", read_only=True)
+    category_slug = serializers.CharField(source="category.slug", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
     my_vote = serializers.SerializerMethodField()
 
@@ -239,7 +276,7 @@ class SummarySerializer(
     SeoMetaSerializerMixin, PremiumContentSerializerMixin, _SummaryMyVoteMixin, serializers.ModelSerializer
 ):
     category = serializers.CharField(source="category.name", read_only=True)
-    category_slug = serializers.SlugField(source="category.slug", read_only=True)
+    category_slug = serializers.CharField(source="category.slug", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
     my_vote = serializers.SerializerMethodField()
 

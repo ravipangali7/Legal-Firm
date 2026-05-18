@@ -411,27 +411,41 @@ def acts_list(request):
         return _db_schema_error_response()
 
 
+def _act_detail_response(request, obj):
+    return Response(ActDetailSerializer(obj, context={"request": request}).data)
+
+
+def _load_act_for_detail(slug: str, *, deferred: bool):
+    if deferred:
+        return act_detail_queryset().get(pk=slug)
+    return Act.objects.select_related("category").get(pk=slug)
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def act_detail(request, slug: str):
     try:
-        obj = act_detail_queryset().get(pk=slug)
+        return _act_detail_response(request, _load_act_for_detail(slug, deferred=True))
     except Act.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
     except DatabaseError:
         _LOG.exception("GET /api/acts/%s/ failed (database schema or DB error)", slug)
         return _db_schema_error_response()
-    try:
-        return Response(ActDetailSerializer(obj, context={"request": request}).data)
-    except DatabaseError:
-        _LOG.exception("GET /api/acts/%s/ serialize failed (database schema or DB error)", slug)
-        return _db_schema_error_response()
     except Exception:
-        _LOG.exception("GET /api/acts/%s/ failed", slug)
-        return Response(
-            {"detail": "Could not load this act. Try again later."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        _LOG.exception("GET /api/acts/%s/ failed; retrying without deferred fields", slug)
+        try:
+            return _act_detail_response(request, _load_act_for_detail(slug, deferred=False))
+        except Act.DoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        except DatabaseError:
+            _LOG.exception("GET /api/acts/%s/ fallback failed (database schema or DB error)", slug)
+            return _db_schema_error_response()
+        except Exception:
+            _LOG.exception("GET /api/acts/%s/ fallback failed", slug)
+            return Response(
+                {"detail": "Could not load this act. Try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 @api_view(["GET"])
@@ -550,33 +564,53 @@ def summary_vote(request, slug: str):
     )
 
 
+def _summary_detail_response(request, obj):
+    votes = summary_vote_map_for_request(request, [obj.pk])
+    return Response(
+        SummarySerializer(
+            obj,
+            context={"request": request, "summary_votes": votes},
+        ).data
+    )
+
+
+def _load_summary_for_detail(slug: str, *, deferred: bool):
+    if deferred:
+        return summary_api_queryset().get(slug=slug)
+    return (
+        Summary.objects.select_related("category")
+        .filter(category__slug__isnull=False)
+        .get(slug=slug)
+    )
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def summary_detail(request, slug: str):
     try:
-        obj = summary_api_queryset().get(slug=slug)
+        return _summary_detail_response(request, _load_summary_for_detail(slug, deferred=True))
     except Summary.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
     except DatabaseError:
         _LOG.exception("GET /api/summaries/%s/ failed (database schema or DB error)", slug)
         return _db_schema_error_response()
-    try:
-        votes = summary_vote_map_for_request(request, [obj.pk])
-        return Response(
-            SummarySerializer(
-                obj,
-                context={"request": request, "summary_votes": votes},
-            ).data
-        )
-    except DatabaseError:
-        _LOG.exception("GET /api/summaries/%s/ failed (database schema or DB error)", slug)
-        return _db_schema_error_response()
     except Exception:
-        _LOG.exception("GET /api/summaries/%s/ failed", slug)
-        return Response(
-            {"detail": "Could not load this summary. Try again later."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        _LOG.exception("GET /api/summaries/%s/ failed; retrying without deferred fields", slug)
+        try:
+            return _summary_detail_response(
+                request, _load_summary_for_detail(slug, deferred=False)
+            )
+        except Summary.DoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        except DatabaseError:
+            _LOG.exception("GET /api/summaries/%s/ fallback failed (database schema or DB error)", slug)
+            return _db_schema_error_response()
+        except Exception:
+            _LOG.exception("GET /api/summaries/%s/ fallback failed", slug)
+            return Response(
+                {"detail": "Could not load this summary. Try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 @api_view(["GET"])
