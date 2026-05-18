@@ -26,7 +26,7 @@ const AboutBlock = () => {
           />
           <div className="order-2 min-w-0 flex flex-col">
             {about.eyebrow ? (
-              <span className="block text-xs font-bold uppercase tracking-[0.2em] text-accent">{about.eyebrow}</span>
+              <span className="block eyebrow-label">{about.eyebrow}</span>
             ) : null}
             <h2 className="mt-3 text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-primary-onBg leading-[1.12] tracking-tight [overflow-wrap:anywhere]">
               {about.title}

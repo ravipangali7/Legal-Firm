@@ -12,7 +12,7 @@ const NewsGrid = () => {
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-3">
           <div>
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">News & Events</span>
+            <span className="eyebrow-label">News & Events</span>
             <h2 className="mt-2 text-3xl sm:text-4xl font-bold text-primary-onBg">Latest from our desk</h2>
           </div>
         </div>
@@ -21,7 +21,7 @@ const NewsGrid = () => {
             <Link
               key={n.id}
               to={`/news/${n.id}`}
-              className="group block bg-card border border-border rounded-2xl overflow-hidden hover:shadow-elegant transition-shadow text-left"
+              className="group block marketing-card overflow-hidden card-hover text-left"
             >
               <div className="relative aspect-[16/10] overflow-hidden bg-muted">
                 <CmsImage

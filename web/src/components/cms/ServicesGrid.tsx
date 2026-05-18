@@ -5,7 +5,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { useCms } from '@/store/cmsStore';
 
 const cardClassName =
-  'group relative bg-card border border-border rounded-2xl p-6 hover:shadow-elegant transition-shadow duration-300 overflow-hidden block no-underline text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+  'group relative marketing-card p-6 card-hover overflow-hidden block no-underline text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 const ServicesGrid = () => {
   const { services } = useCms();
@@ -15,7 +15,7 @@ const ServicesGrid = () => {
     <section className="py-20 sm:py-24 bg-secondary/30">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="max-w-2xl mx-auto text-center mb-14">
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">What we do</span>
+          <span className="eyebrow-label">What we do</span>
           <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-onBg">Services that move your business forward</h2>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">

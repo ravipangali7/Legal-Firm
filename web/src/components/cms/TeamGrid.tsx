@@ -27,7 +27,7 @@ const TeamGrid = () => {
     <section className="py-20 sm:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="max-w-2xl mx-auto text-center mb-14">
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">The team</span>
+          <span className="eyebrow-label">The team</span>
           <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-onBg">{heading}</h2>
           {subtitle ? (
             <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">{subtitle}</p>
@@ -52,7 +52,7 @@ const TeamGrid = () => {
             <Link
               key={m.id}
               to={`/professionals/${encodeURIComponent(m.id)}`}
-              className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-elegant transition-all block text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="group marketing-card overflow-hidden card-hover block text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="relative aspect-square bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground">
                 {m.avatar?.trim() ? (

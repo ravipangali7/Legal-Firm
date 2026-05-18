@@ -161,7 +161,7 @@ const Laws = () => {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <section className="bg-primary text-primary-foreground pt-28 pb-10">
+      <section className="page-hero-band">
         <div className="container mx-auto px-4">
           <nav className="text-xs opacity-80 mb-2">
             <Link to="/" className="hover:underline">

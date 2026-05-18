@@ -45,7 +45,7 @@ const HeroSlider = () => {
 
       <div className="relative h-full container mx-auto px-4 sm:px-6 flex items-center">
         <div className="max-w-3xl text-primary-foreground">
-          <span className="inline-block mb-4 px-3 py-1 rounded-full text-xs font-semibold bg-accent/90 text-accent-foreground tracking-wide uppercase">
+          <span className="inline-block mb-4 px-3 py-1 rounded-full text-xs font-semibold bg-accent text-accent-foreground tracking-wide uppercase shadow-gold">
             {eyebrow}
           </span>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">{s.title}</h1>

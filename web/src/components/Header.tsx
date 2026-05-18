@@ -192,8 +192,8 @@ const Header = () => {
         <div className={cn(
           'flex items-center justify-between gap-2 sm:gap-3 min-w-0 transition-all duration-500',
           scrolled
-            ? 'rounded-full border border-white/40 bg-white/75 backdrop-blur-xl shadow-[0_8px_30px_-6px_rgba(15,23,42,0.18)] px-2 sm:px-5 py-2 dark:border-border dark:bg-card/85 dark:shadow-[0_8px_30px_-6px_rgba(0,0,0,0.35)]'
-            : 'bg-white/95 backdrop-blur-md border-b border-border px-4 sm:px-6 py-3 dark:bg-background/95 dark:border-border'
+            ? 'rounded-2xl border border-border/60 bg-white/90 backdrop-blur-xl shadow-elegant px-2 sm:px-5 py-2 dark:border-border dark:bg-card/90'
+            : 'bg-white/95 backdrop-blur-md border-b border-border shadow-sm px-4 sm:px-6 py-3 dark:bg-background/95 dark:border-border'
         )}>
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <CmsImage
@@ -210,7 +210,7 @@ const Header = () => {
               const showDropdown = item.isDropdown && item.children.length > 0;
               return showDropdown ? (
                 <DropdownMenu key={item.id}>
-                  <DropdownMenuTrigger className="px-3 py-1.5 rounded-full text-sm font-medium text-foreground/80 hover:text-primary-onBg hover:bg-secondary transition-colors flex items-center gap-1 outline-none">
+                  <DropdownMenuTrigger className="px-3 py-1.5 rounded-lg text-sm font-medium text-foreground/80 hover:text-primary-onBg hover:bg-secondary transition-colors flex items-center gap-1 outline-none">
                     {item.label} <ChevronDown size={14} />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-60 rounded-xl">
@@ -222,7 +222,7 @@ const Header = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Link key={item.id} to={item.href} className="px-3 py-1.5 rounded-full text-sm font-medium text-foreground/80 hover:text-primary-onBg hover:bg-secondary transition-colors">
+                <Link key={item.id} to={item.href} className="px-3 py-1.5 rounded-lg text-sm font-medium text-foreground/80 hover:text-primary-onBg hover:bg-secondary transition-colors">
                   {item.label}
                 </Link>
               );
