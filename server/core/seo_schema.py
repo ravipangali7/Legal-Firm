@@ -13,12 +13,12 @@ _SEO_META_FIELD_NAMES = ("meta_title", "meta_description")
 
 def invalidate_seo_meta_schema_cache() -> None:
     seo_meta_columns_applied.cache_clear()
+    seo_meta_columns_applied_for_table.cache_clear()
 
 
-@lru_cache(maxsize=1)
-def seo_meta_columns_applied() -> bool:
-    """True after migration 0043; False on databases that only have pre-SEO schema."""
-    table = Act._meta.db_table
+@lru_cache(maxsize=32)
+def seo_meta_columns_applied_for_table(table: str) -> bool:
+    """True when ``meta_title`` exists on the given table (post-0043 for that entity)."""
     try:
         with connection.cursor() as cursor:
             columns = connection.introspection.get_table_description(cursor, table)
@@ -27,9 +27,22 @@ def seo_meta_columns_applied() -> bool:
         return False
 
 
-def only_with_optional_seo(*base_fields: str) -> tuple[str, ...]:
-    """Field names for QuerySet.only() — appends SEO columns when present in the DB."""
-    if seo_meta_columns_applied():
+def seo_meta_columns_applied_for_model(model) -> bool:
+    return seo_meta_columns_applied_for_table(model._meta.db_table)
+
+
+@lru_cache(maxsize=1)
+def seo_meta_columns_applied() -> bool:
+    """True after migration 0043 on ``Act``; kept for legacy callers."""
+    return seo_meta_columns_applied_for_table(Act._meta.db_table)
+
+
+def only_with_optional_seo(*base_fields: str, model: type | None = None) -> tuple[str, ...]:
+    """Field names for QuerySet.only() — appends SEO columns when present on ``model``'s table."""
+    from core.models import Act
+
+    entity = model or Act
+    if seo_meta_columns_applied_for_model(entity):
         return (*base_fields, *_SEO_META_FIELD_NAMES)
     return base_fields
 
@@ -49,6 +62,7 @@ def act_api_queryset(qs=None):
             "category_id",
             "category__slug",
             "category__name",
+            model=Act,
         )
     )
 
@@ -69,6 +83,7 @@ def act_detail_queryset(qs=None):
             "category_id",
             "category__slug",
             "category__name",
+            model=Act,
         )
     )
 
@@ -77,7 +92,7 @@ def summary_api_queryset(qs=None):
     from core.models import Summary
 
     qs = (qs if qs is not None else Summary.objects).select_related("category")
-    return qs.only(
+    return qs.filter(category__slug__isnull=False).only(
         *only_with_optional_seo(
             "id",
             "slug",
@@ -92,6 +107,31 @@ def summary_api_queryset(qs=None):
             "category_id",
             "category__slug",
             "category__name",
+            model=Summary,
+        )
+    )
+
+
+def summary_list_api_queryset(qs=None):
+    """Listing queryset: no ``body`` defer (detail endpoint loads full text)."""
+    from core.models import Summary
+
+    qs = (qs if qs is not None else Summary.objects).select_related("category")
+    return qs.filter(category__slug__isnull=False).only(
+        *only_with_optional_seo(
+            "id",
+            "slug",
+            "title",
+            "posted",
+            "views",
+            "upvotes",
+            "downvotes",
+            "preview",
+            "premium",
+            "category_id",
+            "category__slug",
+            "category__name",
+            model=Summary,
         )
     )
 
@@ -118,6 +158,7 @@ def legal_case_api_queryset(qs=None):
             "category_id",
             "category__slug",
             "category__name",
+            model=LegalCase,
         )
     )
 
@@ -138,6 +179,7 @@ def procedure_api_queryset(qs=None):
             "category_id",
             "category__slug",
             "category__name",
+            model=Procedure,
         )
     )
 
@@ -160,6 +202,7 @@ def procedure_detail_queryset(qs=None):
             "category_id",
             "category__slug",
             "category__name",
+            model=Procedure,
         )
     )
 
@@ -179,6 +222,7 @@ def practice_area_api_queryset(qs=None):
             "related_cases_title",
             "services",
             "sort_order",
+            model=PracticeArea,
         )
     )
 
@@ -198,6 +242,7 @@ def blog_post_api_queryset(qs=None):
             "date",
             "published",
             "featured",
+            model=BlogPost,
         )
     )
 
@@ -218,6 +263,7 @@ def blog_post_detail_queryset(qs=None):
             "published",
             "featured",
             "body",
+            model=BlogPost,
         )
     )
 
@@ -265,5 +311,6 @@ def notice_detail_queryset(qs=None):
             "body",
             "body_ne",
             "issued_by_ne",
+            model=Notice,
         )
     )

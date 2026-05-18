@@ -16,9 +16,13 @@ def request_has_library_access(request) -> bool:
         return False
     if getattr(user, "is_staff", False):
         return True
-    from .subscription_service import library_entitlement_active
+    try:
+        from .subscription_service import library_entitlement_active
 
-    return library_entitlement_active(user)
+        return library_entitlement_active(user)
+    except Exception:
+        _LOG.exception("library entitlement check failed")
+        return False
 
 
 def _is_nonempty(value: Any) -> bool:

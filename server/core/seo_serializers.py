@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from core.seo_schema import _SEO_META_FIELD_NAMES, seo_meta_columns_applied
+from core.seo_schema import _SEO_META_FIELD_NAMES, seo_meta_columns_applied_for_model
 
 
 class SeoMetaSerializerMixin:
@@ -12,6 +12,7 @@ class SeoMetaSerializerMixin:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if not seo_meta_columns_applied():
+        model = getattr(self.Meta, "model", None)
+        if model is None or not seo_meta_columns_applied_for_model(model):
             for name in _SEO_META_FIELD_NAMES:
                 self.fields.pop(name, None)

@@ -24,7 +24,7 @@ from core.seo.base import (
     resolve_entity_title,
     strip_html,
 )
-from core.seo_schema import only_with_optional_seo, seo_meta_columns_applied
+from core.seo_schema import only_with_optional_seo, seo_meta_columns_applied, seo_meta_columns_applied_for_model
 
 _ABOUT_SUBPAGES = ("background", "our-team", "our-services")
 
@@ -91,11 +91,11 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
     m = re.match(r"^/summaries/([^/]+)$", p)
     if m:
         row = Summary.objects.filter(slug=m.group(1)).only(
-            *only_with_optional_seo("title", "preview")
+            *only_with_optional_seo("title", "preview", model=Summary)
         ).first()
         if row:
-            meta_title = row.meta_title if seo_meta_columns_applied() else ""
-            meta_description = row.meta_description if seo_meta_columns_applied() else ""
+            meta_title = row.meta_title if seo_meta_columns_applied_for_model(Summary) else ""
+            meta_description = row.meta_description if seo_meta_columns_applied_for_model(Summary) else ""
             return pack_page_meta(
                 title=resolve_entity_title(meta_title, row.title),
                 description=resolve_entity_description(

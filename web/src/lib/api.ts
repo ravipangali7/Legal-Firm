@@ -1296,7 +1296,8 @@ export interface SummaryApi {
   downvotes: number;
   preview: string;
   premium: boolean;
-  body: string;
+  /** Omitted on list responses; present on detail. */
+  body?: string;
   /** Present when `premium` and the caller lacks library access (server-side ciphertext). */
   body_encrypted?: string;
   /** Current visitor / session vote when X-Visitor-Id or auth is recognized. */

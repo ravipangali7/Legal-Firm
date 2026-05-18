@@ -44,6 +44,7 @@ from core.api_serializers import (
     ProcedureListSerializer,
     ProcedureSerializer,
     SummaryCategorySerializer,
+    SummaryListSerializer,
     SummarySerializer,
     UserActivityLogSerializer,
     UserInAppNotificationSerializer,
@@ -76,7 +77,12 @@ from core.models import (
 )
 from core.en_ne_machine_translate import translate_en_to_ne_many
 from core.notice_engagement import apply_notice_vote, notice_actor_from_request, record_notice_daily_views
-from core.summary_engagement import apply_summary_vote, record_summary_daily_views, summary_actor_from_request
+from core.summary_engagement import (
+    apply_summary_vote,
+    record_summary_daily_views,
+    summary_actor_from_request,
+    summary_vote_map_for_request,
+)
 from core.google_oauth import fetch_google_userinfo
 from core.serializers import ContactMessageDetailSerializer, PublicContactSerializer, SignupSerializer, SubscribePendingSerializer
 from core.auth_notifications import (
@@ -112,6 +118,7 @@ from core.seo_schema import (
     procedure_api_queryset,
     procedure_detail_queryset,
     summary_api_queryset,
+    summary_list_api_queryset,
 )
 
 User = get_user_model()
@@ -434,27 +441,61 @@ def summary_categories_list(request):
     return Response(SummaryCategorySerializer(qs, many=True).data)
 
 
+def _public_summaries_queryset(request):
+    qs = summary_list_api_queryset()
+    cat = request.query_params.get("category")
+    if cat:
+        qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
+    q = request.query_params.get("search") or request.query_params.get("q")
+    if q:
+        qs = qs.filter(Q(title__icontains=q) | Q(preview__icontains=q))
+    return qs
+
+
+def _summaries_list_response(request, qs):
+    rows = list(qs[:2000])
+    votes = summary_vote_map_for_request(request, [row.pk for row in rows])
+    return Response(
+        SummaryListSerializer(
+            rows,
+            many=True,
+            context={"request": request, "summary_votes": votes},
+        ).data
+    )
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def summaries_list(request):
     try:
-        qs = summary_api_queryset()
-        cat = request.query_params.get("category")
-        if cat:
-            qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
-        q = request.query_params.get("search") or request.query_params.get("q")
-        if q:
-            qs = qs.filter(Q(title__icontains=q) | Q(preview__icontains=q))
-        return Response(SummarySerializer(qs[:2000], many=True, context={"request": request}).data)
+        return _summaries_list_response(request, _public_summaries_queryset(request))
     except DatabaseError:
         _LOG.exception("GET /api/summaries/ failed (database schema or DB error)")
         return _db_schema_error_response()
     except Exception:
-        _LOG.exception("GET /api/summaries/ failed")
-        return Response(
-            {"detail": "Could not load summaries. Try again later."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        _LOG.exception("GET /api/summaries/ failed; retrying without deferred fields")
+        try:
+            qs = (
+                Summary.objects.select_related("category")
+                .filter(category__slug__isnull=False)
+                .order_by("-posted")
+            )
+            cat = request.query_params.get("category")
+            if cat:
+                qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
+            q = request.query_params.get("search") or request.query_params.get("q")
+            if q:
+                qs = qs.filter(Q(title__icontains=q) | Q(preview__icontains=q))
+            return _summaries_list_response(request, qs)
+        except DatabaseError:
+            _LOG.exception("GET /api/summaries/ fallback failed (database schema or DB error)")
+            return _db_schema_error_response()
+        except Exception:
+            _LOG.exception("GET /api/summaries/ fallback failed")
+            return Response(
+                {"detail": "Could not load summaries. Try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 @api_view(["POST"])
@@ -500,7 +541,13 @@ def summary_vote(request, slug: str):
     if summary is None:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
     summary = summary_api_queryset().get(pk=summary.pk)
-    return Response(SummarySerializer(summary, context={"request": request}).data)
+    votes = summary_vote_map_for_request(request, [summary.pk])
+    return Response(
+        SummarySerializer(
+            summary,
+            context={"request": request, "summary_votes": votes},
+        ).data
+    )
 
 
 @api_view(["GET"])
@@ -514,10 +561,22 @@ def summary_detail(request, slug: str):
         _LOG.exception("GET /api/summaries/%s/ failed (database schema or DB error)", slug)
         return _db_schema_error_response()
     try:
-        return Response(SummarySerializer(obj, context={"request": request}).data)
+        votes = summary_vote_map_for_request(request, [obj.pk])
+        return Response(
+            SummarySerializer(
+                obj,
+                context={"request": request, "summary_votes": votes},
+            ).data
+        )
     except DatabaseError:
         _LOG.exception("GET /api/summaries/%s/ failed (database schema or DB error)", slug)
         return _db_schema_error_response()
+    except Exception:
+        _LOG.exception("GET /api/summaries/%s/ failed", slug)
+        return Response(
+            {"detail": "Could not load this summary. Try again later."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @api_view(["GET"])

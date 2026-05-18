@@ -421,33 +421,43 @@ class SeoSchemaCompatTests(TestCase):
     def test_act_detail_ok_when_seo_columns_absent(self):
         from unittest.mock import patch
 
-        from core.seo_schema import seo_meta_columns_applied
+        from core.seo_schema import invalidate_seo_meta_schema_cache
 
-        seo_meta_columns_applied.cache_clear()
+        invalidate_seo_meta_schema_cache()
         try:
-            with patch("core.seo_schema.seo_meta_columns_applied", return_value=False):
-                with patch("core.seo_serializers.seo_meta_columns_applied", return_value=False):
-                    rsp = self.api.get(f"/api/acts/{self.act.slug}/")
+            with patch(
+                "core.seo_schema.seo_meta_columns_applied_for_model",
+                return_value=False,
+            ), patch(
+                "core.seo_serializers.seo_meta_columns_applied_for_model",
+                return_value=False,
+            ):
+                rsp = self.api.get(f"/api/acts/{self.act.slug}/")
             self.assertEqual(rsp.status_code, 200, rsp.data)
             self.assertEqual(rsp.data["slug"], self.act.slug)
         finally:
-            seo_meta_columns_applied.cache_clear()
+            invalidate_seo_meta_schema_cache()
 
     def test_acts_list_ok_when_seo_columns_absent(self):
         from unittest.mock import patch
 
-        from core.seo_schema import seo_meta_columns_applied
+        from core.seo_schema import invalidate_seo_meta_schema_cache
 
-        seo_meta_columns_applied.cache_clear()
+        invalidate_seo_meta_schema_cache()
         try:
-            with patch("core.seo_schema.seo_meta_columns_applied", return_value=False):
-                with patch("core.seo_serializers.seo_meta_columns_applied", return_value=False):
-                    rsp = self.api.get("/api/acts/")
+            with patch(
+                "core.seo_schema.seo_meta_columns_applied_for_model",
+                return_value=False,
+            ), patch(
+                "core.seo_serializers.seo_meta_columns_applied_for_model",
+                return_value=False,
+            ):
+                rsp = self.api.get("/api/acts/")
             self.assertEqual(rsp.status_code, 200, rsp.data)
             self.assertGreaterEqual(len(rsp.data), 1)
             self.assertNotIn("meta_title", rsp.data[0])
         finally:
-            seo_meta_columns_applied.cache_clear()
+            invalidate_seo_meta_schema_cache()
 
 
 class AdminEmailTemplatesApiTests(TestCase):

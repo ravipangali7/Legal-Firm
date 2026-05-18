@@ -188,7 +188,57 @@ class ProcedureCategorySerializer(serializers.ModelSerializer):
         fields = ("id", "slug", "name", "color", "sort_order")
 
 
-class SummarySerializer(SeoMetaSerializerMixin, PremiumContentSerializerMixin, serializers.ModelSerializer):
+class _SummaryMyVoteMixin:
+    def get_my_vote(self, obj: Summary) -> str | None:
+        votes = self.context.get("summary_votes")
+        if votes is not None:
+            return votes.get(obj.pk)
+        if not summary_audience_vote_table_applied():
+            return None
+        request = self.context.get("request")
+        if not request:
+            return None
+        try:
+            from core.summary_engagement import summary_vote_map_for_request
+
+            return summary_vote_map_for_request(request, [obj.pk]).get(obj.pk)
+        except Exception:
+            return None
+
+
+class SummaryListSerializer(SeoMetaSerializerMixin, _SummaryMyVoteMixin, serializers.ModelSerializer):
+    """Public list: preview only (no ``body`` / premium encryption on list)."""
+
+    category = serializers.CharField(source="category.name", read_only=True)
+    category_slug = serializers.SlugField(source="category.slug", read_only=True)
+    category_name = serializers.CharField(source="category.name", read_only=True)
+    my_vote = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Summary
+        fields = (
+            "id",
+            "slug",
+            "title",
+            "category",
+            "category_slug",
+            "category_name",
+            "posted",
+            "views",
+            "upvotes",
+            "downvotes",
+            "preview",
+            "premium",
+            "my_vote",
+            "meta_title",
+            "meta_description",
+        )
+
+
+class SummarySerializer(
+    SeoMetaSerializerMixin, PremiumContentSerializerMixin, _SummaryMyVoteMixin, serializers.ModelSerializer
+):
+    category = serializers.CharField(source="category.name", read_only=True)
     category_slug = serializers.SlugField(source="category.slug", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
     my_vote = serializers.SerializerMethodField()
@@ -215,34 +265,6 @@ class SummarySerializer(SeoMetaSerializerMixin, PremiumContentSerializerMixin, s
             "meta_title",
             "meta_description",
         )
-
-    def get_my_vote(self, obj: Summary) -> str | None:
-        if not summary_audience_vote_table_applied():
-            return None
-        request = self.context.get("request")
-        if not request:
-            return None
-        user = getattr(request, "user", None)
-        if user is not None and user.is_authenticated:
-            row = (
-                SummaryAudienceVote.objects.filter(summary=obj, user=user)
-                .only("vote")
-                .first()
-            )
-            return row.vote if row else None
-        raw = (request.headers.get("X-Visitor-Id") or "").strip()
-        if not raw:
-            return None
-        try:
-            uuid.UUID(raw)
-        except ValueError:
-            return None
-        row = (
-            SummaryAudienceVote.objects.filter(summary=obj, visitor_key=raw[:64])
-            .only("vote")
-            .first()
-        )
-        return row.vote if row else None
 
 
 class LegalCaseSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
