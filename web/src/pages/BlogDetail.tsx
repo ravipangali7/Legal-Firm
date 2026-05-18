@@ -11,6 +11,7 @@ import { blogBodyToParagraphs, blogPostPublicAuthorLabel, fetchPublicBlogPost } 
 import { looksLikeHtml } from '@/lib/summaryHtml';
 import { RelatedContentSidebar } from '@/components/RelatedContentSidebar';
 import { usePageSeo } from '@/context/SeoContext';
+import { SocialShareButtons } from '@/components/seo/SocialShareButtons';
 import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 
 const BlogDetail = () => {
@@ -34,6 +35,7 @@ const BlogDetail = () => {
           author: blogPostPublicAuthorLabel(post),
           section: post.category || undefined,
           tags: post.category ? [post.category] : undefined,
+          image: post.share_image || undefined,
         }
       : null
   );
@@ -155,6 +157,12 @@ const BlogDetail = () => {
                   <Calendar className="h-4 w-4 shrink-0" />
                   {post.date}
                 </span>
+                <SocialShareButtons
+                  kind="blog"
+                  idOrSlug={id}
+                  canonicalPath={`/blog/${id}`}
+                  title={post.title}
+                />
               </div>
             </header>
 

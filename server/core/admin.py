@@ -684,8 +684,8 @@ class BlogPostAdmin(admin.ModelAdmin):
         (
             "SEO",
             {
-                "fields": ("meta_title", "meta_description", "meta_keywords"),
-                "description": "Optional overrides for search and social previews. Meta keywords are stored only.",
+                "fields": ("meta_title", "meta_description", "meta_og_image", "meta_keywords"),
+                "description": "Optional overrides for search and social previews. Share image falls back to Settings → SEO default OG.",
             },
         ),
     )
@@ -730,7 +730,7 @@ class NoticeAdmin(admin.ModelAdmin):
     ordering = ("sort_order", "-created_at")
     fieldsets = (
         (None, {"fields": ("slug", "title", "excerpt", "body", "title_ne", "excerpt_ne", "body_ne", "tags", "issued_by", "issued_by_ne", "published", "sort_order")}),
-        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_og_image", "meta_keywords")}),
     )
 
 
@@ -767,7 +767,7 @@ class ActAdmin(admin.ModelAdmin):
     autocomplete_fields = ("category",)
     fieldsets = (
         (None, {"fields": ("slug", "title_en", "title_ne", "category", "year", "updated", "premium", "detail_json")}),
-        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_og_image", "meta_keywords")}),
     )
 
     @admin.display(description="Premium", boolean=True, ordering="premium")
@@ -804,7 +804,7 @@ class SummaryAdmin(admin.ModelAdmin):
     date_hierarchy = "posted"
     fieldsets = (
         (None, {"fields": ("slug", "title", "category", "posted", "preview", "premium", "body")}),
-        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_og_image", "meta_keywords")}),
     )
 
     @admin.display(description="Views", ordering="views")
@@ -834,7 +834,7 @@ class PracticeAreaAdmin(admin.ModelAdmin):
     ordering = ("sort_order", "name")
     fieldsets = (
         (None, {"fields": ("slug", "name", "icon", "overview", "tags", "related_cases_title", "services", "sort_order")}),
-        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_og_image", "meta_keywords")}),
     )
 
 
@@ -880,7 +880,7 @@ class LegalCaseAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_og_image", "meta_keywords")}),
     )
     date_hierarchy = "date_filed"
     autocomplete_fields = ("category",)
@@ -908,7 +908,7 @@ class ProcedureAdmin(admin.ModelAdmin):
     inlines = (ProcedureStepInline,)
     fieldsets = (
         (None, {"fields": ("slug", "category", "title", "summary", "steps_count", "duration_label", "icon")}),
-        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_og_image", "meta_keywords")}),
     )
 
 

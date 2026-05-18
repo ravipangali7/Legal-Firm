@@ -34,6 +34,7 @@ import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 import { jsPDF } from 'jspdf';
 import { buildLawPdfSegments, registerNepaliFonts, renderLawPdfSegments } from '@/lib/lawPdf';
 import { usePageSeo } from '@/context/SeoContext';
+import { SocialShareButtons } from '@/components/seo/SocialShareButtons';
 import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 
 const TEAL = 'bg-emerald-600 text-white'; // active sidebar item
@@ -103,6 +104,7 @@ const LawDetail = () => {
           ),
           pathname: `/laws/${slug}`,
           type: 'article',
+          image: currentApi.share_image || undefined,
         }
       : null
   );

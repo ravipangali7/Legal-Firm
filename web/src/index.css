@@ -250,3 +250,24 @@
     text-decoration: none;
   }
 }
+
+/* SaasTech embed (#saastech-chat-widget-host) — smaller launcher/panel, lifted above fixed bottom chrome */
+:root {
+  --site-chat-widget-scale: 0.85;
+  --site-chat-widget-bottom: 5rem;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --site-chat-widget-scale: 0.78;
+    /* Clears back-to-top and typical mobile bottom UI / safe area */
+    --site-chat-widget-bottom: 6.5rem;
+  }
+}
+
+#saastech-chat-widget-host {
+  bottom: calc(var(--site-chat-widget-bottom) + env(safe-area-inset-bottom, 0px)) !important;
+  right: max(1rem, env(safe-area-inset-right, 0px)) !important;
+  transform: scale(var(--site-chat-widget-scale));
+  transform-origin: bottom right;
+}

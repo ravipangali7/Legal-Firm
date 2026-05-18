@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { fetchProcedureDetail, PROCEDURE_NOT_FOUND } from '@/lib/api';
 import { RelatedContentSidebar } from '@/components/RelatedContentSidebar';
 import { usePageSeo } from '@/context/SeoContext';
+import { SocialShareButtons } from '@/components/seo/SocialShareButtons';
 import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 
 const ProcedureDetail = () => {
@@ -42,6 +43,7 @@ const ProcedureDetail = () => {
           description: entitySeoDescription(proc.meta_description, proc.summary),
           pathname: `/procedures/${slug}`,
           type: 'article',
+          image: proc.share_image || undefined,
         }
       : null
   );

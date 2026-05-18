@@ -9,6 +9,7 @@ from django.db import connection
 from core.models import Act
 
 _SEO_META_FIELD_NAMES = ("meta_title", "meta_description")
+_SEO_OG_IMAGE_FIELD = "meta_og_image"
 
 
 def invalidate_seo_meta_schema_cache() -> None:
@@ -31,6 +32,20 @@ def seo_meta_columns_applied_for_model(model) -> bool:
     return seo_meta_columns_applied_for_table(model._meta.db_table)
 
 
+@lru_cache(maxsize=32)
+def seo_meta_og_column_applied_for_table(table: str) -> bool:
+    try:
+        with connection.cursor() as cursor:
+            columns = connection.introspection.get_table_description(cursor, table)
+        return any(col.name == _SEO_OG_IMAGE_FIELD for col in columns)
+    except Exception:
+        return False
+
+
+def seo_meta_og_column_applied_for_model(model) -> bool:
+    return seo_meta_og_column_applied_for_table(model._meta.db_table)
+
+
 @lru_cache(maxsize=1)
 def seo_meta_columns_applied() -> bool:
     """True after migration 0043 on ``Act``; kept for legacy callers."""
@@ -42,8 +57,13 @@ def only_with_optional_seo(*base_fields: str, model: type | None = None) -> tupl
     from core.models import Act
 
     entity = model or Act
+    extra: list[str] = []
     if seo_meta_columns_applied_for_model(entity):
-        return (*base_fields, *_SEO_META_FIELD_NAMES)
+        extra.extend(_SEO_META_FIELD_NAMES)
+    if seo_meta_og_column_applied_for_model(entity):
+        extra.append(_SEO_OG_IMAGE_FIELD)
+    if extra:
+        return (*base_fields, *extra)
     return base_fields
 
 

@@ -317,7 +317,16 @@ class SeoEndpointsTests(TestCase):
         self.assertIn("Sitemap: https://www.taxlexis.example/sitemap.xml", body)
 
     def test_share_landing_og_title(self):
-        from core.models import Summary, SummaryCategory
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from core.models import AppSettings, Summary, SummaryCategory
+
+        app = AppSettings.load()
+        app.og_image.save(
+            "site-og.jpg",
+            SimpleUploadedFile("site-og.jpg", b"\xff\xd8\xff\xd9", content_type="image/jpeg"),
+            save=True,
+        )
 
         cat = SummaryCategory.objects.create(
             slug=f"share-cat-{uuid.uuid4().hex[:8]}",
@@ -339,6 +348,8 @@ class SeoEndpointsTests(TestCase):
         self.assertIn('property="og:title"', html)
         self.assertIn("Custom Meta Title", html)
         self.assertIn(f"https://www.taxlexis.example/summaries/{slug}", html)
+        self.assertIn('property="og:image"', html)
+        self.assertIn("/media/", html)
 
 
 class EngagementSchemaCompatTests(TestCase):

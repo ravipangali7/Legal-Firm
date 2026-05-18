@@ -134,6 +134,8 @@ class ActSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
             "premium",
             "meta_title",
             "meta_description",
+            "meta_og_image",
+            "share_image",
         )
 
 
@@ -269,6 +271,8 @@ class SummaryListSerializer(SeoMetaSerializerMixin, _SummaryMyVoteMixin, seriali
             "my_vote",
             "meta_title",
             "meta_description",
+            "meta_og_image",
+            "share_image",
         )
 
 
@@ -301,6 +305,8 @@ class SummarySerializer(
             "my_vote",
             "meta_title",
             "meta_description",
+            "meta_og_image",
+            "share_image",
         )
 
 
@@ -328,6 +334,8 @@ class LegalCaseSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
             "full_content",
             "meta_title",
             "meta_description",
+            "meta_og_image",
+            "share_image",
         )
 
 
@@ -346,6 +354,8 @@ class PracticeAreaSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer
             "sort_order",
             "meta_title",
             "meta_description",
+            "meta_og_image",
+            "share_image",
         )
 
 
@@ -375,6 +385,8 @@ class ProcedureSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
             "steps",
             "meta_title",
             "meta_description",
+            "meta_og_image",
+            "share_image",
         )
 
 
@@ -473,6 +485,8 @@ class BlogPostSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
             "body",
             "meta_title",
             "meta_description",
+            "meta_og_image",
+            "share_image",
         )
 
 
@@ -552,6 +566,8 @@ class NoticePublicDetailSerializer(SeoMetaSerializerMixin, NoticePublicSerialize
             "my_vote",
             "meta_title",
             "meta_description",
+            "meta_og_image",
+            "share_image",
         )
 
     def get_my_vote(self, obj: Notice) -> str | None:

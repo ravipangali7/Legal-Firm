@@ -22,6 +22,7 @@ import { useAuth } from '@/context/AuthContext';
 import PaywallGate from '@/components/PaywallGate';
 import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 import { usePageSeo } from '@/context/SeoContext';
+import { SocialShareButtons } from '@/components/seo/SocialShareButtons';
 import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 
 const TEAL = 'bg-emerald-600 text-white';
@@ -72,6 +73,7 @@ const SummaryDetail = () => {
           pathname: `/summaries/${slug}`,
           type: 'article',
           publishedTime: current.posted,
+          image: current.share_image || undefined,
         }
       : null
   );

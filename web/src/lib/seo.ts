@@ -44,6 +44,23 @@ export function metaDescription(raw: string | undefined, maxLen = 160): string {
   return `${(lastSpace > 80 ? cut.slice(0, lastSpace) : cut).trim()}…`;
 }
 
+/** Prefer API ``share_image`` (entity or site SEO OG), then explicit page image. */
+export function resolvePageOgImage(
+  shareImage: string | undefined | null,
+  pageImage: string | undefined,
+  siteOgImage: string | undefined,
+  origin: string
+): string {
+  const fromApi = (shareImage || '').trim();
+  if (fromApi) {
+    const resolved = cmsMediaSrc(fromApi);
+    if (/^https?:\/\//i.test(resolved)) return resolved;
+    if (resolved.startsWith('/') && origin) return absoluteUrl(resolved, origin);
+    return resolved;
+  }
+  return resolveOgImage(pageImage, siteOgImage, origin);
+}
+
 export function resolveOgImage(
   pageImage: string | undefined,
   siteOgImage: string | undefined,

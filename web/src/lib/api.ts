@@ -739,6 +739,7 @@ export interface ProcedureDetailApi {
   title: string;
   meta_title?: string;
   meta_description?: string;
+  share_image?: string;
   summary: string;
   steps_count: number;
   duration_label: string;
@@ -1138,6 +1139,7 @@ export interface BlogPostPublicList {
   title: string;
   meta_title?: string;
   meta_description?: string;
+  share_image?: string;
   excerpt: string;
   author: string | null;
   author_email?: string | null;
@@ -1287,6 +1289,7 @@ export interface SummaryApi {
   title: string;
   meta_title?: string;
   meta_description?: string;
+  share_image?: string;
   category: string;
   category_slug: string;
   category_name: string;
@@ -1378,6 +1381,7 @@ export interface NoticePublicApi {
   title: string;
   meta_title?: string;
   meta_description?: string;
+  share_image?: string;
   excerpt: string;
   title_ne: string;
   excerpt_ne: string;
@@ -1769,6 +1773,7 @@ export interface ActApi {
   title_ne: string;
   meta_title?: string;
   meta_description?: string;
+  share_image?: string;
   category: string;
   category_slug?: string;
   year: string;

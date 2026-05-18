@@ -27,6 +27,7 @@ import { downloadNoticeAsPdf } from '@/lib/noticePdf';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { usePageSeo } from '@/context/SeoContext';
+import { SocialShareButtons } from '@/components/seo/SocialShareButtons';
 import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 
 const TEAL = 'bg-emerald-600 text-white';
@@ -91,6 +92,7 @@ const NoticeDetail = () => {
           pathname: `/notices/${slug}`,
           type: 'article',
           publishedTime: current.created_at,
+          image: current.share_image || undefined,
         }
       : null
   );

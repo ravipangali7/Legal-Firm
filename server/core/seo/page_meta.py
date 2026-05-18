@@ -29,7 +29,7 @@ from core.seo_schema import only_with_optional_seo, seo_meta_columns_applied, se
 _ABOUT_SUBPAGES = ("background", "our-team", "our-services")
 
 
-def resolve_page_meta(path: str) -> dict[str, Any] | None:
+def resolve_page_meta(path: str, request=None) -> dict[str, Any] | None:
     app = AppSettings.load()
     site_name = (app.site_name or "TaxLexis Legal").strip()
     p = path if path.startswith("/") else f"/{path}"
@@ -41,6 +41,7 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
             description=app.seo_description or "",
             canonical_path="/",
             site_name=site_name,
+            request=request,
         )
 
     static = {
@@ -61,7 +62,9 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
     }
     if p in static:
         t, d = static[p]
-        return pack_page_meta(title=t, description=d, canonical_path=p, site_name=site_name)
+        return pack_page_meta(
+            title=t, description=d, canonical_path=p, site_name=site_name, request=request
+        )
 
     m = re.match(r"^/about/([^/]+)$", p)
     if m and m.group(1) in _ABOUT_SUBPAGES:
@@ -71,6 +74,7 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
             description=f"About {site_name} — {label}.",
             canonical_path=p,
             site_name=site_name,
+            request=request,
         )
 
     m = re.match(r"^/laws/([^/]+)$", p)
@@ -86,6 +90,8 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
                 description=resolve_entity_description(meta_description),
                 canonical_path=p,
                 site_name=site_name,
+                entity=row,
+                request=request,
             )
 
     m = re.match(r"^/summaries/([^/]+)$", p)
@@ -104,6 +110,8 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
                 type_="article",
                 canonical_path=p,
                 site_name=site_name,
+                entity=row,
+                request=request,
             )
 
     m = re.match(r"^/procedures/([^/]+)$", p)
@@ -121,6 +129,8 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
                 ),
                 canonical_path=p,
                 site_name=site_name,
+                entity=row,
+                request=request,
             )
 
     m = re.match(r"^/notices/([^/]+)$", p)
@@ -141,6 +151,8 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
                 type_="article",
                 canonical_path=p,
                 site_name=site_name,
+                entity=row,
+                request=request,
             )
 
     m = re.match(r"^/practice-areas/([^/]+)$", p)
@@ -158,6 +170,8 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
                 ),
                 canonical_path=p,
                 site_name=site_name,
+                entity=row,
+                request=request,
             )
 
     m = re.match(r"^/case/([^/]+)$", p)
@@ -175,6 +189,8 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
                 ),
                 canonical_path=p,
                 site_name=site_name,
+                entity=row,
+                request=request,
             )
 
     m = re.match(r"^/blog/([^/]+)$", p)
@@ -195,6 +211,8 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
                 type_="article",
                 canonical_path=p,
                 site_name=site_name,
+                entity=row,
+                request=request,
             )
 
     m = re.match(r"^/professionals/([^/]+)$", p)
@@ -205,16 +223,16 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
             .first()
         )
         if row:
-            img = row.avatar.url if row.avatar else ""
             return pack_page_meta(
                 title=resolve_entity_title(row.meta_title, row.name),
                 description=resolve_entity_description(
                     row.meta_description, f"{row.role} — {row.bio or ''}"
                 ),
-                image=img,
                 type_="profile",
                 canonical_path=p,
                 site_name=site_name,
+                entity=row,
+                request=request,
             )
 
     m = re.match(r"^/news/([^/]+)$", p)
@@ -225,13 +243,13 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
             .first()
         )
         if row:
-            img = row.image.url if row.image else ""
             return pack_page_meta(
                 title=row.title,
                 description=row.excerpt or "",
-                image=img,
                 canonical_path=p,
                 site_name=site_name,
+                entity=row,
+                request=request,
             )
 
     m = re.match(r"^/events/([^/]+)$", p)
@@ -242,13 +260,13 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
             .first()
         )
         if row:
-            img = row.image.url if row.image else ""
             return pack_page_meta(
                 title=row.title,
                 description=row.excerpt or "",
-                image=img,
                 canonical_path=p,
                 site_name=site_name,
+                entity=row,
+                request=request,
             )
 
     m = re.match(r"^/services/([^/]+)$", p)
@@ -264,6 +282,7 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
                 description=row.description or "",
                 canonical_path=p,
                 site_name=site_name,
+                request=request,
             )
 
     return None

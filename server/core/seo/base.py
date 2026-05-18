@@ -1,4 +1,4 @@
-"""Shared SEO helpers: site URL, text stripping, entity meta resolution."""
+"""Shared SEO helpers: site URL, text stripping, OG image resolution."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import re
 from typing import Any
 
 from django.conf import settings
+from django.db.models.fields.files import FieldFile
 
 from core.models import AppSettings
 
@@ -66,6 +67,63 @@ def abs_media_url(url: str, base: str | None = None) -> str:
     return f"{origin}{url if url.startswith('/') else f'/{url}'}"
 
 
+def absolute_media_file(file_field: FieldFile | None, request=None) -> str:
+    """Turn a FileField into an absolute HTTPS-friendly URL for OG tags."""
+    if not file_field:
+        return ""
+    try:
+        raw = (file_field.url or "").strip()
+    except (ValueError, AttributeError):
+        return ""
+    if not raw:
+        return ""
+    if raw.startswith("http://") or raw.startswith("https://"):
+        return raw
+    if request is not None:
+        return request.build_absolute_uri(raw)
+    return abs_media_url(raw)
+
+
+def site_default_og_image(request=None) -> str:
+    """Site Settings → SEO default OG, then logo (guide fallback chain)."""
+    app = AppSettings.load()
+    for field in (app.og_image, app.site_logo):
+        url = absolute_media_file(field, request)
+        if url:
+            return url
+    return ""
+
+
+def resolve_og_image(
+    *,
+    entity: Any | None = None,
+    image_path: str = "",
+    request=None,
+) -> str:
+    """
+    OG image priority: entity meta_og_image → avatar/image → explicit path → site SEO og_image → site_logo.
+    """
+    if entity is not None:
+        meta_og = getattr(entity, "meta_og_image", None)
+        url = absolute_media_file(meta_og, request)
+        if url:
+            return url
+        for attr in ("avatar", "image", "featured_image"):
+            url = absolute_media_file(getattr(entity, attr, None), request)
+            if url:
+                return url
+
+    path = (image_path or "").strip()
+    if path:
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        if request is not None and path.startswith("/"):
+            return request.build_absolute_uri(path)
+        return abs_media_url(path)
+
+    return site_default_og_image(request)
+
+
 def pack_page_meta(
     *,
     title: str,
@@ -74,12 +132,13 @@ def pack_page_meta(
     type_: str = "website",
     canonical_path: str,
     site_name: str | None = None,
+    entity: Any | None = None,
+    request=None,
 ) -> dict[str, Any]:
     app = AppSettings.load()
     site = (site_name or app.site_name or "TaxLexis Legal").strip()
     base = site_base_url()
-    og = abs_media_url((app.og_image.url if app.og_image else "") or "", base)
-    img = abs_media_url(image, base) or og
+    img = resolve_og_image(entity=entity, image_path=image, request=request)
     path = canonical_path if canonical_path.startswith("/") else f"/{canonical_path}"
     return {
         "title": title,

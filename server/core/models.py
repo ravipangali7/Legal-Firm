@@ -905,12 +905,24 @@ class FooterSocialLink(UUIDModel):
         return self.label
 
 
+def _upload_entity_meta_og_image(instance, filename: str) -> str:
+    stem = Path(filename).stem[:80] or "og"
+    model = instance.__class__.__name__.lower()
+    pk = getattr(instance, "pk", None) or getattr(instance, "slug", "new")
+    return f"seo/entity_og/{model}/{pk}/{stem}.jpg"
+
+
 class SeoEntityMixin(models.Model):
     """Optional per-entity SEO overrides (MOD_CMS). `meta_keywords` is stored only — not emitted in HTML."""
 
     meta_title = models.CharField(max_length=255, blank=True)
     meta_description = models.TextField(blank=True)
     meta_keywords = models.CharField(max_length=255, blank=True)
+    meta_og_image = models.ImageField(
+        upload_to=_upload_entity_meta_og_image,
+        blank=True,
+        help_text="Social share image for this item. Falls back to site Settings → SEO default OG image.",
+    )
 
     class Meta:
         abstract = True

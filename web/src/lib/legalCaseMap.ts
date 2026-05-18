@@ -7,6 +7,7 @@ export interface LegalCaseApi {
   title: string;
   meta_title?: string;
   meta_description?: string;
+  share_image?: string;
   reference_number: string;
   date_filed: string;
   date_decided: string | null;

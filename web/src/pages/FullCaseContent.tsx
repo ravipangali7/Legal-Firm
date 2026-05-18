@@ -6,7 +6,6 @@ import {
   Download, 
   Printer, 
   Bookmark, 
-  Share2, 
   FileText,
   Calendar,
   MapPin,
@@ -29,6 +28,7 @@ import { mapLegalCaseApiToCase } from '@/lib/legalCaseMap';
 import { useAuth } from '@/context/AuthContext';
 import { hasLibraryEntitlement } from '@/lib/subscriptionAccess';
 import { usePageSeo } from '@/context/SeoContext';
+import { SocialShareButtons } from '@/components/seo/SocialShareButtons';
 import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 import type { LegalCaseApi } from '@/lib/legalCaseMap';
 
@@ -65,6 +65,7 @@ const FullCaseContent = () => {
           description: entitySeoDescription(caseApi?.meta_description, caseData.teaser),
           pathname: `/case/${caseId}`,
           type: 'article',
+          image: caseApi?.share_image || undefined,
         }
       : null
   );
@@ -82,17 +83,6 @@ const FullCaseContent = () => {
     console.log('Bookmarked:', !isBookmarked);
   };
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: caseData?.title,
-        text: caseData?.teaser,
-        url: window.location.href,
-      });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -189,10 +179,14 @@ const FullCaseContent = () => {
             <Bookmark className={`h-4 w-4 mr-2 ${isBookmarked ? 'fill-current' : ''}`} />
             {isBookmarked ? 'Bookmarked' : 'Bookmark'}
           </Button>
-          <Button onClick={handleShare} variant="outline" size="sm">
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
+          {caseId ? (
+            <SocialShareButtons
+              kind="legal-case"
+              idOrSlug={caseId}
+              canonicalPath={`/case/${caseId}`}
+              title={caseData?.title}
+            />
+          ) : null}
         </div>
       </div>
 
