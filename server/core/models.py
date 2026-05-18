@@ -905,7 +905,18 @@ class FooterSocialLink(UUIDModel):
         return self.label
 
 
-class BlogPost(UUIDModel):
+class SeoEntityMixin(models.Model):
+    """Optional per-entity SEO overrides (MOD_CMS). `meta_keywords` is stored only — not emitted in HTML."""
+
+    meta_title = models.CharField(max_length=255, blank=True)
+    meta_description = models.TextField(blank=True)
+    meta_keywords = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        abstract = True
+
+
+class BlogPost(SeoEntityMixin, UUIDModel):
     title = models.CharField(max_length=512)
     excerpt = models.TextField(blank=True)
     author = models.ForeignKey(
@@ -1006,7 +1017,7 @@ class HelpArticle(UUIDModel):
         return self.title
 
 
-class Notice(UUIDModel):
+class Notice(SeoEntityMixin, UUIDModel):
     """Official notices and circulars; create/update/delete is restricted to super admins in the staff API."""
 
     slug = models.SlugField(max_length=255, unique=True, db_index=True)
@@ -1183,7 +1194,7 @@ class ProcedureCategory(UUIDModel):
         return self.name
 
 
-class Act(models.Model):
+class Act(SeoEntityMixin, models.Model):
     slug = models.SlugField(unique=True, primary_key=True, max_length=128)
     title_en = models.CharField(max_length=512)
     title_ne = models.CharField(max_length=512)
@@ -1214,7 +1225,7 @@ class SummaryCategory(UUIDModel):
         return self.name
 
 
-class Summary(UUIDModel):
+class Summary(SeoEntityMixin, UUIDModel):
     slug = models.SlugField(unique=True)
     title = models.CharField(max_length=512)
     category = models.ForeignKey(SummaryCategory, on_delete=models.PROTECT, related_name="summaries")
@@ -1277,7 +1288,7 @@ class SummaryAudienceVote(UUIDModel):
         ]
 
 
-class PracticeArea(UUIDModel):
+class PracticeArea(SeoEntityMixin, UUIDModel):
     """Public practice-area pages: sidebar, overview, services JSON, and case list filter slug."""
 
     slug = models.SlugField(max_length=128, unique=True)
@@ -1297,7 +1308,7 @@ class PracticeArea(UUIDModel):
         return self.name
 
 
-class LegalCase(UUIDModel):
+class LegalCase(SeoEntityMixin, UUIDModel):
     slug = models.SlugField(unique=True)
     title = models.CharField(max_length=512)
     reference_number = models.CharField(max_length=128)
@@ -1321,7 +1332,7 @@ class LegalCase(UUIDModel):
         return self.title
 
 
-class Procedure(UUIDModel):
+class Procedure(SeoEntityMixin, UUIDModel):
     slug = models.SlugField(unique=True)
     category = models.ForeignKey(ProcedureCategory, on_delete=models.PROTECT, related_name="procedures")
     title = models.CharField(max_length=512)

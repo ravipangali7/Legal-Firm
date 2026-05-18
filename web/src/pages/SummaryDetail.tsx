@@ -22,6 +22,7 @@ import { useAuth } from '@/context/AuthContext';
 import PaywallGate from '@/components/PaywallGate';
 import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 import { usePageSeo } from '@/context/SeoContext';
+import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 
 const TEAL = 'bg-emerald-600 text-white';
 
@@ -66,8 +67,8 @@ const SummaryDetail = () => {
   usePageSeo(
     current && slug
       ? {
-          title: current.title,
-          description: current.preview,
+          title: entitySeoTitle(current.meta_title, current.title),
+          description: entitySeoDescription(current.meta_description, current.preview),
           pathname: `/summaries/${slug}`,
           type: 'article',
           publishedTime: current.posted,

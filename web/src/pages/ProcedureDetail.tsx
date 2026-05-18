@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { fetchProcedureDetail, PROCEDURE_NOT_FOUND } from '@/lib/api';
 import { RelatedContentSidebar } from '@/components/RelatedContentSidebar';
 import { usePageSeo } from '@/context/SeoContext';
+import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 
 const ProcedureDetail = () => {
   const { slug } = useParams();
@@ -37,8 +38,8 @@ const ProcedureDetail = () => {
   usePageSeo(
     proc && slug
       ? {
-          title: proc.title,
-          description: proc.summary,
+          title: entitySeoTitle(proc.meta_title, proc.title),
+          description: entitySeoDescription(proc.meta_description, proc.summary),
           pathname: `/procedures/${slug}`,
           type: 'article',
         }

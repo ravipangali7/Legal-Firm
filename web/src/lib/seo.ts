@@ -57,6 +57,25 @@ export function resolveOgImage(
   return resolved;
 }
 
+/** CMS/API meta override with display fallback (Part D.3). */
+export function entitySeoTitle(metaTitle: string | undefined | null, display: string): string {
+  const t = (metaTitle || '').trim();
+  return t || display;
+}
+
+export function entitySeoDescription(
+  metaDescription: string | undefined | null,
+  ...fallbacks: (string | undefined | null)[]
+): string {
+  const md = (metaDescription || '').trim();
+  if (md) return md;
+  for (const fb of fallbacks) {
+    const t = (fb || '').trim();
+    if (t) return t;
+  }
+  return '';
+}
+
 export function parseKeywords(raw: string | undefined): string[] {
   return (raw || '')
     .split(/[,;]/)

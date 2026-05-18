@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { fetchPublicConfig, type PublicSiteConfig } from '@/lib/api';
 import { cmsMediaSrc } from '@/lib/cmsAssetUrl';
+import { configureSiteSeo } from '@/lib/seo/metaTags';
 
 interface SiteConfigState {
   config: PublicSiteConfig | null;
@@ -56,6 +57,11 @@ export const SiteConfigProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!config) return;
+    configureSiteSeo({
+      siteName: config.site_name,
+      siteMetaDescription: config.seo_description,
+      defaultOgImage: config.og_image,
+    });
     const fav = (config.site_favicon || '').trim();
     if (!fav) return;
     const href = cmsMediaSrc(fav);

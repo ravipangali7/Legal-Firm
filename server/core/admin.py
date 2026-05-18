@@ -676,9 +676,19 @@ class BlogPostAdmin(admin.ModelAdmin):
         "featured_badge",
     )
     list_filter = ("published", "featured", "category", "date")
-    search_fields = ("title", "excerpt", "body", "author_name")
+    search_fields = ("title", "excerpt", "body", "author_name", "meta_title")
     autocomplete_fields = ("author",)
     date_hierarchy = "date"
+    fieldsets = (
+        (None, {"fields": ("title", "excerpt", "body", "author", "author_name", "category", "date", "published", "featured")}),
+        (
+            "SEO",
+            {
+                "fields": ("meta_title", "meta_description", "meta_keywords"),
+                "description": "Optional overrides for search and social previews. Meta keywords are stored only.",
+            },
+        ),
+    )
 
     @admin.display(description="Author")
     def author_display(self, obj):
@@ -716,8 +726,12 @@ class HelpArticleAdmin(admin.ModelAdmin):
 class NoticeAdmin(admin.ModelAdmin):
     list_display = ("title", "slug", "issued_by", "published", "sort_order", "view_count", "updated_at")
     list_filter = ("published", "issued_by")
-    search_fields = ("title", "title_ne", "slug", "excerpt", "issued_by", "body")
+    search_fields = ("title", "title_ne", "slug", "excerpt", "issued_by", "body", "meta_title")
     ordering = ("sort_order", "-created_at")
+    fieldsets = (
+        (None, {"fields": ("slug", "title", "excerpt", "body", "title_ne", "excerpt_ne", "body_ne", "tags", "issued_by", "issued_by_ne", "published", "sort_order")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+    )
 
 
 @admin.register(models.KnowledgeResourceCategory)
@@ -749,8 +763,12 @@ class ActCategoryAdmin(admin.ModelAdmin):
 class ActAdmin(admin.ModelAdmin):
     list_display = ("slug", "title_en", "category", "year", "updated", "premium_badge")
     list_filter = ("category", "premium", "updated")
-    search_fields = ("slug", "title_en", "title_ne")
+    search_fields = ("slug", "title_en", "title_ne", "meta_title")
     autocomplete_fields = ("category",)
+    fieldsets = (
+        (None, {"fields": ("slug", "title_en", "title_ne", "category", "year", "updated", "premium", "detail_json")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+    )
 
     @admin.display(description="Premium", boolean=True, ordering="premium")
     def premium_badge(self, obj):
@@ -780,10 +798,14 @@ class SummaryCategoryAdmin(admin.ModelAdmin):
 class SummaryAdmin(admin.ModelAdmin):
     list_display = ("title", "category", "posted", "views_cell", "votes_cell", "premium_badge")
     list_filter = ("premium", "category", "posted")
-    search_fields = ("title", "slug", "preview")
+    search_fields = ("title", "slug", "preview", "meta_title")
     autocomplete_fields = ("category",)
     prepopulated_fields = {"slug": ("title",)}
     date_hierarchy = "posted"
+    fieldsets = (
+        (None, {"fields": ("slug", "title", "category", "posted", "preview", "premium", "body")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+    )
 
     @admin.display(description="Views", ordering="views")
     def views_cell(self, obj):
@@ -808,8 +830,12 @@ class SummaryAdmin(admin.ModelAdmin):
 class PracticeAreaAdmin(admin.ModelAdmin):
     list_display = ("slug", "name", "icon", "sort_order")
     list_editable = ("sort_order",)
-    search_fields = ("slug", "name", "overview")
+    search_fields = ("slug", "name", "overview", "meta_title")
     ordering = ("sort_order", "name")
+    fieldsets = (
+        (None, {"fields": ("slug", "name", "icon", "overview", "tags", "related_cases_title", "services", "sort_order")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+    )
 
 
 @admin.register(models.LegalCaseCategory)
@@ -831,8 +857,31 @@ class LegalCaseAdmin(admin.ModelAdmin):
         "date_decided",
     )
     list_filter = ("court", "category", "practice_area", "date_filed")
-    search_fields = ("slug", "title", "reference_number", "teaser")
+    search_fields = ("slug", "title", "reference_number", "teaser", "meta_title")
     prepopulated_fields = {"slug": ("title",)}
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "slug",
+                    "title",
+                    "reference_number",
+                    "date_filed",
+                    "date_decided",
+                    "court",
+                    "category",
+                    "practice_area",
+                    "teaser",
+                    "parties",
+                    "summary",
+                    "outcome",
+                    "full_content",
+                )
+            },
+        ),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+    )
     date_hierarchy = "date_filed"
     autocomplete_fields = ("category",)
 
@@ -853,10 +902,14 @@ class ProcedureCategoryAdmin(admin.ModelAdmin):
 class ProcedureAdmin(admin.ModelAdmin):
     list_display = ("title", "slug", "category", "steps_count", "duration_label", "icon")
     list_filter = ("category",)
-    search_fields = ("title", "slug", "summary")
+    search_fields = ("title", "slug", "summary", "meta_title")
     prepopulated_fields = {"slug": ("title",)}
     autocomplete_fields = ("category",)
     inlines = (ProcedureStepInline,)
+    fieldsets = (
+        (None, {"fields": ("slug", "category", "title", "summary", "steps_count", "duration_label", "icon")}),
+        ("SEO", {"fields": ("meta_title", "meta_description", "meta_keywords")}),
+    )
 
 
 @admin.register(models.ProcedureStep)

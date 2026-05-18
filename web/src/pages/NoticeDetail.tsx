@@ -27,6 +27,7 @@ import { downloadNoticeAsPdf } from '@/lib/noticePdf';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { usePageSeo } from '@/context/SeoContext';
+import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 
 const TEAL = 'bg-emerald-600 text-white';
 
@@ -85,8 +86,8 @@ const NoticeDetail = () => {
   usePageSeo(
     current && slug
       ? {
-          title: current.title,
-          description: current.excerpt,
+          title: entitySeoTitle(current.meta_title, current.title),
+          description: entitySeoDescription(current.meta_description, current.excerpt),
           pathname: `/notices/${slug}`,
           type: 'article',
           publishedTime: current.created_at,

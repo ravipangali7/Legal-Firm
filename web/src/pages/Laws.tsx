@@ -19,6 +19,7 @@ import { PageHelpFaqs } from '@/components/PageHelpFaqs';
 import { useAuth } from '@/context/AuthContext';
 import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 import { usePremiumSubscribeToast } from '@/hooks/usePremiumSubscribeToast';
+import { useListingFacetsSeo } from '@/lib/seo/useListingFacetsSeo';
 
 function formatUpdated(iso: string): string {
   try {
@@ -52,6 +53,14 @@ const Laws = () => {
     data: homepage,
     isLoading: homepageLoading,
   } = useQuery(siteHomepageQueryOptions);
+
+  const hasFilters = Boolean(q.trim()) || active.length > 0;
+  useListingFacetsSeo('/laws', {
+    title: 'Laws & Acts',
+    description: 'Browse Nepalese acts and legislation library.',
+    hasActiveFilters: hasFilters,
+    hasSearch: Boolean(q.trim()),
+  });
 
   const {
     data: acts = [],

@@ -5,10 +5,17 @@ from django.urls import path
 from core.views.client import esewa_views, home_views, seo_views
 
 urlpatterns = [
+    # SEO guide routes (Appendix A) + legacy aliases
+    path("meta/sitemap.xml", seo_views.public_sitemap_xml),
     path("public/sitemap.xml", seo_views.public_sitemap_xml),
     path("public/robots.txt", seo_views.public_robots_txt),
     path("public/page-meta/", seo_views.public_page_meta),
     path("public/share-preview/", seo_views.public_share_preview),
+    path("blog-posts/<uuid:post_id>/share/", seo_views.blog_post_share),
+    path("summaries/<slug:slug>/share/", seo_views.summary_share),
+    path("notices/<slug:slug>/share/", seo_views.notice_share),
+    path("acts/<slug:slug>/share/", seo_views.act_share),
+    path("settings/public/", home_views.public_config),
     path("public/config/", home_views.public_config),
     path("public/translate/en-ne/", home_views.public_translate_en_ne),
     path("public/contact/", home_views.public_contact_submit),

@@ -737,6 +737,8 @@ export interface ProcedureDetailApi {
   category: string;
   category_slug?: string;
   title: string;
+  meta_title?: string;
+  meta_description?: string;
   summary: string;
   steps_count: number;
   duration_label: string;
@@ -1134,6 +1136,8 @@ export async function deleteAdminProcedure(id: string): Promise<void> {
 export interface BlogPostPublicList {
   id: string;
   title: string;
+  meta_title?: string;
+  meta_description?: string;
   excerpt: string;
   author: string | null;
   author_email?: string | null;
@@ -1281,6 +1285,8 @@ export interface SummaryApi {
   id: string;
   slug: string;
   title: string;
+  meta_title?: string;
+  meta_description?: string;
   category: string;
   category_slug: string;
   category_name: string;
@@ -1369,6 +1375,8 @@ export interface NoticePublicApi {
   id: string;
   slug: string;
   title: string;
+  meta_title?: string;
+  meta_description?: string;
   excerpt: string;
   title_ne: string;
   excerpt_ne: string;
@@ -1712,6 +1720,8 @@ export interface PracticeAreaApi {
   id: string;
   slug: string;
   name: string;
+  meta_title?: string;
+  meta_description?: string;
   icon: string;
   overview: string;
   tags: string[];
@@ -1756,6 +1766,8 @@ export interface ActApi {
   slug: string;
   title_en: string;
   title_ne: string;
+  meta_title?: string;
+  meta_description?: string;
   category: string;
   category_slug?: string;
   year: string;

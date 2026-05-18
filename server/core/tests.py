@@ -264,6 +264,83 @@ class AuthOtpRequestTests(TestCase):
         )
 
 
+class SeoEndpointsTests(TestCase):
+    """Part E4 / Part L — sitemap, robots, share landings."""
+
+    def setUp(self):
+        self.api = APIClient()
+        from core.models import AppSettings
+
+        app = AppSettings.load()
+        app.canonical_url = "https://www.taxlexis.example"
+        app.site_name = "TaxLexis Legal"
+        app.seo_description = "Test site description for SEO."
+        app.save()
+
+    def test_sitemap_xml_200(self):
+        from core.models import Summary, SummaryCategory
+
+        cat = SummaryCategory.objects.create(
+            slug=f"seo-cat-{uuid.uuid4().hex[:8]}",
+            name="SEO Cat",
+            color="#000",
+        )
+        slug = f"seo-sum-{uuid.uuid4().hex[:8]}"
+        Summary.objects.create(
+            slug=slug,
+            title="SEO Test Summary",
+            category=cat,
+            posted=date.today(),
+            preview="Preview text",
+        )
+        rsp = self.api.get("/api/meta/sitemap.xml")
+        self.assertEqual(rsp.status_code, 200)
+        self.assertIn("application/xml", rsp["Content-Type"])
+        self.assertIn(slug, rsp.content.decode())
+
+    def test_sitemap_loc_absolute(self):
+        rsp = self.api.get("/api/public/sitemap.xml")
+        self.assertEqual(rsp.status_code, 200)
+        base = "https://www.taxlexis.example"
+        for line in rsp.content.decode().splitlines():
+            if "<loc>" in line:
+                loc = line.strip().removeprefix("<loc>").removesuffix("</loc>")
+                self.assertTrue(
+                    loc.startswith(base),
+                    f"Expected absolute loc starting with {base}, got {loc}",
+                )
+
+    def test_robots_sitemap_absolute(self):
+        rsp = self.api.get("/api/public/robots.txt")
+        self.assertEqual(rsp.status_code, 200)
+        body = rsp.content.decode()
+        self.assertIn("Sitemap: https://www.taxlexis.example/sitemap.xml", body)
+
+    def test_share_landing_og_title(self):
+        from core.models import Summary, SummaryCategory
+
+        cat = SummaryCategory.objects.create(
+            slug=f"share-cat-{uuid.uuid4().hex[:8]}",
+            name="Share Cat",
+            color="#111",
+        )
+        slug = f"share-sum-{uuid.uuid4().hex[:8]}"
+        Summary.objects.create(
+            slug=slug,
+            title="Shareable Summary Title",
+            category=cat,
+            posted=date.today(),
+            preview="Share preview",
+            meta_title="Custom Meta Title",
+        )
+        rsp = self.api.get(f"/api/summaries/{slug}/share/")
+        self.assertEqual(rsp.status_code, 200)
+        html = rsp.content.decode()
+        self.assertIn('property="og:title"', html)
+        self.assertIn("Custom Meta Title", html)
+        self.assertIn(f"https://www.taxlexis.example/summaries/{slug}", html)
+
+
 class AdminEmailTemplatesApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()

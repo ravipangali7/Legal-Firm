@@ -1,8 +1,31 @@
 import http from "node:http";
 import path from "path";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import { componentTagger } from "lovable-tagger";
+
+/** Inject brand defaults into index.html at build time (SEO guide Part B.3). */
+function seoHtmlInject(env: Record<string, string>): Plugin {
+  const siteName = (env.VITE_SITE_NAME || "TaxLexis Legal").trim();
+  const description = (
+    env.VITE_SITE_DESCRIPTION ||
+    "Expert tax, legal, and corporate advisory for businesses and individuals in Nepal."
+  ).trim();
+  const themeColor = (env.VITE_THEME_COLOR || "#0f3d2e").trim();
+  return {
+    name: "seo-html-inject",
+    transformIndexHtml(html) {
+      return html
+        .replace(/<title>[^<]*<\/title>/, `<title>${siteName}</title>`)
+        .replace(
+          /content="Expert tax, legal, and corporate advisory[^"]*"/,
+          `content="${description}"`
+        )
+        .replace(/content="#0a1f38"/, `content="${themeColor}"`)
+        .replace(/content="TaxLexis Legal"/g, `content="${siteName}"`);
+    },
+  };
+}
 
 /**
  * Dev-only: `GET /professionals` with `Accept: application/json` returns the same JSON as
@@ -59,7 +82,9 @@ function professionalsJsonProxy(): Plugin {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode, command }) => ({
+export default defineConfig(({ mode, command }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  return {
   server: {
     host: "::",
     port: 8080,
@@ -75,7 +100,7 @@ export default defineConfig(({ mode, command }) => ({
       "/sitemap.xml": {
         target: "https://legalfirmserver.360winx.com",
         changeOrigin: true,
-        rewrite: (path) => "/api/public/sitemap.xml",
+        rewrite: () => "/api/meta/sitemap.xml",
       },
       "/robots.txt": {
         target: "https://legalfirmserver.360winx.com",
@@ -85,6 +110,7 @@ export default defineConfig(({ mode, command }) => ({
     },
   },
   plugins: [
+    seoHtmlInject(env),
     mode === "development" && professionalsJsonProxy(),
     react(),
     mode === "development" &&
@@ -97,4 +123,5 @@ export default defineConfig(({ mode, command }) => ({
     },
     dedupe: ["react", "react-dom"],
   },
-}));
+};
+});

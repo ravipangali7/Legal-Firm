@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Search, Eye, ThumbsUp, ThumbsDown, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchPublicNotices, type NoticePublicApi } from '@/lib/api';
+import { useListingFacetsSeo } from '@/lib/seo/useListingFacetsSeo';
 
 function postedLabel(iso: string): string {
   try {
@@ -48,6 +49,14 @@ const Notices = () => {
     }
     return ['All', ...[...s].sort((a, b) => a.localeCompare(b))];
   }, [notices]);
+
+  const hasFilters = Boolean(q.trim()) || tag !== 'All' || issuer !== 'All';
+  useListingFacetsSeo('/notices', {
+    title: 'Notices',
+    description: 'Official notices, circulars, and regulatory updates.',
+    hasActiveFilters: hasFilters,
+    hasSearch: Boolean(q.trim()),
+  });
 
   const filtered = useMemo(() => {
     return notices.filter((n) => {

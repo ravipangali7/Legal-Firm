@@ -11,6 +11,7 @@ import { blogBodyToParagraphs, blogPostPublicAuthorLabel, fetchPublicBlogPost } 
 import { looksLikeHtml } from '@/lib/summaryHtml';
 import { RelatedContentSidebar } from '@/components/RelatedContentSidebar';
 import { usePageSeo } from '@/context/SeoContext';
+import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 
 const BlogDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,8 +26,8 @@ const BlogDetail = () => {
   usePageSeo(
     post && id
       ? {
-          title: post.title,
-          description: post.excerpt,
+          title: entitySeoTitle(post.meta_title, post.title),
+          description: entitySeoDescription(post.meta_description, post.excerpt),
           pathname: `/blog/${id}`,
           type: 'article',
           publishedTime: post.date,

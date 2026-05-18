@@ -29,34 +29,40 @@ import { mapLegalCaseApiToCase } from '@/lib/legalCaseMap';
 import { useAuth } from '@/context/AuthContext';
 import { hasLibraryEntitlement } from '@/lib/subscriptionAccess';
 import { usePageSeo } from '@/context/SeoContext';
+import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
+import type { LegalCaseApi } from '@/lib/legalCaseMap';
 
 const FullCaseContent = () => {
   const { caseId } = useParams();
   const { user } = useAuth();
   const [isBookmarked, setIsBookmarked] = useState(false);
 
-  const { data: caseData, isLoading, isError } = useQuery({
+  const { data: caseLoad, isLoading, isError } = useQuery({
     queryKey: ['legal-case', caseId],
-    queryFn: async (): Promise<Case | null> => {
-      if (!caseId) return null;
+    queryFn: async (): Promise<{ caseData: Case | null; api: LegalCaseApi | null }> => {
+      if (!caseId) return { caseData: null, api: null };
       try {
         const api = await fetchPublicLegalCaseBySlug(caseId);
-        if (api) return mapLegalCaseApiToCase(api);
+        if (api) return { caseData: mapLegalCaseApiToCase(api), api };
       } catch {
         /* API unreachable — fall back to bundled samples */
       }
-      return sampleCases.find((c) => c.id === caseId || c.slug === caseId) ?? null;
+      const fallback = sampleCases.find((c) => c.id === caseId || c.slug === caseId) ?? null;
+      return { caseData: fallback, api: null };
     },
     enabled: Boolean(caseId),
     staleTime: 60_000,
     retry: 1,
   });
 
+  const caseData = caseLoad?.caseData ?? null;
+  const caseApi = caseLoad?.api ?? null;
+
   usePageSeo(
     caseData && caseId
       ? {
-          title: caseData.title,
-          description: caseData.teaser,
+          title: entitySeoTitle(caseApi?.meta_title, caseData.title),
+          description: entitySeoDescription(caseApi?.meta_description, caseData.teaser),
           pathname: `/case/${caseId}`,
           type: 'article',
         }

@@ -1,5 +1,6 @@
-# Static fallback for local preview. Production uses /api/public/robots.txt via proxy.
+# Served dynamically in production via /api/public/robots.txt (proxied as /robots.txt).
+# Local static fallback — use absolute Sitemap when deploying without the API proxy.
 User-agent: *
 Allow: /
 
-Sitemap: /sitemap.xml
+Sitemap: https://taxlexis.com/sitemap.xml

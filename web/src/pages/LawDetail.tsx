@@ -34,6 +34,7 @@ import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 import { jsPDF } from 'jspdf';
 import { buildLawPdfSegments, registerNepaliFonts, renderLawPdfSegments } from '@/lib/lawPdf';
 import { usePageSeo } from '@/context/SeoContext';
+import { entitySeoDescription, entitySeoTitle } from '@/lib/seo';
 
 const TEAL = 'bg-emerald-600 text-white'; // active sidebar item
 
@@ -93,10 +94,13 @@ const LawDetail = () => {
   const current = useMemo(() => (currentApi ? actApiToItem(currentApi) : null), [currentApi]);
 
   usePageSeo(
-    current && slug
+    currentApi && slug
       ? {
-          title: current.titleEn,
-          description: `${current.category} · ${current.year}`,
+          title: entitySeoTitle(currentApi.meta_title, currentApi.title_en),
+          description: entitySeoDescription(
+            currentApi.meta_description,
+            `${currentApi.category} · ${currentApi.year}`
+          ),
           pathname: `/laws/${slug}`,
           type: 'article',
         }

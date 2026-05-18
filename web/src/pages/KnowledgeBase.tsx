@@ -32,6 +32,7 @@ import {
   publicKnowledgeResourceDownloadApiPath,
 } from '@/lib/api';
 import type { KnowledgeResourcePublicApi } from '@/lib/api';
+import { useListingFacetsSeo } from '@/lib/seo/useListingFacetsSeo';
 
 type KnowledgeSectionTab = 'downloads' | 'faqs';
 
@@ -55,6 +56,13 @@ const KnowledgeBase = () => {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [mainTab, setMainTab] = useState<KnowledgeSectionTab>(() => (location.hash === '#faqs' ? 'faqs' : 'downloads'));
+
+  useListingFacetsSeo('/knowledge', {
+    title: 'Knowledge Base',
+    description: 'Searchable knowledge base articles and materials.',
+    hasActiveFilters: Boolean(search.trim()) || activeFilter !== 'All',
+    hasSearch: Boolean(search.trim()),
+  });
 
   const { data: categoryRows = [] } = useQuery({
     queryKey: ['public-knowledge-resource-categories'] as const,

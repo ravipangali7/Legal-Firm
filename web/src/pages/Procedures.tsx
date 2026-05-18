@@ -12,9 +12,18 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { proceduresListQueryOptions } from '@/lib/proceduresListQuery';
 import { PageHelpFaqs } from '@/components/PageHelpFaqs';
+import { useListingFacetsSeo } from '@/lib/seo/useListingFacetsSeo';
+
 const Procedures = () => {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+
+  useListingFacetsSeo('/procedures', {
+    title: 'Procedures',
+    description: 'Step-by-step regulatory and compliance procedures.',
+    hasActiveFilters: Boolean(search.trim()) || activeCategory !== 'All',
+    hasSearch: Boolean(search.trim()),
+  });
 
   const { data = [], isLoading, isError, refetch, isFetching } = useQuery(proceduresListQueryOptions);
 

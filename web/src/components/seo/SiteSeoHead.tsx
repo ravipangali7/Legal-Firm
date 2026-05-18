@@ -14,7 +14,6 @@ import {
   buildPageTitle,
   metaDescription,
   ogImageMimeType,
-  parseKeywords,
   resolveOgImage,
   siteOrigin,
   type PageSeoInput,
@@ -69,14 +68,6 @@ export default function SiteSeoHead() {
   const description = metaDescription(
     merged.description || config?.seo_description || ''
   );
-  const keywords = [
-    ...parseKeywords(config?.seo_keywords),
-    ...(Array.isArray(merged.keywords)
-      ? merged.keywords
-      : parseKeywords(
-          typeof merged.keywords === 'string' ? merged.keywords : undefined
-        )),
-  ];
   const ogImage = resolveOgImage(merged.image, config?.og_image, origin);
   const ogImageType = ogImage ? ogImageMimeType(ogImage) : undefined;
   const ogType = merged.type || 'website';
@@ -169,9 +160,6 @@ export default function SiteSeoHead() {
       <html lang="en" />
       <title>{title}</title>
       {description ? <meta name="description" content={description} /> : null}
-      {keywords.length > 0 ? (
-        <meta name="keywords" content={[...new Set(keywords)].join(', ')} />
-      ) : null}
       <meta name="robots" content={robots} />
       <meta name="googlebot" content={robots} />
       <meta name="referrer" content="strict-origin-when-cross-origin" />

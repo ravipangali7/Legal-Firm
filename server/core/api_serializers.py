@@ -128,6 +128,8 @@ class ActSerializer(serializers.ModelSerializer):
             "year",
             "updated",
             "premium",
+            "meta_title",
+            "meta_description",
         )
 
 
@@ -205,6 +207,8 @@ class SummarySerializer(PremiumContentSerializerMixin, serializers.ModelSerializ
             "premium",
             "body",
             "my_vote",
+            "meta_title",
+            "meta_description",
         )
 
     def get_my_vote(self, obj: Summary) -> str | None:
@@ -256,6 +260,8 @@ class LegalCaseSerializer(serializers.ModelSerializer):
             "summary",
             "outcome",
             "full_content",
+            "meta_title",
+            "meta_description",
         )
 
 
@@ -272,6 +278,8 @@ class PracticeAreaSerializer(serializers.ModelSerializer):
             "related_cases_title",
             "services",
             "sort_order",
+            "meta_title",
+            "meta_description",
         )
 
 
@@ -299,6 +307,8 @@ class ProcedureSerializer(serializers.ModelSerializer):
             "duration_label",
             "icon",
             "steps",
+            "meta_title",
+            "meta_description",
         )
 
 
@@ -395,6 +405,8 @@ class BlogPostSerializer(serializers.ModelSerializer):
             "published",
             "featured",
             "body",
+            "meta_title",
+            "meta_description",
         )
 
 
@@ -472,6 +484,8 @@ class NoticePublicDetailSerializer(NoticePublicSerializer):
             "body_ne",
             "issued_by_ne",
             "my_vote",
+            "meta_title",
+            "meta_description",
         )
 
     def get_my_vote(self, obj: Notice) -> str | None:
@@ -1527,6 +1541,9 @@ class SummaryAdminSerializer(serializers.ModelSerializer):
             "preview",
             "premium",
             "body",
+            "meta_title",
+            "meta_description",
+            "meta_keywords",
         )
 
 

@@ -15,6 +15,7 @@ import { PageHelpFaqs } from '@/components/PageHelpFaqs';
 import { useAuth } from '@/context/AuthContext';
 import { canAccessPremiumItem } from '@/lib/subscriptionAccess';
 import { usePremiumSubscribeToast } from '@/hooks/usePremiumSubscribeToast';
+import { useListingFacetsSeo } from '@/lib/seo/useListingFacetsSeo';
 
 const TEAL = 'bg-emerald-600 text-white';
 
@@ -51,6 +52,13 @@ const Summaries = () => {
   const [q, setQ] = useState('');
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const listViewsSentRef = useRef<Set<string>>(new Set());
+
+  useListingFacetsSeo('/summaries', {
+    title: 'Summaries',
+    description: 'Legal summaries and commentary on key topics.',
+    hasActiveFilters: Boolean(q.trim()) || activeCat != null,
+    hasSearch: Boolean(q.trim()),
+  });
 
   const {
     data: categories = [],

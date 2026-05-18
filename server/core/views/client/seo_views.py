@@ -1,14 +1,20 @@
-"""SEO endpoints: dynamic sitemap, robots.txt, and page meta from App Settings."""
+"""SEO endpoints: dynamic sitemap, robots.txt, page meta, and share landings."""
+
+from __future__ import annotations
+
+import uuid
 
 from django.http import HttpResponse
-from django.utils.html import escape
+from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from core.models import AppSettings
-from core.seo_page_meta import resolve_page_meta
-from core.seo_sitemap import collect_sitemap_urls, render_sitemap_xml
+from core.models import Act, AppSettings, BlogPost, Notice, Summary
+from core.seo.base import pack_page_meta, resolve_entity_description, resolve_entity_title, sitemap_absolute_url
+from core.seo.page_meta import resolve_page_meta
+from core.seo.share import render_share_html, share_response_from_meta
+from core.seo.sitemap import collect_sitemap_urls, render_sitemap_xml
 
 _CACHE_PUBLIC = "public, max-age=3600, s-maxage=86400"
 
@@ -27,9 +33,8 @@ def public_sitemap_xml(request):
 def public_robots_txt(request):
     app = AppSettings.load()
     body = (app.robots_txt or "").strip()
+    sitemap_line = f"Sitemap: {sitemap_absolute_url()}"
     if not body:
-        base = (app.canonical_url or "").strip().rstrip("/")
-        sitemap_line = f"Sitemap: {base}/sitemap.xml" if base else "Sitemap: /sitemap.xml"
         body = "\n".join(
             [
                 "User-agent: *",
@@ -47,9 +52,7 @@ def public_robots_txt(request):
             ]
         )
     elif "sitemap" not in body.lower():
-        base = (app.canonical_url or "").strip().rstrip("/")
-        if base:
-            body = f"{body.rstrip()}\n\nSitemap: {base}/sitemap.xml\n"
+        body = f"{body.rstrip()}\n\n{sitemap_line}\n"
     resp = HttpResponse(
         body + ("\n" if not body.endswith("\n") else ""),
         content_type="text/plain; charset=utf-8",
@@ -69,69 +72,75 @@ def public_page_meta(request):
     return Response(meta)
 
 
-_BOT_UA_FRAGMENTS = (
-    "facebookexternalhit",
-    "twitterbot",
-    "linkedinbot",
-    "slackbot",
-    "whatsapp",
-    "discordbot",
-    "telegrambot",
-    "googlebot",
-    "bingbot",
-)
-
-
-def _is_social_bot(request) -> bool:
-    ua = (request.META.get("HTTP_USER_AGENT") or "").lower()
-    return any(b in ua for b in _BOT_UA_FRAGMENTS)
-
-
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def public_share_preview(request):
     """
-  Minimal HTML with Open Graph tags for social crawlers.
-  Usage: GET /api/public/share-preview/?path=/blog/uuid
-  (Optionally route bot traffic to this URL at the reverse proxy.)
-  """
+    Minimal HTML with Open Graph tags for social crawlers.
+    GET /api/public/share-preview/?path=/blog/uuid
+    """
     path = (request.query_params.get("path") or "/").strip()
     meta = resolve_page_meta(path)
+    return share_response_from_meta(meta)
+
+
+def _share_html_response(meta: dict | None) -> HttpResponse:
     if not meta:
         return HttpResponse("Not found", status=404)
-
-    title = escape(meta.get("title") or "")
-    desc = escape(meta.get("description") or "")
-    image = escape(meta.get("image") or "")
-    canonical = escape(meta.get("canonical") or "")
-    site = escape(meta.get("site_name") or "")
-    og_type = escape(meta.get("type") or "website")
-
-    img_tags = ""
-    if image:
-        img_tags = f'<meta property="og:image" content="{image}" />\n<meta name="twitter:image" content="{image}" />'
-
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>{title}</title>
-  <meta name="description" content="{desc}" />
-  <link rel="canonical" href="{canonical}" />
-  <meta property="og:site_name" content="{site}" />
-  <meta property="og:title" content="{title}" />
-  <meta property="og:description" content="{desc}" />
-  <meta property="og:type" content="{og_type}" />
-  <meta property="og:url" content="{canonical}" />
-  {img_tags}
-  <meta name="twitter:card" content="{'summary_large_image' if image else 'summary'}" />
-  <meta name="twitter:title" content="{title}" />
-  <meta name="twitter:description" content="{desc}" />
-  <meta http-equiv="refresh" content="0;url={canonical}" />
-</head>
-<body><p><a href="{canonical}">Continue</a></p></body>
-</html>"""
-    resp = HttpResponse(html, content_type="text/html; charset=utf-8")
-    if _is_social_bot(request):
-        resp["Cache-Control"] = _CACHE_PUBLIC
+    resp = HttpResponse(render_share_html(meta), content_type="text/html; charset=utf-8")
+    resp["Cache-Control"] = _CACHE_PUBLIC
     return resp
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def blog_post_share(request, post_id: uuid.UUID):
+    row = get_object_or_404(BlogPost, id=post_id, published=True)
+    meta = pack_page_meta(
+        title=resolve_entity_title(row.meta_title, row.title),
+        description=resolve_entity_description(row.meta_description, row.excerpt),
+        type_="article",
+        canonical_path=f"/blog/{row.id}",
+    )
+    return _share_html_response(meta)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def summary_share(request, slug: str):
+    row = get_object_or_404(Summary, slug=slug)
+    meta = pack_page_meta(
+        title=resolve_entity_title(row.meta_title, row.title),
+        description=resolve_entity_description(row.meta_description, row.preview),
+        type_="article",
+        canonical_path=f"/summaries/{row.slug}",
+    )
+    return _share_html_response(meta)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def notice_share(request, slug: str):
+    row = get_object_or_404(Notice, slug=slug, published=True)
+    meta = pack_page_meta(
+        title=resolve_entity_title(row.meta_title, row.title),
+        description=resolve_entity_description(
+            row.meta_description, row.excerpt, row.body
+        ),
+        type_="article",
+        canonical_path=f"/notices/{row.slug}",
+    )
+    return _share_html_response(meta)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def act_share(request, slug: str):
+    row = get_object_or_404(Act, slug=slug)
+    meta = pack_page_meta(
+        title=resolve_entity_title(row.meta_title, row.title_en),
+        description=resolve_entity_description(row.meta_description),
+        type_="article",
+        canonical_path=f"/laws/{row.slug}",
+    )
+    return _share_html_response(meta)

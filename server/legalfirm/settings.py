@@ -50,6 +50,13 @@ _load_dotenv(BASE_DIR / ".env")
 
 # Browser URL for the SPA (eSewa success/failure redirects). Override in production via .env.
 PUBLIC_APP_BASE_URL = (os.environ.get("PUBLIC_APP_BASE_URL") or "http://localhost:5173").rstrip("/")
+# Canonical origin for sitemap, share HTML, and catalog links (SEO guide: no trailing slash).
+PUBLIC_SITE_URL = (os.environ.get("PUBLIC_SITE_URL") or PUBLIC_APP_BASE_URL).rstrip("/")
+
+SITEMAP_PROVIDERS = [
+    "core.seo.providers.static_pages.entries",
+    "core.seo.providers.content.entries",
+]
 
 
 # Quick-start development settings - unsuitable for production

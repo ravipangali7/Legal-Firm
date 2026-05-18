@@ -19,6 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import { hasLibraryEntitlement } from "@/lib/subscriptionAccess";
 import { usePremiumSubscribeToast } from "@/hooks/usePremiumSubscribeToast";
 import { usePageSeo } from "@/context/SeoContext";
+import { entitySeoDescription, entitySeoTitle } from "@/lib/seo";
 
 type AreaViewModel = {
   slug: string;
@@ -116,8 +117,8 @@ const PracticeAreaPage = () => {
   usePageSeo(
     areaVm && areaSlug
       ? {
-          title: areaVm.name,
-          description: areaVm.overview,
+          title: entitySeoTitle(areaFromApi?.meta_title, areaVm.name),
+          description: entitySeoDescription(areaFromApi?.meta_description, areaVm.overview),
           pathname: `/practice-areas/${areaSlug}`,
         }
       : null
