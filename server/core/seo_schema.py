@@ -221,7 +221,22 @@ def blog_post_detail_queryset(qs=None):
 def notice_list_queryset(qs=None):
     from core.models import Notice
 
-    return qs if qs is not None else Notice.objects
+    qs = qs if qs is not None else Notice.objects
+    return qs.only(
+        "id",
+        "slug",
+        "title",
+        "excerpt",
+        "title_ne",
+        "excerpt_ne",
+        "tags",
+        "issued_by",
+        "published",
+        "view_count",
+        "upvotes",
+        "downvotes",
+        "created_at",
+    )
 
 
 def notice_detail_queryset(qs=None):

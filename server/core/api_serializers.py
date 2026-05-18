@@ -151,12 +151,15 @@ class PremiumContentSerializerMixin:
         )
 
 
-class ActDetailSerializer(PremiumContentSerializerMixin, ActSerializer):
+class ActDetailSerializer(SeoMetaSerializerMixin, PremiumContentSerializerMixin, serializers.ModelSerializer):
     """Single-act payload including optional CMS `detail_json` for the public law reader."""
 
+    category = serializers.CharField(source="category.name", read_only=True)
+    category_slug = serializers.SlugField(source="category.slug", read_only=True)
     premium_content_fields = ("detail_json",)
 
-    class Meta(ActSerializer.Meta):
+    class Meta:
+        model = Act
         fields = ActSerializer.Meta.fields + ("detail_json",)
 
 
@@ -1452,7 +1455,7 @@ def _json_object(value, field_name: str) -> dict:
     return value
 
 
-class PracticeAreaAdminSerializer(serializers.ModelSerializer):
+class PracticeAreaAdminSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
     """Staff CRUD; validates JSON list shapes used by the public practice-area page."""
 
     class Meta:

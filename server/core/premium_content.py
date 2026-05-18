@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from .content_crypto import encrypt_payload
+
+_LOG = logging.getLogger(__name__)
 
 
 def request_has_library_access(request) -> bool:
@@ -42,5 +45,9 @@ def gate_premium_content(
     for key in protected_keys:
         val = out.pop(key, None)
         if _is_nonempty(val):
-            out[f"{key}_encrypted"] = encrypt_payload(val)
+            try:
+                out[f"{key}_encrypted"] = encrypt_payload(val)
+            except Exception:
+                _LOG.exception("premium content encryption failed for field %s", key)
+                raise
     return out

@@ -81,7 +81,9 @@ def apply_summary_vote(*, actor: dict[str, Any], slug: str, vote: str | None) ->
     if actor["kind"] not in ("user", "visitor"):
         raise ValueError("bad_actor")
     try:
-        summary = Summary.objects.select_for_update().get(slug=slug)
+        from core.seo_schema import summary_api_queryset
+
+        summary = summary_api_queryset().select_for_update().get(slug=slug)
     except Summary.DoesNotExist:
         return None
 

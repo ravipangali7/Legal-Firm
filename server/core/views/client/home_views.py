@@ -107,6 +107,7 @@ from core.seo_schema import (
     blog_post_detail_queryset,
     legal_case_api_queryset,
     notice_detail_queryset,
+    notice_list_queryset,
     practice_area_api_queryset,
     procedure_api_queryset,
     procedure_detail_queryset,
@@ -200,24 +201,30 @@ def public_help_articles_list(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def public_notices_list(request):
-    qs = Notice.objects.filter(published=True).order_by("sort_order", "-created_at", "title")
-    q = (request.query_params.get("search") or request.query_params.get("q") or "").strip()
-    if q:
-        qs = qs.filter(
-            Q(title__icontains=q)
-            | Q(excerpt__icontains=q)
-            | Q(title_ne__icontains=q)
-            | Q(excerpt_ne__icontains=q)
-            | Q(issued_by__icontains=q)
+    try:
+        qs = notice_list_queryset().filter(published=True).order_by(
+            "sort_order", "-created_at", "title"
         )
-    issuer = (request.query_params.get("issued_by") or "").strip()
-    if issuer and issuer.lower() != "all":
-        qs = qs.filter(issued_by__iexact=issuer)
-    rows = list(qs[:2000])
-    tag = (request.query_params.get("tag") or "").strip()
-    if tag and tag.lower() != "all":
-        rows = [n for n in rows if isinstance(n.tags, list) and tag in n.tags]
-    return Response(NoticePublicSerializer(rows, many=True).data)
+        q = (request.query_params.get("search") or request.query_params.get("q") or "").strip()
+        if q:
+            qs = qs.filter(
+                Q(title__icontains=q)
+                | Q(excerpt__icontains=q)
+                | Q(title_ne__icontains=q)
+                | Q(excerpt_ne__icontains=q)
+                | Q(issued_by__icontains=q)
+            )
+        issuer = (request.query_params.get("issued_by") or "").strip()
+        if issuer and issuer.lower() != "all":
+            qs = qs.filter(issued_by__iexact=issuer)
+        rows = list(qs[:2000])
+        tag = (request.query_params.get("tag") or "").strip()
+        if tag and tag.lower() != "all":
+            rows = [n for n in rows if isinstance(n.tags, list) and tag in n.tags]
+        return Response(NoticePublicSerializer(rows, many=True).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/notices/ failed (database schema or DB error)")
+        return _db_schema_error_response()
 
 
 @api_view(["GET"])
@@ -404,8 +411,14 @@ def act_detail(request, slug: str):
     try:
         return Response(ActDetailSerializer(obj, context={"request": request}).data)
     except DatabaseError:
-        _LOG.exception("GET /api/acts/%s/ failed (database schema or DB error)", slug)
+        _LOG.exception("GET /api/acts/%s/ serialize failed (database schema or DB error)", slug)
         return _db_schema_error_response()
+    except Exception:
+        _LOG.exception("GET /api/acts/%s/ failed", slug)
+        return Response(
+            {"detail": "Could not load this act. Try again later."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @api_view(["GET"])
@@ -634,7 +647,14 @@ def blog_post_detail(request, post_id):
         obj = blog_post_detail_queryset().get(pk=post_id, published=True)
     except BlogPost.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-    return Response(BlogPostSerializer(obj).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/blog/%s/ failed (database schema or DB error)", post_id)
+        return _db_schema_error_response()
+    try:
+        return Response(BlogPostSerializer(obj).data)
+    except DatabaseError:
+        _LOG.exception("GET /api/blog/%s/ serialize failed (database schema or DB error)", post_id)
+        return _db_schema_error_response()
 
 
 @csrf_exempt

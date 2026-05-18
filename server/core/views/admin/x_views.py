@@ -47,6 +47,13 @@ from core.api_serializers import (
     UserMeSerializer,
 )
 from core.cms_snapshot_apply import apply_homepage_snapshot
+from core.seo_schema import (
+    act_detail_queryset,
+    legal_case_api_queryset,
+    practice_area_api_queryset,
+    procedure_detail_queryset,
+    summary_api_queryset,
+)
 from core.impersonation import IMPERSONATOR_SESSION_KEY
 from core.models import (
     Act,
@@ -1042,7 +1049,7 @@ def admin_practice_areas(request):
     if err := require_admin_perm(request, "Legal library", "view" if request.method == "GET" else "create"):
         return err
     if request.method == "GET":
-        qs = PracticeArea.objects.order_by("sort_order", "name")
+        qs = practice_area_api_queryset().order_by("sort_order", "name")
         return Response(PracticeAreaAdminSerializer(qs, many=True).data)
     ser = PracticeAreaAdminSerializer(data=request.data)
     if not ser.is_valid():
@@ -1062,7 +1069,7 @@ def admin_practice_area_detail(request, area_id):
         aid = uuid.UUID(str(area_id))
     except ValueError:
         return Response({"detail": "Invalid id."}, status=status.HTTP_400_BAD_REQUEST)
-    obj = get_object_or_404(PracticeArea, pk=aid)
+    obj = get_object_or_404(practice_area_api_queryset(), pk=aid)
     if request.method == "GET":
         return Response(PracticeAreaAdminSerializer(obj).data)
     if request.method == "PATCH":
@@ -1082,7 +1089,7 @@ def admin_legal_cases(request):
     if err := require_admin_perm(request, "Legal library", "view" if request.method == "GET" else "create"):
         return err
     if request.method == "GET":
-        qs = LegalCase.objects.select_related("category").order_by("-date_filed", "title")
+        qs = legal_case_api_queryset().order_by("-date_filed", "title")
         return Response(LegalCaseAdminSerializer(qs, many=True).data)
     ser = LegalCaseAdminSerializer(data=request.data)
     if not ser.is_valid():
@@ -1102,7 +1109,7 @@ def admin_legal_case_detail(request, case_id):
         cid = uuid.UUID(str(case_id))
     except ValueError:
         return Response({"detail": "Invalid id."}, status=status.HTTP_400_BAD_REQUEST)
-    obj = get_object_or_404(LegalCase.objects.select_related("category"), pk=cid)
+    obj = get_object_or_404(legal_case_api_queryset(), pk=cid)
     if request.method == "GET":
         return Response(LegalCaseAdminSerializer(obj).data)
     if request.method == "PATCH":
@@ -1282,7 +1289,7 @@ def admin_summaries(request):
     if err := require_admin_perm(request, "Legal library", "view" if request.method == "GET" else "create"):
         return err
     if request.method == "GET":
-        qs = Summary.objects.select_related("category").order_by("-posted", "title")
+        qs = summary_api_queryset().order_by("-posted", "title")
         return Response(SummaryAdminSerializer(qs, many=True).data)
     ser = SummaryAdminSerializer(data=request.data)
     if not ser.is_valid():
@@ -1302,7 +1309,7 @@ def admin_summary_detail(request, summary_id):
         sid = uuid.UUID(str(summary_id))
     except ValueError:
         return Response({"detail": "Invalid id."}, status=status.HTTP_400_BAD_REQUEST)
-    obj = get_object_or_404(Summary, pk=sid)
+    obj = get_object_or_404(summary_api_queryset(), pk=sid)
     if request.method == "GET":
         return Response(SummaryAdminSerializer(obj).data)
     if request.method == "PATCH":
@@ -1322,7 +1329,7 @@ def admin_acts(request):
     if err := require_admin_perm(request, "Legal library", "view" if request.method == "GET" else "create"):
         return err
     if request.method == "GET":
-        qs = Act.objects.select_related("category").order_by("title_en")
+        qs = act_detail_queryset().order_by("title_en")
         return Response(ActAdminSerializer(qs, many=True).data)
     ser = ActAdminSerializer(data=request.data)
     if not ser.is_valid():
@@ -1338,7 +1345,7 @@ def admin_act_detail(request, slug: str):
     perm = "view" if request.method == "GET" else ("edit" if request.method == "PATCH" else "delete")
     if err := require_admin_perm(request, "Legal library", perm):
         return err
-    obj = get_object_or_404(Act.objects.select_related("category"), pk=slug)
+    obj = get_object_or_404(act_detail_queryset(), pk=slug)
     if request.method == "GET":
         return Response(ActAdminSerializer(obj).data)
     if request.method == "PATCH":
@@ -1358,7 +1365,7 @@ def admin_procedures(request):
     if err := require_admin_perm(request, "Legal library", "view" if request.method == "GET" else "create"):
         return err
     if request.method == "GET":
-        qs = Procedure.objects.select_related("category").prefetch_related("steps").order_by(
+        qs = procedure_detail_queryset().order_by(
             "category__sort_order", "category__name", "title"
         )
         return Response(ProcedureAdminSerializer(qs, many=True).data)
@@ -1380,7 +1387,7 @@ def admin_procedure_detail(request, procedure_id):
         pid = uuid.UUID(str(procedure_id))
     except ValueError:
         return Response({"detail": "Invalid id."}, status=status.HTTP_400_BAD_REQUEST)
-    obj = get_object_or_404(Procedure.objects.select_related("category").prefetch_related("steps"), pk=pid)
+    obj = get_object_or_404(procedure_detail_queryset(), pk=pid)
     if request.method == "GET":
         return Response(ProcedureAdminSerializer(obj).data)
     if request.method == "PATCH":

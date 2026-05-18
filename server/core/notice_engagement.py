@@ -83,7 +83,11 @@ def apply_notice_vote(*, actor: dict, notice_slug: str, vote: str | None) -> Not
     if actor["kind"] not in ("user", "visitor"):
         raise ValueError("bad_actor")
     try:
-        notice = Notice.objects.select_for_update().get(slug=notice_slug, published=True)
+        from core.seo_schema import notice_detail_queryset
+
+        notice = notice_detail_queryset().select_for_update().get(
+            slug=notice_slug, published=True
+        )
     except Notice.DoesNotExist:
         return None
 

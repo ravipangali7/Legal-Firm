@@ -12,7 +12,7 @@ from rest_framework.response import Response
 
 from core.models import AppSettings
 from core.seo_schema import (
-    act_api_queryset,
+    act_detail_queryset,
     blog_post_detail_queryset,
     notice_detail_queryset,
     seo_meta_columns_applied,
@@ -149,7 +149,7 @@ def notice_share(request, slug: str):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def act_share(request, slug: str):
-    row = get_object_or_404(act_api_queryset(), pk=slug)
+    row = get_object_or_404(act_detail_queryset(), pk=slug)
     meta_title = row.meta_title if seo_meta_columns_applied() else ""
     meta_description = row.meta_description if seo_meta_columns_applied() else ""
     meta = pack_page_meta(
