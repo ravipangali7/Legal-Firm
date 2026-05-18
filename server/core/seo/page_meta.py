@@ -24,6 +24,7 @@ from core.seo.base import (
     resolve_entity_title,
     strip_html,
 )
+from core.seo_schema import only_with_optional_seo, seo_meta_columns_applied
 
 _ABOUT_SUBPAGES = ("background", "our-team", "our-services")
 
@@ -75,12 +76,14 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
     m = re.match(r"^/laws/([^/]+)$", p)
     if m:
         row = Act.objects.filter(slug=m.group(1)).only(
-            "title_en", "meta_title", "meta_description"
+            *only_with_optional_seo("title_en")
         ).first()
         if row:
+            meta_title = row.meta_title if seo_meta_columns_applied() else ""
+            meta_description = row.meta_description if seo_meta_columns_applied() else ""
             return pack_page_meta(
-                title=resolve_entity_title(row.meta_title, row.title_en),
-                description=resolve_entity_description(row.meta_description),
+                title=resolve_entity_title(meta_title, row.title_en),
+                description=resolve_entity_description(meta_description),
                 canonical_path=p,
                 site_name=site_name,
             )
@@ -88,13 +91,15 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
     m = re.match(r"^/summaries/([^/]+)$", p)
     if m:
         row = Summary.objects.filter(slug=m.group(1)).only(
-            "title", "preview", "meta_title", "meta_description"
+            *only_with_optional_seo("title", "preview")
         ).first()
         if row:
+            meta_title = row.meta_title if seo_meta_columns_applied() else ""
+            meta_description = row.meta_description if seo_meta_columns_applied() else ""
             return pack_page_meta(
-                title=resolve_entity_title(row.meta_title, row.title),
+                title=resolve_entity_title(meta_title, row.title),
                 description=resolve_entity_description(
-                    row.meta_description, row.preview
+                    meta_description, row.preview
                 ),
                 type_="article",
                 canonical_path=p,
@@ -104,13 +109,15 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
     m = re.match(r"^/procedures/([^/]+)$", p)
     if m:
         row = Procedure.objects.filter(slug=m.group(1)).only(
-            "title", "summary", "meta_title", "meta_description"
+            *only_with_optional_seo("title", "summary")
         ).first()
         if row:
+            meta_title = row.meta_title if seo_meta_columns_applied() else ""
+            meta_description = row.meta_description if seo_meta_columns_applied() else ""
             return pack_page_meta(
-                title=resolve_entity_title(row.meta_title, row.title),
+                title=resolve_entity_title(meta_title, row.title),
                 description=resolve_entity_description(
-                    row.meta_description, row.summary
+                    meta_description, row.summary
                 ),
                 canonical_path=p,
                 site_name=site_name,
@@ -120,14 +127,16 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
     if m:
         row = (
             Notice.objects.filter(slug=m.group(1), published=True)
-            .only("title", "excerpt", "body", "meta_title", "meta_description")
+            .only(*only_with_optional_seo("title", "excerpt", "body"))
             .first()
         )
         if row:
+            meta_title = row.meta_title if seo_meta_columns_applied() else ""
+            meta_description = row.meta_description if seo_meta_columns_applied() else ""
             return pack_page_meta(
-                title=resolve_entity_title(row.meta_title, row.title),
+                title=resolve_entity_title(meta_title, row.title),
                 description=resolve_entity_description(
-                    row.meta_description, row.excerpt, row.body
+                    meta_description, row.excerpt, row.body
                 ),
                 type_="article",
                 canonical_path=p,
@@ -137,13 +146,15 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
     m = re.match(r"^/practice-areas/([^/]+)$", p)
     if m:
         row = PracticeArea.objects.filter(slug=m.group(1)).only(
-            "name", "overview", "meta_title", "meta_description"
+            *only_with_optional_seo("name", "overview")
         ).first()
         if row:
+            meta_title = row.meta_title if seo_meta_columns_applied() else ""
+            meta_description = row.meta_description if seo_meta_columns_applied() else ""
             return pack_page_meta(
-                title=resolve_entity_title(row.meta_title, row.name),
+                title=resolve_entity_title(meta_title, row.name),
                 description=resolve_entity_description(
-                    row.meta_description, row.overview
+                    meta_description, row.overview
                 ),
                 canonical_path=p,
                 site_name=site_name,
@@ -152,13 +163,15 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
     m = re.match(r"^/case/([^/]+)$", p)
     if m:
         row = LegalCase.objects.filter(slug=m.group(1)).only(
-            "title", "teaser", "meta_title", "meta_description"
+            *only_with_optional_seo("title", "teaser")
         ).first()
         if row:
+            meta_title = row.meta_title if seo_meta_columns_applied() else ""
+            meta_description = row.meta_description if seo_meta_columns_applied() else ""
             return pack_page_meta(
-                title=resolve_entity_title(row.meta_title, row.title),
+                title=resolve_entity_title(meta_title, row.title),
                 description=resolve_entity_description(
-                    row.meta_description, row.teaser
+                    meta_description, row.teaser
                 ),
                 canonical_path=p,
                 site_name=site_name,
@@ -168,14 +181,16 @@ def resolve_page_meta(path: str) -> dict[str, Any] | None:
     if m:
         row = (
             BlogPost.objects.filter(id=m.group(1), published=True)
-            .only("title", "excerpt", "date", "meta_title", "meta_description")
+            .only(*only_with_optional_seo("title", "excerpt", "date"))
             .first()
         )
         if row:
+            meta_title = row.meta_title if seo_meta_columns_applied() else ""
+            meta_description = row.meta_description if seo_meta_columns_applied() else ""
             return pack_page_meta(
-                title=resolve_entity_title(row.meta_title, row.title),
+                title=resolve_entity_title(meta_title, row.title),
                 description=resolve_entity_description(
-                    row.meta_description, row.excerpt
+                    meta_description, row.excerpt
                 ),
                 type_="article",
                 canonical_path=p,

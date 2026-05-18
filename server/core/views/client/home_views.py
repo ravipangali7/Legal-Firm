@@ -100,6 +100,18 @@ from core.subscription_service import (
     subscription_checkout_allowed,
 )
 from core.rbac import portal_module_perm
+from core.seo_schema import (
+    act_api_queryset,
+    act_detail_queryset,
+    blog_post_api_queryset,
+    blog_post_detail_queryset,
+    legal_case_api_queryset,
+    notice_detail_queryset,
+    practice_area_api_queryset,
+    procedure_api_queryset,
+    procedure_detail_queryset,
+    summary_api_queryset,
+)
 
 User = get_user_model()
 
@@ -221,7 +233,7 @@ def public_notice_legacy_slug(request, notice_id: uuid.UUID):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def public_notice_detail(request, slug: str):
-    obj = get_object_or_404(Notice, slug=slug, published=True)
+    obj = get_object_or_404(notice_detail_queryset(), slug=slug, published=True)
     return Response(NoticePublicDetailSerializer(obj, context={"request": request}).data)
 
 
@@ -244,7 +256,7 @@ def public_notice_vote(request, slug: str):
         return Response({"detail": "Invalid vote."}, status=status.HTTP_400_BAD_REQUEST)
     if notice is None:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-    notice = Notice.objects.get(pk=notice.pk)
+    notice = notice_detail_queryset().get(pk=notice.pk)
     return Response(NoticePublicDetailSerializer(notice, context={"request": request}).data)
 
 
@@ -366,7 +378,7 @@ def public_professionals_page(request):
 @permission_classes([AllowAny])
 def acts_list(request):
     try:
-        qs = Act.objects.select_related("category").all()
+        qs = act_api_queryset()
         q = request.query_params.get("search") or request.query_params.get("q")
         if q:
             qs = qs.filter(Q(title_en__icontains=q) | Q(title_ne__icontains=q))
@@ -383,7 +395,7 @@ def acts_list(request):
 @permission_classes([AllowAny])
 def act_detail(request, slug: str):
     try:
-        obj = Act.objects.select_related("category").get(pk=slug)
+        obj = act_detail_queryset().get(pk=slug)
     except Act.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
     except DatabaseError:
@@ -407,7 +419,7 @@ def summary_categories_list(request):
 @permission_classes([AllowAny])
 def summaries_list(request):
     try:
-        qs = Summary.objects.select_related("category").all()
+        qs = summary_api_queryset()
         cat = request.query_params.get("category")
         if cat:
             qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
@@ -456,7 +468,7 @@ def summary_vote(request, slug: str):
         return Response({"detail": "Invalid vote."}, status=status.HTTP_400_BAD_REQUEST)
     if summary is None:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-    summary = Summary.objects.select_related("category").get(pk=summary.pk)
+    summary = summary_api_queryset().get(pk=summary.pk)
     return Response(SummarySerializer(summary, context={"request": request}).data)
 
 
@@ -464,7 +476,7 @@ def summary_vote(request, slug: str):
 @permission_classes([AllowAny])
 def summary_detail(request, slug: str):
     try:
-        obj = Summary.objects.select_related("category").get(slug=slug)
+        obj = summary_api_queryset().get(slug=slug)
     except Summary.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
     except DatabaseError:
@@ -481,7 +493,7 @@ def summary_detail(request, slug: str):
 @permission_classes([AllowAny])
 def practice_areas_list(request):
     try:
-        qs = PracticeArea.objects.all().order_by("sort_order", "name")
+        qs = practice_area_api_queryset().order_by("sort_order", "name")
         return Response(PracticeAreaSerializer(qs, many=True).data)
     except DatabaseError:
         _LOG.exception("GET /api/practice-areas/ failed (database schema or DB error)")
@@ -492,7 +504,7 @@ def practice_areas_list(request):
 @permission_classes([AllowAny])
 def legal_cases_list(request):
     try:
-        qs = LegalCase.objects.select_related("category").all()
+        qs = legal_case_api_queryset()
         pa = request.query_params.get("practice_area")
         if pa:
             qs = qs.filter(practice_area=pa)
@@ -509,7 +521,7 @@ def legal_cases_list(request):
 @permission_classes([AllowAny])
 def legal_case_detail(request, slug: str):
     try:
-        obj = LegalCase.objects.select_related("category").get(slug=slug)
+        obj = legal_case_api_queryset().get(slug=slug)
     except LegalCase.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
     except DatabaseError:
@@ -526,7 +538,7 @@ def legal_case_detail(request, slug: str):
 @permission_classes([AllowAny])
 def procedures_list(request):
     try:
-        qs = Procedure.objects.select_related("category").all()
+        qs = procedure_api_queryset()
         cat = request.query_params.get("category")
         if cat:
             qs = qs.filter(Q(category__slug=cat) | Q(category__name__iexact=cat))
@@ -540,7 +552,7 @@ def procedures_list(request):
 @permission_classes([AllowAny])
 def procedure_detail(request, slug: str):
     try:
-        obj = Procedure.objects.select_related("category").prefetch_related("steps").get(slug=slug)
+        obj = procedure_detail_queryset().get(slug=slug)
     except Procedure.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
     except DatabaseError:
@@ -606,7 +618,7 @@ def pricing_page(request):
 @permission_classes([AllowAny])
 def blog_posts_list(request):
     try:
-        qs = BlogPost.objects.filter(published=True).order_by("-date", "title")
+        qs = blog_post_api_queryset().filter(published=True).order_by("-date", "title")
         if request.query_params.get("featured") in ("1", "true", "yes"):
             qs = qs.filter(featured=True)
         return Response(BlogPostPublicListSerializer(qs[:500], many=True).data)
@@ -619,7 +631,7 @@ def blog_posts_list(request):
 @permission_classes([AllowAny])
 def blog_post_detail(request, post_id):
     try:
-        obj = BlogPost.objects.get(pk=post_id, published=True)
+        obj = blog_post_detail_queryset().get(pk=post_id, published=True)
     except BlogPost.DoesNotExist:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
     return Response(BlogPostSerializer(obj).data)

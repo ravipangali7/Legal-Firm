@@ -10,7 +10,14 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from core.models import Act, AppSettings, BlogPost, Notice, Summary
+from core.models import AppSettings
+from core.seo_schema import (
+    act_api_queryset,
+    blog_post_detail_queryset,
+    notice_detail_queryset,
+    seo_meta_columns_applied,
+    summary_api_queryset,
+)
 from core.seo.base import pack_page_meta, resolve_entity_description, resolve_entity_title, sitemap_absolute_url
 from core.seo.page_meta import resolve_page_meta
 from core.seo.share import render_share_html, share_response_from_meta
@@ -95,10 +102,12 @@ def _share_html_response(meta: dict | None) -> HttpResponse:
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def blog_post_share(request, post_id: uuid.UUID):
-    row = get_object_or_404(BlogPost, id=post_id, published=True)
+    row = get_object_or_404(blog_post_detail_queryset(), id=post_id, published=True)
+    meta_title = row.meta_title if seo_meta_columns_applied() else ""
+    meta_description = row.meta_description if seo_meta_columns_applied() else ""
     meta = pack_page_meta(
-        title=resolve_entity_title(row.meta_title, row.title),
-        description=resolve_entity_description(row.meta_description, row.excerpt),
+        title=resolve_entity_title(meta_title, row.title),
+        description=resolve_entity_description(meta_description, row.excerpt),
         type_="article",
         canonical_path=f"/blog/{row.id}",
     )
@@ -108,10 +117,12 @@ def blog_post_share(request, post_id: uuid.UUID):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def summary_share(request, slug: str):
-    row = get_object_or_404(Summary, slug=slug)
+    row = get_object_or_404(summary_api_queryset(), slug=slug)
+    meta_title = row.meta_title if seo_meta_columns_applied() else ""
+    meta_description = row.meta_description if seo_meta_columns_applied() else ""
     meta = pack_page_meta(
-        title=resolve_entity_title(row.meta_title, row.title),
-        description=resolve_entity_description(row.meta_description, row.preview),
+        title=resolve_entity_title(meta_title, row.title),
+        description=resolve_entity_description(meta_description, row.preview),
         type_="article",
         canonical_path=f"/summaries/{row.slug}",
     )
@@ -121,11 +132,13 @@ def summary_share(request, slug: str):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def notice_share(request, slug: str):
-    row = get_object_or_404(Notice, slug=slug, published=True)
+    row = get_object_or_404(notice_detail_queryset(), slug=slug, published=True)
+    meta_title = row.meta_title if seo_meta_columns_applied() else ""
+    meta_description = row.meta_description if seo_meta_columns_applied() else ""
     meta = pack_page_meta(
-        title=resolve_entity_title(row.meta_title, row.title),
+        title=resolve_entity_title(meta_title, row.title),
         description=resolve_entity_description(
-            row.meta_description, row.excerpt, row.body
+            meta_description, row.excerpt, row.body
         ),
         type_="article",
         canonical_path=f"/notices/{row.slug}",
@@ -136,10 +149,12 @@ def notice_share(request, slug: str):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def act_share(request, slug: str):
-    row = get_object_or_404(Act, slug=slug)
+    row = get_object_or_404(act_api_queryset(), pk=slug)
+    meta_title = row.meta_title if seo_meta_columns_applied() else ""
+    meta_description = row.meta_description if seo_meta_columns_applied() else ""
     meta = pack_page_meta(
-        title=resolve_entity_title(row.meta_title, row.title_en),
-        description=resolve_entity_description(row.meta_description),
+        title=resolve_entity_title(meta_title, row.title_en),
+        description=resolve_entity_description(meta_description),
         type_="article",
         canonical_path=f"/laws/{row.slug}",
     )

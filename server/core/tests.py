@@ -341,6 +341,41 @@ class SeoEndpointsTests(TestCase):
         self.assertIn(f"https://www.taxlexis.example/summaries/{slug}", html)
 
 
+class SeoSchemaCompatTests(TestCase):
+    """API works when SEO meta columns are not migrated yet (pre-0043 databases)."""
+
+    def setUp(self):
+        self.api = APIClient()
+        self.act_cat = ActCategory.objects.create(
+            slug=f"compat-cat-{uuid.uuid4().hex[:8]}",
+            name="Compat",
+        )
+        Act.objects.create(
+            slug=f"compat-act-{uuid.uuid4().hex[:8]}",
+            title_en="Compat Act",
+            title_ne="कम्प्याट",
+            category=self.act_cat,
+            year="2080",
+            updated=date(2026, 1, 1),
+        )
+
+    def test_acts_list_ok_when_seo_columns_absent(self):
+        from unittest.mock import patch
+
+        from core.seo_schema import seo_meta_columns_applied
+
+        seo_meta_columns_applied.cache_clear()
+        try:
+            with patch("core.seo_schema.seo_meta_columns_applied", return_value=False):
+                with patch("core.seo_serializers.seo_meta_columns_applied", return_value=False):
+                    rsp = self.api.get("/api/acts/")
+            self.assertEqual(rsp.status_code, 200, rsp.data)
+            self.assertGreaterEqual(len(rsp.data), 1)
+            self.assertNotIn("meta_title", rsp.data[0])
+        finally:
+            seo_meta_columns_applied.cache_clear()
+
+
 class AdminEmailTemplatesApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()

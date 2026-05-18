@@ -11,6 +11,7 @@ from rest_framework import serializers
 
 from .flexible_image import FlexibleImageField, pop_preserve_image
 from .phone_auth import find_user_by_phone_digits, normalize_phone_digits, phone_login_email
+from .seo_serializers import SeoMetaSerializerMixin
 from .models import (
     AboutSection,
     AboutStat,
@@ -111,7 +112,7 @@ class AppSettingsPublicSerializer(serializers.ModelSerializer):
         return True
 
 
-class ActSerializer(serializers.ModelSerializer):
+class ActSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
     """Public list/detail: `category` is the display name (back-compat); `category_slug` is stable."""
 
     category = serializers.CharField(source="category.name", read_only=True)
@@ -183,7 +184,7 @@ class ProcedureCategorySerializer(serializers.ModelSerializer):
         fields = ("id", "slug", "name", "color", "sort_order")
 
 
-class SummarySerializer(PremiumContentSerializerMixin, serializers.ModelSerializer):
+class SummarySerializer(SeoMetaSerializerMixin, PremiumContentSerializerMixin, serializers.ModelSerializer):
     category_slug = serializers.SlugField(source="category.slug", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
     my_vote = serializers.SerializerMethodField()
@@ -238,7 +239,7 @@ class SummarySerializer(PremiumContentSerializerMixin, serializers.ModelSerializ
         return row.vote if row else None
 
 
-class LegalCaseSerializer(serializers.ModelSerializer):
+class LegalCaseSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
     category = serializers.CharField(source="category.name", read_only=True)
     category_slug = serializers.SlugField(source="category.slug", read_only=True)
 
@@ -265,7 +266,7 @@ class LegalCaseSerializer(serializers.ModelSerializer):
         )
 
 
-class PracticeAreaSerializer(serializers.ModelSerializer):
+class PracticeAreaSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = PracticeArea
         fields = (
@@ -289,7 +290,7 @@ class ProcedureStepSerializer(serializers.ModelSerializer):
         fields = ("id", "order", "description")
 
 
-class ProcedureSerializer(serializers.ModelSerializer):
+class ProcedureSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
     steps = ProcedureStepSerializer(many=True, read_only=True)
     category = serializers.CharField(source="category.name", read_only=True)
     category_slug = serializers.SlugField(source="category.slug", read_only=True)
@@ -388,7 +389,7 @@ class BlogPostPublicListSerializer(serializers.ModelSerializer):
         )
 
 
-class BlogPostSerializer(serializers.ModelSerializer):
+class BlogPostSerializer(SeoMetaSerializerMixin, serializers.ModelSerializer):
     author_email = serializers.EmailField(source="author.email", read_only=True, allow_null=True)
 
     class Meta:
@@ -472,7 +473,7 @@ class NoticePublicSerializer(serializers.ModelSerializer):
         )
 
 
-class NoticePublicDetailSerializer(NoticePublicSerializer):
+class NoticePublicDetailSerializer(SeoMetaSerializerMixin, NoticePublicSerializer):
     """Published notice detail (full body, Nepali fields, current visitor vote)."""
 
     my_vote = serializers.SerializerMethodField()
