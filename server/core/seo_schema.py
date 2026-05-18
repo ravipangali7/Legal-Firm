@@ -11,6 +11,10 @@ from core.models import Act
 _SEO_META_FIELD_NAMES = ("meta_title", "meta_description")
 
 
+def invalidate_seo_meta_schema_cache() -> None:
+    seo_meta_columns_applied.cache_clear()
+
+
 @lru_cache(maxsize=1)
 def seo_meta_columns_applied() -> bool:
     """True after migration 0043; False on databases that only have pre-SEO schema."""

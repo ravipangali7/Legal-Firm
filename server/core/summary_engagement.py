@@ -9,6 +9,10 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
+from core.engagement_schema import (
+    summary_audience_vote_table_applied,
+    summary_daily_view_table_applied,
+)
 from core.models import Summary, SummaryAudienceVote, SummaryDailyViewerView
 
 
@@ -37,7 +41,7 @@ def summary_actor_from_request(request) -> dict[str, Any]:
 @transaction.atomic
 def record_summary_daily_views(actor_key: str, slugs: list[str]) -> int:
     """Increment Summary.views once per (summary, actor_key, UTC day). Returns number of new tallies."""
-    if not actor_key:
+    if not actor_key or not summary_daily_view_table_applied():
         return 0
     day = timezone.now().date()
     created = 0
@@ -80,6 +84,8 @@ def apply_summary_vote(*, actor: dict[str, Any], slug: str, vote: str | None) ->
     """
     if actor["kind"] not in ("user", "visitor"):
         raise ValueError("bad_actor")
+    if not summary_audience_vote_table_applied():
+        raise ValueError("schema_unavailable")
     try:
         from core.seo_schema import summary_api_queryset
 

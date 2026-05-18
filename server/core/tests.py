@@ -341,6 +341,63 @@ class SeoEndpointsTests(TestCase):
         self.assertIn(f"https://www.taxlexis.example/summaries/{slug}", html)
 
 
+class EngagementSchemaCompatTests(TestCase):
+    """Summaries/notices work when engagement tables are not migrated yet (pre-0019 / partial deploy)."""
+
+    def setUp(self):
+        self.api = APIClient()
+        self.sum_cat = SummaryCategory.objects.create(
+            slug=f"eng-cat-{uuid.uuid4().hex[:8]}",
+            name="Eng Cat",
+            color="#000",
+        )
+        self.summary = Summary.objects.create(
+            slug=f"eng-sum-{uuid.uuid4().hex[:8]}",
+            title="Eng Summary",
+            category=self.sum_cat,
+            posted=date(2026, 1, 1),
+            preview="Preview",
+        )
+        self.visitor_id = str(uuid.uuid4())
+
+    def test_summaries_list_ok_when_vote_table_missing(self):
+        from unittest.mock import patch
+
+        from core.engagement_schema import invalidate_engagement_schema_cache
+
+        invalidate_engagement_schema_cache()
+        try:
+            with patch("core.api_serializers.summary_audience_vote_table_applied", return_value=False):
+                rsp = self.api.get(
+                    "/api/summaries/",
+                    HTTP_X_VISITOR_ID=self.visitor_id,
+                )
+            self.assertEqual(rsp.status_code, 200, rsp.data)
+            self.assertGreaterEqual(len(rsp.data), 1)
+            self.assertIsNone(rsp.data[0].get("my_vote"))
+        finally:
+            invalidate_engagement_schema_cache()
+
+    def test_summary_track_views_ok_when_daily_view_table_missing(self):
+        from unittest.mock import patch
+
+        from core.engagement_schema import invalidate_engagement_schema_cache
+
+        invalidate_engagement_schema_cache()
+        try:
+            with patch("core.summary_engagement.summary_daily_view_table_applied", return_value=False):
+                rsp = self.api.post(
+                    "/api/summaries/track-views/",
+                    {"slugs": [self.summary.slug]},
+                    format="json",
+                    HTTP_X_VISITOR_ID=self.visitor_id,
+                )
+            self.assertEqual(rsp.status_code, 200, rsp.data)
+            self.assertTrue(rsp.data.get("ok"))
+        finally:
+            invalidate_engagement_schema_cache()
+
+
 class SeoSchemaCompatTests(TestCase):
     """API works when SEO meta columns are not migrated yet (pre-0043 databases)."""
 

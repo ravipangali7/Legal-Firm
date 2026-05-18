@@ -8,33 +8,44 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
+from core.engagement_schema import (
+    notice_audience_vote_table_applied,
+    notice_daily_view_table_applied,
+)
 from core.models import Notice, NoticeAudienceVote, NoticeDailyViewerView
 
 
 def notice_actor_from_request(request) -> dict:
-    """Resolve actor for notice views: authenticated user or X-Visitor-Id (UUID)."""
+    """Resolve actor for notice views/votes: authenticated user or X-Visitor-Id (UUID)."""
     user = getattr(request, "user", None)
     if user is not None and user.is_authenticated:
         return {
             "kind": "user",
+            "user": user,
             "actor_key": f"user:{user.pk}",
+            "visitor_key": None,
         }
     raw = (request.headers.get("X-Visitor-Id") or "").strip()
     if not raw:
-        return {"kind": "none", "actor_key": None}
+        return {"kind": "none", "user": None, "actor_key": None, "visitor_key": None}
     if len(raw) > 64:
         raw = raw[:64]
     try:
         uuid.UUID(raw)
     except ValueError:
-        return {"kind": "invalid", "actor_key": None}
-    return {"kind": "visitor", "actor_key": f"visitor:{raw}"}
+        return {"kind": "invalid", "user": None, "actor_key": None, "visitor_key": None}
+    return {
+        "kind": "visitor",
+        "user": None,
+        "actor_key": f"visitor:{raw}",
+        "visitor_key": raw,
+    }
 
 
 @transaction.atomic
 def record_notice_daily_views(actor_key: str, ids: list[str]) -> int:
     """Increment Notice.view_count once per (notice, actor_key, UTC day). Returns number of new tallies."""
-    if not actor_key:
+    if not actor_key or not notice_daily_view_table_applied():
         return 0
     day = timezone.now().date()
     created = 0
@@ -82,6 +93,8 @@ def apply_notice_vote(*, actor: dict, notice_slug: str, vote: str | None) -> Not
     """
     if actor["kind"] not in ("user", "visitor"):
         raise ValueError("bad_actor")
+    if not notice_audience_vote_table_applied():
+        raise ValueError("schema_unavailable")
     try:
         from core.seo_schema import notice_detail_queryset
 

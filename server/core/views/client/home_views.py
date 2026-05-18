@@ -259,7 +259,9 @@ def public_notice_vote(request, slug: str):
         return Response({"detail": "vote must be null, up, or down."}, status=status.HTTP_400_BAD_REQUEST)
     try:
         notice = apply_notice_vote(actor=actor, notice_slug=slug, vote=vote)
-    except ValueError:
+    except ValueError as exc:
+        if str(exc) == "schema_unavailable":
+            return _db_schema_error_response()
         return Response({"detail": "Invalid vote."}, status=status.HTTP_400_BAD_REQUEST)
     if notice is None:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -340,7 +342,11 @@ def public_notices_track_views(request):
     raw_ids = request.data.get("ids")
     if not isinstance(raw_ids, list):
         return Response({"detail": "ids must be a list of UUID strings."}, status=status.HTTP_400_BAD_REQUEST)
-    record_notice_daily_views(actor["actor_key"], raw_ids)
+    try:
+        record_notice_daily_views(actor["actor_key"], raw_ids)
+    except DatabaseError:
+        _LOG.exception("POST /api/public/notices/track-views/ failed (database schema or DB error)")
+        return _db_schema_error_response()
     return Response({"ok": True}, status=status.HTTP_200_OK)
 
 
@@ -443,6 +449,12 @@ def summaries_list(request):
     except DatabaseError:
         _LOG.exception("GET /api/summaries/ failed (database schema or DB error)")
         return _db_schema_error_response()
+    except Exception:
+        _LOG.exception("GET /api/summaries/ failed")
+        return Response(
+            {"detail": "Could not load summaries. Try again later."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @api_view(["POST"])
@@ -458,7 +470,11 @@ def summary_track_views(request):
     slugs = request.data.get("slugs")
     if not isinstance(slugs, list):
         return Response({"detail": "slugs must be a list."}, status=status.HTTP_400_BAD_REQUEST)
-    record_summary_daily_views(actor["actor_key"], slugs)
+    try:
+        record_summary_daily_views(actor["actor_key"], slugs)
+    except DatabaseError:
+        _LOG.exception("POST /api/summaries/track-views/ failed (database schema or DB error)")
+        return _db_schema_error_response()
     return Response({"ok": True}, status=status.HTTP_200_OK)
 
 
@@ -477,7 +493,9 @@ def summary_vote(request, slug: str):
         return Response({"detail": "vote must be null, up, or down."}, status=status.HTTP_400_BAD_REQUEST)
     try:
         summary = apply_summary_vote(actor=actor, slug=slug, vote=vote)
-    except ValueError:
+    except ValueError as exc:
+        if str(exc) == "schema_unavailable":
+            return _db_schema_error_response()
         return Response({"detail": "Invalid vote."}, status=status.HTTP_400_BAD_REQUEST)
     if summary is None:
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)

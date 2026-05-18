@@ -152,10 +152,14 @@ def clear_otp_schema_cache_after_migrate(sender, **kwargs):
     if getattr(sender, "name", None) != "core":
         return
     from core.email_template_schema import invalidate_email_template_schema_cache
+    from core.engagement_schema import invalidate_engagement_schema_cache
     from core.otp_schema import invalidate_otp_schema_cache
+    from core.seo_schema import invalidate_seo_meta_schema_cache
 
     invalidate_otp_schema_cache()
     invalidate_email_template_schema_cache()
+    invalidate_engagement_schema_cache()
+    invalidate_seo_meta_schema_cache()
 
 
 @receiver(post_migrate)

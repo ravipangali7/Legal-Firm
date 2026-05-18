@@ -59,6 +59,7 @@ from .models import (
     UserProfile,
 )
 
+from .engagement_schema import notice_audience_vote_table_applied, summary_audience_vote_table_applied
 from .sync_user_client import sync_crm_client_for_user
 
 User = get_user_model()
@@ -216,6 +217,8 @@ class SummarySerializer(SeoMetaSerializerMixin, PremiumContentSerializerMixin, s
         )
 
     def get_my_vote(self, obj: Summary) -> str | None:
+        if not summary_audience_vote_table_applied():
+            return None
         request = self.context.get("request")
         if not request:
             return None
@@ -493,6 +496,8 @@ class NoticePublicDetailSerializer(SeoMetaSerializerMixin, NoticePublicSerialize
         )
 
     def get_my_vote(self, obj: Notice) -> str | None:
+        if not notice_audience_vote_table_applied():
+            return None
         request = self.context.get("request")
         if not request:
             return None

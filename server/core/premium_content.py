@@ -49,5 +49,4 @@ def gate_premium_content(
                 out[f"{key}_encrypted"] = encrypt_payload(val)
             except Exception:
                 _LOG.exception("premium content encryption failed for field %s", key)
-                raise
     return out
